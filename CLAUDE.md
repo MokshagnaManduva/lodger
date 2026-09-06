@@ -490,6 +490,21 @@ under your control rather than the model's — and generate at **128x128**.
 Generated frames land in `reference/generated/`. They are **inputs to Stage 4**, not assets.
 Nothing generated ships without passing through Aseprite.
 
+### Writing the animation prompt
+
+Craft rules worth following whichever generator is used:
+
+- **Inspect the source first.** Upscale the canonical sprite nearest-neighbour to about
+  1024x1024 and look at it. Name only details that are actually visible - silhouette, hat,
+  cape, cane, facing. Inventing detail the sprite does not have is what produces off-model
+  frames.
+- **One short paragraph of plain prose**, not a keyword list. Say what moves, how it moves,
+  what stays stable, and how the props are used. "The gentleman in the black top hat rocks
+  gently forward and back in a slow breathing idle, his cape settling behind him while the
+  cane stays planted and his head remains level" beats "idle, breathing, 4 frames".
+- **Leave an edge margin.** Generators crowd the canvas edge, and art touching the cell
+  border tears when magnified or when a socket offsets it. `packtool build` warns about it.
+
 **Why this tool.** The missing work is a walk cycle plus 65 frames that stay on-model.
 Generating 65 independent images and hoping they match is the exact failure the reference sheet
 already demonstrates across six cells. Skeleton-driven generation makes poses **specified
@@ -499,6 +514,25 @@ character LoRA trained on six images, and Flux only runs at Q4 on 16 GB. Retro D
 Aseprite extension (local, one-time cost, pixel-native model trained on consented art) is a
 good optional assist for Stage 2 and for palette reduction, but it does no pose-driven
 animation.
+
+**SpriteCook was evaluated and is a credible alternative to PixelLab, not to `pixelize`.**
+It is a cloud generation service driven over MCP (`npx spritecook-mcp setup`), so it sits at
+Stage 3. `generate_character` plus `generate_character_animations` gives a guided character
+workflow with `platformer` presets (`idle`, `walk`, `jump`, `run`, `attack`, `hurt`, `death`)
+and `custom_animations` for anything else, and `generate_game_art` accepts a hex palette of
+up to 64 colours - which would land frames already conformant to our locked 26. Its
+independent conclusion matches ours exactly: generate one canonical asset, then animate that
+same asset id per motion, never a fresh still per motion.
+
+Two things keep PixelLab as the recommendation for now: `generate_character` is fixed at
+**64x64**, which cannot produce our 128 cell (only the free-form `generate_game_art` reaches
+128, and that forfeits the animation workflow), and PixelLab's skeleton keypoints make poses
+**specified rather than described**, which is the whole reason it was chosen. PixelLab also
+has a `Force colors` option, so palette enforcement is not a differentiator. Worth trialling
+side by side on the walk cycle if PixelLab's skeleton estimates prove fiddly.
+
+**SpriteCook does not improve `packtool pixelize`.** It has no pixelisation primitive to
+borrow - it generates, it does not downsample reference art. Stage 2 stays as it is.
 
 ### Stage 4 — Finishing and anchors — the step no tool does
 

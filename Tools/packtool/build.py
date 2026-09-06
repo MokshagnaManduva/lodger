@@ -141,6 +141,26 @@ def build(src: Path, out: Path, rep, *, clean: bool = True) -> dict | None:
                 arr[r * ch:(r + 1) * ch, c * cw:(c + 1) * cw, 3] > 0
                 for r in range(rows) for c in range(cols)]
 
+    # ---- cell overflow ---------------------------------------------------------
+    # Art touching the cell edge has almost certainly been cropped, and it will
+    # tear when the sprite is magnified or when a socket offsets it. Generators
+    # crowd the canvas edge by default, which is why SpriteCook's animation tool
+    # defaults to an edge_margin of 6px; we check for it rather than assume it.
+    for name, cells in cells_by_tex.items():
+        touching = []
+        for i, m in enumerate(cells):
+            if not m.any():
+                continue
+            if m[0].any() or m[-1].any() or m[:, 0].any() or m[:, -1].any():
+                touching.append(i)
+        if touching:
+            shown = ", ".join(str(i) for i in touching[:8])
+            more = f" (+{len(touching) - 8} more)" if len(touching) > 8 else ""
+            rep.warn(f"textures/{name}",
+                     f"art touches the cell edge on frame(s) {shown}{more}. Almost always a "
+                     f"crop: leave a few pixels of margin so magnification and socket "
+                     f"offsets do not clip the silhouette.")
+
     # ---- inject anchors, lint ground-line drift --------------------------------
     for cname, clip in manifest["clips"].items():
         tex = clip["texture"]

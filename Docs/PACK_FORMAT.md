@@ -331,5 +331,6 @@ needs no knowledge of what they mean. `liveliness` is conventionally scaled down
 - [ ] at least one `quiescent: true` state
 - [ ] every socket/float anchor present on every reachable frame
 - [ ] atlases are 1x, uniform-cell, nearest-neighbour, no @2x
+- [ ] no art touching the cell edge (`packtool build` warns; it tears when magnified)
 - [ ] `LICENSE` and `CREDITS.md` present, including the provenance of any generated art
 - [ ] `preview.png` looks like the character at `defaultScale`
