@@ -1,0 +1,17 @@
+{
+  "DO_NOT_SHIP": "This is a tracing sketch produced by packtool pixelize. It is never referenced by a manifest.",
+  "source": "Packs/klien/reference/klien.png",
+  "cell": "r1c0",
+  "source_bbox": [
+    178,
+    22,
+    689,
+    955
+  ],
+  "figure_height_src": 934,
+  "downscale": 9.729,
+  "target_height": 96,
+  "cell_size": 128,
+  "palette_colours_used": 17,
+  "palette": "Packs/klien/reference/palette.gpl"
+}

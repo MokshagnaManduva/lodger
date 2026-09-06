@@ -1,0 +1,10 @@
+# build outputs
+.build/
+Engine/.build/
+__pycache__/
+*.pyc
+.DS_Store
+
+# generated packs and intermediates — reproduce with `make build-fixture` / `make sketches`
+Tests/Fixtures/build/
+Packs/klien/reference/generated/

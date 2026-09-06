@@ -1,0 +1,48 @@
+{
+  "format": 1,
+  "identity": {
+    "id": "test.blinker",
+    "name": "Blinker",
+    "version": "1.0.0",
+    "author": "engine tests",
+    "license": "CC0-1.0",
+    "description": "Engine fixture. A looping multi-frame clip to exercise contentsRect keyframe animation, and a quiescent single-frame state to exercise the zero-timer path. Shares nothing with Klien: different cell size, different palette, no attachments."
+  },
+  "stage": {
+    "cell": { "w": 24, "h": 24 },
+    "bodyHeight": 20,
+    "ground": { "x": 12, "y": 22 },
+    "defaultFrameMs": 200
+  },
+  "textures": {
+    "blink": { "file": "atlas/blink.png", "columns": 5, "rows": 1, "preload": true }
+  },
+  "clips": {
+    "pulse": {
+      "texture": "blink",
+      "loop": "forever",
+      "frames": [
+        { "cell": 0, "ms": 200 },
+        { "cell": 1, "ms": 200 },
+        { "cell": 2, "ms": 200 },
+        { "cell": 3, "ms": 200 }
+      ]
+    },
+    "rest": { "texture": "blink", "loop": "forever", "frames": [ { "cell": 4, "ms": 1000 } ] }
+  },
+  "parts": [ { "name": "body", "bind": { "mode": "body" } } ],
+  "initialState": "pulsing",
+  "states": {
+    "pulsing": {
+      "clip": "pulse",
+      "duration": { "minMs": 4000, "maxMs": 8000 },
+      "next": [ { "state": "resting", "weight": 100 } ],
+      "interrupts": [ { "on": "pointer.click", "state": "resting" } ]
+    },
+    "resting": {
+      "clip": "rest",
+      "quiescent": true,
+      "interrupts": [ { "on": "pointer.click", "state": "pulsing" } ]
+    }
+  }
+}

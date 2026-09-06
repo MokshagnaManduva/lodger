@@ -1,0 +1,489 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mokshagna/companion/schema/pack.schema.json",
+  "title": "Character pack manifest",
+  "description": "A character pack is inert data. It never contains executable code, and it can never specify a rate or a schedule - only durations. See CLAUDE.md sections 5 and 6.",
+  "type": "object",
+  "required": ["format", "identity", "stage", "textures", "clips", "parts", "states", "initialState"],
+  "additionalProperties": false,
+
+  "properties": {
+    "format": { "const": 1 },
+    "engineMin": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Minimum engine version this pack requires."
+    },
+    "requires": {
+      "type": "array",
+      "items": { "enum": ["audio", "multiDisplay", "windowEdges"] },
+      "uniqueItems": true,
+      "description": "Capabilities the engine must grant. windowEdges additionally requires an explicit user grant of Accessibility."
+    },
+
+    "identity": {
+      "type": "object",
+      "required": ["id", "name", "version", "author", "license"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(\\.[a-z0-9-]+)+$",
+          "description": "Reverse-DNS, e.g. com.example.mycharacter."
+        },
+        "name": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "author": { "type": "string", "minLength": 1 },
+        "license": { "type": "string", "minLength": 1 },
+        "homepage": { "type": "string", "format": "uri" },
+        "description": { "type": "string", "maxLength": 500 },
+        "preview": { "$ref": "#/$defs/relPath" }
+      }
+    },
+
+    "stage": {
+      "type": "object",
+      "description": "The character's coordinate contract. All values are in logical (native art) pixels.",
+      "required": ["cell", "bodyHeight", "ground"],
+      "additionalProperties": false,
+      "properties": {
+        "cell": { "$ref": "#/$defs/size" },
+        "bodyHeight": {
+          "type": "integer", "minimum": 1,
+          "description": "Canonical figure height. Used by the proportion linter and by scale defaults."
+        },
+        "ground": {
+          "$ref": "#/$defs/point",
+          "description": "Feet contact point within the cell. Every frame is registered onto this."
+        },
+        "pixelPerfect": { "type": "boolean", "default": true },
+        "scaleSteps": {
+          "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 8 },
+          "default": [1, 2, 3],
+          "description": "Integer magnification factors only. Fractional scales destroy a pixel grid."
+        },
+        "defaultScale": { "type": "integer", "minimum": 1, "maximum": 8, "default": 2 },
+        "defaultFrameMs": { "type": "integer", "minimum": 16, "default": 250 },
+        "minPerchSize": {
+          "$ref": "#/$defs/size",
+          "description": "Optional hint; the engine clamps it to its own floor."
+        }
+      }
+    },
+
+    "textures": {
+      "type": "object",
+      "description": "Named atlas pages. Cells are a uniform grid - required, because contentsRect animation assumes every frame is an identically sized sub-rect.",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "oneOf": [
+          { "required": ["file", "columns", "rows"], "not": { "required": ["strip"] } },
+          { "required": ["strip"], "not": { "required": ["file"] } }
+        ],
+        "properties": {
+          "file": { "$ref": "#/$defs/relPath" },
+          "columns": { "type": "integer", "minimum": 1 },
+          "rows": { "type": "integer", "minimum": 1 },
+          "strip": {
+            "$ref": "#/$defs/relPath",
+            "description": "Source form only: a PNG frame strip, frames left to right, cell-height tall. packtool build repacks it into a uniform grid and replaces this with file/columns/rows."
+          },
+          "filter": { "enum": ["nearest"], "default": "nearest" },
+          "preload": {
+            "type": "boolean", "default": false,
+            "description": "Load at pack activation instead of on first use. Reserve for pages used by the idle and sleep states."
+          }
+        }
+      }
+    },
+
+    "clips": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["texture", "frames"],
+        "additionalProperties": false,
+        "properties": {
+          "texture": { "type": "string" },
+          "loop": { "enum": ["none", "forever", "pingpong"], "default": "none" },
+          "register": {
+            "enum": ["none", "ground"], "default": "none",
+            "description": "Source form only. 'ground' asserts every frame's sole sits on stage.ground; leave 'none' where vertical motion is deliberate (a walk bob, a jump, a landing squash)."
+          },
+          "anchorJumpLimit": {
+            "type": "number", "exclusiveMinimum": 0,
+            "description": "Per-clip override for the anchor-continuity linter, in px. Raise it only for clips where a large anchor sweep is deliberate (a turn, a throw)."
+          },
+          "mirrorable": {
+            "type": "boolean", "default": true,
+            "description": "May the engine horizontally flip this clip to face the other way, or must a mirrored clip be authored?"
+          },
+          "frames": {
+            "type": "array", "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["cell"],
+              "additionalProperties": false,
+              "properties": {
+                "cell": {
+                  "type": "integer", "minimum": 0,
+                  "description": "Index into the texture grid, row-major."
+                },
+                "ms": {
+                  "type": "integer", "minimum": 16,
+                  "description": "Hold duration. Defaults to stage.defaultFrameMs. Durations only - a pack can never specify a frame rate."
+                },
+                "anchors": {
+                  "type": "object",
+                  "additionalProperties": { "$ref": "#/$defs/point" },
+                  "description": "Named attachment points for this frame, in cell coordinates. Always authored, never inferred."
+                },
+                "sound": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "parts": {
+      "type": "array",
+      "description": "Ordered; declaration order is the default z-order. Exactly one part must use bind.mode 'body'.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "bind"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "z": { "type": "integer" },
+          "visibleIn": { "type": "array", "items": { "type": "string" } },
+          "hiddenIn": { "type": "array", "items": { "type": "string" } },
+          "mirrorWithBody": {
+            "type": "boolean", "default": true,
+            "description": "When the body flips to face the other way, does this part swap sides too?"
+          },
+          "hitTest": {
+            "type": "boolean", "default": true,
+            "description": "Does this part's silhouette contribute to the pointer hit mask?"
+          },
+          "bind": {
+            "oneOf": [
+              { "$ref": "#/$defs/bindBody" },
+              { "$ref": "#/$defs/bindSocket" },
+              { "$ref": "#/$defs/bindFloat" },
+              { "$ref": "#/$defs/bindOverlay" }
+            ]
+          }
+        }
+      }
+    },
+
+    "states": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["clip"],
+        "additionalProperties": false,
+        "properties": {
+          "clip": { "type": "string" },
+          "motion": { "$ref": "#/$defs/motion" },
+          "surface": {
+            "enum": ["floor", "windowTop", "ceiling", "wallLeft", "wallRight", "air"],
+            "default": "floor"
+          },
+          "facing": { "enum": ["keep", "left", "right", "toPointer"], "default": "keep" },
+          "duration": {
+            "oneOf": [
+              { "const": "clip" },
+              {
+                "type": "object",
+                "required": ["minMs", "maxMs"],
+                "additionalProperties": false,
+                "properties": {
+                  "minMs": { "type": "integer", "minimum": 0 },
+                  "maxMs": { "type": "integer", "minimum": 0 }
+                }
+              }
+            ]
+          },
+          "quiescent": {
+            "type": "boolean", "default": false,
+            "description": "The engine installs no timer, no display link and no run-loop source in this state. Requires a looping or single-frame clip and an empty or absent 'next'."
+          },
+          "sound": { "type": "string" },
+          "next": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["state", "weight"],
+              "additionalProperties": false,
+              "properties": {
+                "state": { "type": "string" },
+                "weight": { "type": "number", "exclusiveMinimum": 0 },
+                "when": { "$ref": "#/$defs/guard" }
+              }
+            }
+          },
+          "interrupts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["on", "state"],
+              "additionalProperties": false,
+              "properties": {
+                "on": { "$ref": "#/$defs/event" },
+                "state": { "type": "string" },
+                "when": { "$ref": "#/$defs/guard" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "hitMasks": {
+      "type": "object",
+      "description": "Written by packtool build: texture name -> 1-bit RLE alpha mask file. Derived from art, never hand-authored.",
+      "additionalProperties": { "$ref": "#/$defs/relPath" }
+    },
+
+    "initialState": {
+      "type": "string",
+      "description": "The state the pet starts in. Explicit rather than a reserved state name, so the engine never has to know that 'idle' means anything."
+    },
+
+    "sounds": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["file"],
+        "additionalProperties": false,
+        "properties": {
+          "file": { "$ref": "#/$defs/relPath" },
+          "volume": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 },
+          "maxConcurrent": { "type": "integer", "minimum": 1, "default": 1 }
+        }
+      }
+    },
+
+    "tuning": {
+      "type": "object",
+      "description": "Scalar knobs the pack wants surfaced in Settings. The engine renders a generic control for each, so it needs no knowledge of what they mean.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["label", "min", "max", "default"],
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string" },
+          "min": { "type": "number" },
+          "max": { "type": "number" },
+          "default": { "type": "number" }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "relPath": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9_./-]+$",
+      "description": "Pack-relative path. No absolute paths, no parent traversal."
+    },
+    "size": {
+      "type": "object",
+      "required": ["w", "h"],
+      "additionalProperties": false,
+      "properties": {
+        "w": { "type": "integer", "minimum": 1 },
+        "h": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "additionalProperties": false,
+      "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+    },
+
+    "bindBody": {
+      "type": "object",
+      "required": ["mode"],
+      "additionalProperties": false,
+      "properties": { "mode": { "const": "body" } }
+    },
+
+    "bindSocket": {
+      "type": "object",
+      "description": "Rigidly locked to a named anchor on the parent. A held prop.",
+      "required": ["mode", "anchor"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "const": "socket" },
+        "parent": { "type": "string", "default": "body" },
+        "anchor": { "type": "string" },
+        "frames": {
+          "enum": ["parent", "clip"], "default": "parent",
+          "description": "'parent' means this part's texture has exactly one cell per parent frame."
+        },
+        "clip": { "type": "string" },
+        "offset": { "$ref": "#/$defs/point" },
+        "orientFrames": {
+          "type": "object",
+          "description": "Discrete rotation: angle in degrees (as a key) to cell index. Free rotation destroys a pixel grid, so rotated variants are pre-drawn.",
+          "propertyNames": { "pattern": "^-?\\d+$" },
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+
+    "bindFloat": {
+      "type": "object",
+      "description": "A spring-damper follower. A companion that drifts rather than being held. The engine integrates only while unsettled, then tears down the display link; the ambient bob is a render-server animation costing no CPU.",
+      "required": ["mode", "anchor"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "const": "float" },
+        "parent": { "type": "string", "default": "body" },
+        "anchor": { "type": "string" },
+        "clip": { "type": "string" },
+        "rest": { "$ref": "#/$defs/point" },
+        "stiffness": { "type": "number", "exclusiveMinimum": 0, "default": 90 },
+        "damping": { "type": "number", "exclusiveMinimum": 0, "default": 12 },
+        "mass": { "type": "number", "exclusiveMinimum": 0, "default": 1 },
+        "lag": {
+          "type": "number", "minimum": 0, "maximum": 1, "default": 0.08,
+          "description": "Seconds of delay before the follower reacts to parent motion."
+        },
+        "maxOffset": { "type": "number", "minimum": 0, "default": 24 },
+        "sleepThreshold": {
+          "type": "number", "exclusiveMinimum": 0, "default": 0.15,
+          "description": "Speed in px/s below which the spring is considered settled. Required so the part can go quiescent."
+        },
+        "bob": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "amplitudeX": { "type": "number", "minimum": 0, "default": 0 },
+            "amplitudeY": { "type": "number", "minimum": 0, "default": 0 },
+            "periodMs": { "type": "integer", "minimum": 100, "default": 2000 },
+            "phase": { "type": "number", "minimum": 0, "maximum": 1, "default": 0 }
+          }
+        }
+      }
+    },
+
+    "bindOverlay": {
+      "type": "object",
+      "description": "Locked to the parent's cell with no offset, running its own clip. Avoids frame explosion: 6 body poses times 2 eye states is 8 cells, not 12.",
+      "required": ["mode", "clip"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "const": "overlay" },
+        "parent": { "type": "string", "default": "body" },
+        "clip": { "type": "string" }
+      }
+    },
+
+    "comparison": { "enum": ["lt", "lte", "gt", "gte", "eq"] },
+
+    "event": {
+      "description": "Closed vocabulary. Adding to it is an engine change plus a format-version bump - that is the seam that keeps packs inert.",
+      "oneOf": [
+        {
+          "enum": [
+            "clip.ended", "state.timeout",
+            "pointer.enter", "pointer.exit", "pointer.click", "pointer.doubleClick",
+            "pointer.grab", "pointer.release",
+            "physics.landed", "physics.settled",
+            "system.wake", "system.willSleep",
+            "display.changed", "space.changed",
+            "perch.acquired", "perch.lost"
+          ]
+        },
+        { "type": "object", "required": ["pointer.near"], "additionalProperties": false,
+          "properties": { "pointer.near": { "type": "number", "exclusiveMinimum": 0 } } },
+        { "type": "object", "required": ["pointer.idle"], "additionalProperties": false,
+          "properties": { "pointer.idle": { "type": "number", "exclusiveMinimum": 0 } } },
+        { "type": "object", "required": ["pointer.fast"], "additionalProperties": false,
+          "properties": { "pointer.fast": { "type": "number", "exclusiveMinimum": 0 } } },
+        { "type": "object", "required": ["user.idle"], "additionalProperties": false,
+          "properties": { "user.idle": { "type": "number", "exclusiveMinimum": 0 } } },
+        { "type": "object", "required": ["edge.reached"], "additionalProperties": false,
+          "properties": { "edge.reached": { "enum": ["left", "right", "top", "bottom"] } } },
+        { "type": "object", "required": ["power.lowPowerMode"], "additionalProperties": false,
+          "properties": { "power.lowPowerMode": { "type": "boolean" } } },
+        { "type": "object", "required": ["power.onBattery"], "additionalProperties": false,
+          "properties": { "power.onBattery": { "type": "boolean" } } },
+        { "type": "object", "required": ["app.occluded"], "additionalProperties": false,
+          "properties": { "app.occluded": { "type": "boolean" } } }
+      ]
+    },
+
+    "guard": {
+      "description": "Closed vocabulary. There is deliberately no expression language: a pack must not be able to cause arbitrary evaluation.",
+      "oneOf": [
+        { "type": "object", "required": ["random"], "additionalProperties": false,
+          "properties": { "random": { "type": "number", "minimum": 0, "maximum": 1 } } },
+        { "type": "object", "required": ["stateAge"], "additionalProperties": false,
+          "properties": { "stateAge": {
+            "type": "object", "required": ["op", "sec"], "additionalProperties": false,
+            "properties": { "op": { "$ref": "#/$defs/comparison" }, "sec": { "type": "number" } } } } },
+        { "type": "object", "required": ["pointerDistance"], "additionalProperties": false,
+          "properties": { "pointerDistance": {
+            "type": "object", "required": ["op", "px"], "additionalProperties": false,
+            "properties": { "op": { "$ref": "#/$defs/comparison" }, "px": { "type": "number" } } } } },
+        { "type": "object", "required": ["pointerSide"], "additionalProperties": false,
+          "properties": { "pointerSide": { "enum": ["left", "right"] } } },
+        { "type": "object", "required": ["onEdge"], "additionalProperties": false,
+          "properties": { "onEdge": { "enum": ["floor", "windowTop", "ceiling", "wallLeft", "wallRight"] } } },
+        { "type": "object", "required": ["facing"], "additionalProperties": false,
+          "properties": { "facing": { "enum": ["left", "right"] } } },
+        { "type": "object", "required": ["perched"], "additionalProperties": false,
+          "properties": { "perched": { "type": "boolean" } } },
+        { "type": "object", "required": ["lowPower"], "additionalProperties": false,
+          "properties": { "lowPower": { "type": "boolean" } } },
+        { "type": "object", "required": ["flag"], "additionalProperties": false,
+          "properties": { "flag": {
+            "type": "object", "required": ["name", "value"], "additionalProperties": false,
+            "properties": { "name": { "type": "string" }, "value": { "type": "boolean" } } } } },
+        { "type": "object", "required": ["timeOfDay"], "additionalProperties": false,
+          "properties": { "timeOfDay": {
+            "type": "object", "required": ["from", "to"], "additionalProperties": false,
+            "properties": {
+              "from": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" },
+              "to": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" } } } } },
+        { "type": "object", "required": ["all"], "additionalProperties": false,
+          "properties": { "all": { "type": "array", "items": { "$ref": "#/$defs/guard" }, "minItems": 1 } } },
+        { "type": "object", "required": ["any"], "additionalProperties": false,
+          "properties": { "any": { "type": "array", "items": { "$ref": "#/$defs/guard" }, "minItems": 1 } } },
+        { "type": "object", "required": ["not"], "additionalProperties": false,
+          "properties": { "not": { "$ref": "#/$defs/guard" } } }
+      ]
+    },
+
+    "motion": {
+      "description": "How the pet moves in this state. The engine owns integration and scheduling; the pack states intent only.",
+      "oneOf": [
+        { "const": "none" },
+        { "type": "object", "required": ["type"], "additionalProperties": false,
+          "properties": {
+            "type": { "const": "walk" },
+            "speed": { "type": "number", "exclusiveMinimum": 0, "description": "Logical px per second." },
+            "direction": { "enum": ["left", "right", "toPointer", "away", "random"], "default": "random" } } },
+        { "type": "object", "required": ["type"], "additionalProperties": false,
+          "properties": {
+            "type": { "const": "fall" },
+            "gravity": { "type": "number", "exclusiveMinimum": 0, "default": 900 },
+            "terminal": { "type": "number", "exclusiveMinimum": 0, "default": 700 } } },
+        { "type": "object", "required": ["type"], "additionalProperties": false,
+          "properties": { "type": { "const": "drag" } } }
+      ],
+      "default": "none"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "format": 1,
+  "identity": {
+    "id": "test.solidsquare",
+    "name": "Solid Square",
+    "version": "1.0.0",
+    "author": "engine tests",
+    "license": "CC0-1.0",
+    "description": "The minimum viable pack: one texture, one clip, one state. Proves Rule 1 - the engine must run a character that shares nothing with Klien."
+  },
+  "stage": {
+    "cell": { "w": 16, "h": 16 },
+    "bodyHeight": 16,
+    "ground": { "x": 8, "y": 16 }
+  },
+  "textures": {
+    "sq": { "file": "atlas/sq.png", "columns": 1, "rows": 1 }
+  },
+  "clips": {
+    "still": { "texture": "sq", "loop": "forever", "frames": [ { "cell": 0, "ms": 1000 } ] }
+  },
+  "parts": [ { "name": "body", "bind": { "mode": "body" } } ],
+  "initialState": "resting",
+  "states": {
+    "resting": {
+      "clip": "still",
+      "quiescent": true,
+      "interrupts": [ { "on": "pointer.click", "state": "resting" } ]
+    }
+  }
+}

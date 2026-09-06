@@ -1,0 +1,210 @@
+{
+  "format": 1,
+  "identity": {
+    "id": "test.socketed",
+    "name": "Socketed",
+    "version": "1.0.0",
+    "author": "engine tests",
+    "license": "CC0-1.0",
+    "description": "Build fixture exercising all four bind modes: body, socket, float, overlay."
+  },
+  "stage": {
+    "cell": {
+      "w": 20,
+      "h": 20
+    },
+    "bodyHeight": 14,
+    "ground": {
+      "x": 10,
+      "y": 18
+    }
+  },
+  "textures": {
+    "body": {
+      "strip": "art/body.png",
+      "preload": true
+    },
+    "prop": {
+      "strip": "art/prop.png"
+    },
+    "orb": {
+      "strip": "art/orb.png"
+    },
+    "face": {
+      "strip": "art/face.png"
+    }
+  },
+  "clips": {
+    "wave": {
+      "texture": "body",
+      "loop": "pingpong",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 150
+        },
+        {
+          "cell": 1,
+          "ms": 150
+        },
+        {
+          "cell": 2,
+          "ms": 150
+        },
+        {
+          "cell": 3,
+          "ms": 150
+        }
+      ]
+    },
+    "rest": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 1000,
+          "anchors": {
+            "hand": {
+              "x": 16,
+              "y": 11
+            },
+            "orbit": {
+              "x": 4,
+              "y": 8
+            }
+          }
+        }
+      ]
+    },
+    "hold": {
+      "texture": "prop",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 500
+        }
+      ]
+    },
+    "orb_idle": {
+      "texture": "orb",
+      "loop": "pingpong",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 400
+        },
+        {
+          "cell": 1,
+          "ms": 400
+        }
+      ]
+    },
+    "blink": {
+      "texture": "face",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 80
+        },
+        {
+          "cell": 1,
+          "ms": 80
+        }
+      ]
+    }
+  },
+  "parts": [
+    {
+      "name": "body",
+      "bind": {
+        "mode": "body"
+      }
+    },
+    {
+      "name": "face",
+      "z": 9,
+      "hitTest": false,
+      "hiddenIn": [
+        "sleeping"
+      ],
+      "bind": {
+        "mode": "overlay",
+        "parent": "body",
+        "clip": "blink"
+      }
+    },
+    {
+      "name": "prop",
+      "z": 3,
+      "bind": {
+        "mode": "socket",
+        "parent": "body",
+        "anchor": "hand",
+        "frames": "clip",
+        "clip": "hold",
+        "offset": {
+          "x": 0,
+          "y": -1
+        }
+      }
+    },
+    {
+      "name": "orb",
+      "z": -1,
+      "bind": {
+        "mode": "float",
+        "parent": "body",
+        "anchor": "orbit",
+        "clip": "orb_idle",
+        "rest": {
+          "x": -2,
+          "y": -1
+        },
+        "stiffness": 110,
+        "damping": 13,
+        "mass": 1.0,
+        "maxOffset": 10,
+        "sleepThreshold": 0.2,
+        "bob": {
+          "amplitudeX": 1,
+          "amplitudeY": 2,
+          "periodMs": 1800,
+          "phase": 0.25
+        }
+      }
+    }
+  ],
+  "initialState": "waving",
+  "states": {
+    "waving": {
+      "clip": "wave",
+      "duration": {
+        "minMs": 2000,
+        "maxMs": 4000
+      },
+      "next": [
+        {
+          "state": "sleeping",
+          "weight": 1
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "pointer.click",
+          "state": "sleeping"
+        }
+      ]
+    },
+    "sleeping": {
+      "clip": "rest",
+      "quiescent": true,
+      "interrupts": [
+        {
+          "on": "pointer.click",
+          "state": "waving"
+        }
+      ]
+    }
+  }
+}
