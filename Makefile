@@ -1,7 +1,7 @@
 PACK ?= Packs/klien
 PY   ?= python3
 
-.PHONY: help validate validate-dev test audit sketches engine engine-test build-fixture soak proof bench all
+.PHONY: help validate validate-dev test audit sketches engine engine-test build-fixture soak proof bench app run all
 
 help:
 	@echo "make validate      strict pack validation (release gate)"
@@ -13,6 +13,8 @@ help:
 	@echo "make build-fixture packtool build over the synthetic source pack"
 	@echo "make soak          100s CPU soak per state, release build"
 	@echo "make bench         per-mouse-move hit test cost"
+	@echo "make app           assemble build/Lodger.app (no Xcode needed)"
+	@echo "make run           build and launch the app"
 	@echo "make proof         SIGSTOP proof that animation is render-server resident"
 	@echo "make audit         re-measure the raw reference art"
 	@echo "                   override the pack with PACK=Packs/other"
@@ -68,6 +70,12 @@ soak:
 			| awk '/projected/ {printf "%s ", $$2}'; \
 		done; echo "s/hr  ($(RUNS) runs of $(SECS)s)"; \
 	done
+
+app:
+	./Scripts/bundle.sh
+
+run: app
+	./build/Lodger.app/Contents/MacOS/Lodger
 
 bench:
 	cd Engine && swift build -c release

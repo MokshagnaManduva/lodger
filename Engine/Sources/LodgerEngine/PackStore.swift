@@ -39,9 +39,38 @@ public struct PackStore: Sendable {
         return order.compactMap { byID[$0] }
     }
 
+    /// Why a directory that looks like a pack would not load.
+    public enum Failure: Error, CustomStringConvertible {
+        case missingFiles([String])
+        case unsupportedFormat(Int)
+        public var description: String {
+            switch self {
+            case .missingFiles(let f):
+                return f.count == 1 ? "missing \(f[0])"
+                                    : "missing \(f.count) files, first \(f[0])"
+            case .unsupportedFormat(let v):
+                return "pack format \(v) is newer than this engine understands"
+            }
+        }
+    }
+
     public func load(root: URL, origin: String = "installed") throws -> Loaded {
         let data = try Data(contentsOf: root.appendingPathComponent("pack.json"))
         let pack = try JSONDecoder().decode(Pack.self, from: data)
+        guard pack.format == 1 else { throw Failure.unsupportedFormat(pack.format) }
+
+        // Decoding the manifest is not enough. A pack whose art is missing would
+        // otherwise be offered in the menu and then render an invisible character
+        // with no explanation - which is exactly what happened the first time the
+        // app was run for real.
+        let referenced = pack.textures.values.map(\.file)
+            + pack.hitMasks.values
+            + pack.sounds.values.map(\.file)
+        let missing = referenced.filter {
+            !FileManager.default.fileExists(atPath: root.appendingPathComponent($0).path)
+        }.sorted()
+        guard missing.isEmpty else { throw Failure.missingFiles(missing) }
+
         return Loaded(pack: pack, root: root, origin: origin)
     }
 

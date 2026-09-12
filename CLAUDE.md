@@ -28,13 +28,14 @@ Design and pipeline groundwork are done; **no application code exists yet**.
 | Motion: walking, falling, dragging, multi-display, rescue | `Motion.swift`, `Stage.swift` |
 | Render-server locomotion (zero window moves per walk) | `Walk.swift`, `Body.rig` |
 | Perching: policy, permission-free enumeration, single-window AXObserver | `Perch.swift`, `WindowFinder.swift`, `PerchTracker.swift` |
+| App shell: menu bar, pack manager, preferences, bundle assembly | `Sources/lodger/`, `Scripts/bundle.sh` |
 | 79 engine self-tests, no Xcode needed | `make engine-test` |
 | Measured energy baselines + SIGSTOP proof | `Docs/energy-protocol.md`, `render-server-proof.png` |
 | Minimum viable pack fixture | `Tests/Fixtures/test.solidsquare/` |
 
 Not built: `packtool generate` / `preview`, the hand-finished canonical sprite, discrete
-socket rotation (`orientFrames`), and the app shell (menu bar, settings, pack manager,
-Sparkle, signing).
+socket rotation (`orientFrames`), audio playback, a settings window (the menu bar carries
+the toggles for now), Sparkle updates, and Developer ID signing plus notarisation.
 
 **Unverified:** the `AXObserver` tracking path. This machine has not granted Accessibility,
 so `attach` -> `.attached`, window-moved re-seating, and live `perch.lost` have been built
@@ -44,15 +45,22 @@ the coordinate flip, drop targeting against real `CGWindowList` data, and the
 trusting it.
 
 ```bash
-make test          # negative tests - proves each lint check actually fires
-make validate-dev  # validate Packs/klien with missing art as warnings
-make validate      # strict, for release
+make all           # every test: packtool lints + engine self-tests + pack validation
+make app           # assemble build/Lodger.app (works without Xcode)
+make run           # build and launch it
+make soak          # CPU soaks, repeated runs with the spread reported
 make sketches      # palette + tracing sketches from the raw reference
 make audit         # re-measure the raw reference art
 ```
 
-**Next, in order:** the app shell (menu bar, settings, pack manager), then verifying the
-perch path with Accessibility granted. In parallel: hand-finish the canonical Klien sprite from
+Characters live in `~/Library/Application Support/Lodger/Packs/`. Drop a folder in and the
+menu bar picks it up. A pack that will not load is named in the menu **with the reason** —
+`PackStore.load` verifies every referenced texture, mask and sound exists, because a
+manifest that decodes but has no art otherwise renders an invisible character and says
+nothing.
+
+**Next, in order:** Klien's art (the pipeline is waiting on it — see §7 Stage 2), then
+audio playback and a settings window, then signing and notarisation. In parallel: hand-finish the canonical Klien sprite from
 `Packs/klien/reference/sketches/r1c0.png` (§7 Stage 2).
 
 ---

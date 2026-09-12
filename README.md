@@ -9,8 +9,14 @@ dropping in a folder.
 
 ## Status
 
-Design, asset pipeline and engine core are in place. There is no shipping app yet, and the
-reference character's art has not been drawn.
+There is a working app. `make app` assembles `build/Lodger.app` without Xcode — a real
+`Info.plist`, `LSUIElement`, an ad-hoc signature and the bundled default character. It puts
+a menu bar item up, discovers characters from
+`~/Library/Application Support/Lodger/Packs/`, and runs one on screen.
+
+What it does not yet have: the reference character's art (the pipeline is waiting on it),
+audio playback, a settings window beyond the menu bar toggles, Sparkle updates, and
+Developer ID signing.
 
 ```bash
 make test          # packtool: 17 negative tests proving each lint check fires
@@ -50,6 +56,7 @@ core, down from 4.5% when the window was moved per frame.
 | `Tools/packtool/` | the asset pipeline: `validate`, `palette`, `pixelize`, `anchors`, `build` |
 | `Schema/pack.schema.json` | the normative pack manifest schema |
 | `Docs/` | format spec, measurements, energy protocol |
+| `Scripts/bundle.sh` | assembles the `.app` without Xcode |
 
 ## Licence
 

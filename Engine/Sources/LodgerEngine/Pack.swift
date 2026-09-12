@@ -17,6 +17,7 @@ public struct Pack: Decodable, Sendable {
     public let states: [String: State]
     public let hitMasks: [String: String]
     public let sounds: [String: Sound]
+    public let tuning: [String: Knob]
 
     public struct Identity: Decodable, Sendable {
         public let id: String, name: String, version: String
@@ -291,9 +292,26 @@ public struct Pack: Decodable, Sendable {
         public let volume: Double?
     }
 
+    /// A scalar knob the pack wants surfaced in Settings. The engine renders a
+    /// generic control for each, so it needs no idea what any of them mean.
+    public struct Knob: Decodable, Sendable {
+        public let label: String
+        public let min: Double
+        public let max: Double
+        public let defaultValue: Double
+        enum CodingKeys: String, CodingKey { case label, min, max, `default` }
+        public init(from d: Decoder) throws {
+            let c = try d.container(keyedBy: CodingKeys.self)
+            label = try c.decode(String.self, forKey: .label)
+            min = try c.decode(Double.self, forKey: .min)
+            max = try c.decode(Double.self, forKey: .max)
+            defaultValue = try c.decode(Double.self, forKey: .default)
+        }
+    }
+
     enum CodingKeys: String, CodingKey {
         case format, engineMin, requires, identity, stage, textures, clips
-        case parts, initialState, states, hitMasks, sounds
+        case parts, initialState, states, hitMasks, sounds, tuning
     }
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -309,5 +327,6 @@ public struct Pack: Decodable, Sendable {
         states = try c.decode([String: State].self, forKey: .states)
         hitMasks = try c.decodeIfPresent([String: String].self, forKey: .hitMasks) ?? [:]
         sounds = try c.decodeIfPresent([String: Sound].self, forKey: .sounds) ?? [:]
+        tuning = try c.decodeIfPresent([String: Knob].self, forKey: .tuning) ?? [:]
     }
 }

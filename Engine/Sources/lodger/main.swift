@@ -62,6 +62,15 @@ func cpuSeconds() -> Double {
 
 let opts = parse()
 let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+
+// Normal operation, unless a measurement flag asked for something else.
+if opts.packPath == nil, opts.soakSeconds == nil, !opts.headless, opts.state == nil {
+    // Running from the repo: also look where the working tree keeps packs, so the
+    // app is usable before there is an installed bundle.
+    runApp(devPaths: [cwd.appendingPathComponent("Packs"),
+                      cwd.appendingPathComponent("Tests/Fixtures/build")]
+                     .filter { FileManager.default.fileExists(atPath: $0.path) })
+}
 let packURL = URL(fileURLWithPath: opts.packPath
                   ?? cwd.appendingPathComponent("Tests/Fixtures/test.blinker").path)
 

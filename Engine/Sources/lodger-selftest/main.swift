@@ -80,19 +80,20 @@ do {
         .appendingPathComponent("lodger-shadow-\(UUID().uuidString)")
     let bundled = tmp.appendingPathComponent("bundled")
     let user = tmp.appendingPathComponent("user")
-    for d in [bundled, user] {
-        try FileManager.default.createDirectory(
-            at: d.appendingPathComponent("test.solidsquare"), withIntermediateDirectories: true)
-    }
     defer { try? FileManager.default.removeItem(at: tmp) }
-    let original = try String(contentsOf: fixtures
-        .appendingPathComponent("test.solidsquare/pack.json"), encoding: .utf8)
-    try original.write(to: bundled.appendingPathComponent("test.solidsquare/pack.json"),
-                       atomically: true, encoding: .utf8)
+    // Copy the whole pack, not just the manifest: PackStore.load verifies that every
+    // referenced texture, mask and sound actually exists, because a pack that decodes
+    // but has no art renders an invisible character with no explanation.
+    let src = fixtures.appendingPathComponent("test.solidsquare")
+    for d in [bundled, user] {
+        try FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: src, to: d.appendingPathComponent("test.solidsquare"))
+    }
+    let manifest = user.appendingPathComponent("test.solidsquare/pack.json")
+    let original = try String(contentsOf: manifest, encoding: .utf8)
     try original.replacingOccurrences(of: "\"name\": \"Solid Square\"",
                                       with: "\"name\": \"User Override\"")
-        .write(to: user.appendingPathComponent("test.solidsquare/pack.json"),
-               atomically: true, encoding: .utf8)
+        .write(to: manifest, atomically: true, encoding: .utf8)
 
     let found = PackStore.standard(bundled: bundled, applicationSupport: user).discover()
     check(found.count == 1, "same id collapses to one entry", "got \(found.count)")
@@ -567,6 +568,29 @@ do {
           "got \(lost.feet)")
     var fine = Motion(feet: CGPoint(x: 500, y: 100))
     check(!fine.rescue(into: world), "a pet already in the world is left alone")
+}
+
+section("pack loading rejects a pack whose art is missing")
+do {
+    let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
+        .appendingPathComponent("lodger-noart-\(UUID().uuidString)")
+    let dir = tmp.appendingPathComponent("broken")
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tmp) }
+    // A valid manifest, no atlas on disk.
+    try String(contentsOf: fixtures.appendingPathComponent("test.solidsquare/pack.json"),
+               encoding: .utf8)
+        .write(to: dir.appendingPathComponent("pack.json"), atomically: true, encoding: .utf8)
+
+    let store = PackStore(searchPaths: [tmp])
+    var reason = ""
+    do { _ = try store.load(root: dir) }
+    catch let f as PackStore.Failure { reason = f.description }
+    catch { reason = "\(error)" }
+    check(reason.contains("atlas/sq.png"),
+          "a manifest that decodes but has no art is rejected, naming the file",
+          "got \(reason.isEmpty ? "no error at all" : reason)")
+    check(store.discover().isEmpty, "and it is not offered as installable")
 }
 
 // ---------------------------------------------------------------------- walk
