@@ -29,6 +29,21 @@ public final class Pet {
     private var walkRemaining: Double = 0
     private var walkSpeed: Double = 0
     private var walkDirection: Guard.Side = .left
+
+    // MARK: perching
+    //
+    // Off by default, so the app ships asking for nothing. See CLAUDE.md 4a.
+    public var perchMode = false
+    public let perchTracker = PerchTracker()
+    private var perchedOn: Perch.Candidate?
+    public var isPerched: Bool { perchedOn != nil }
+
+    /// Does the loaded pack want perching at all? A pack that never declares the
+    /// capability behaves identically whether the mode is on or off, because
+    /// `perch.acquired` simply never fires for it.
+    public var packSupportsPerching: Bool {
+        loaded.pack.requires.contains("windowEdges")
+    }
     /// Measurement only: `LODGER_ABLATE=window` skips the window move,
     /// `=springs` skips float displacement, `=both` skips both. Used to attribute
     /// locomotion cost rather than guess at it.
@@ -99,9 +114,17 @@ public final class Pet {
     /// all of which are events, so nothing polls.
     public var world: Motion.World {
         if let w = cachedWorld { return w }
-        let s = screen ?? Stage.screen(containing: motion.feet) ?? NSScreen.main
-        let w = s.map { Stage.world(on: $0, halfWidth: halfWidth) }
+        let w: Motion.World
+        if let perch = perchedOn {
+            // Perched: the walkable surface is the top edge of that one window.
+            w = Perch.surface(of: perch.bounds,
+                              screenHeight: WindowFinder.primaryScreenHeight,
+                              halfWidth: halfWidth)
+        } else {
+            let s = screen ?? Stage.screen(containing: motion.feet) ?? NSScreen.main
+            w = s.map { Stage.world(on: $0, halfWidth: halfWidth) }
              ?? Motion.World(floor: 0, left: 0, right: 0)
+        }
         cachedWorld = w
         return w
     }
@@ -140,11 +163,14 @@ public final class Pet {
         if packUsesPointer { pointer.install() }
         pointer.onChange = { [weak self] r in self?.pointerMoved(r) }
         pointer.cellTopLeft = { [weak self] in self?.cellTopLeftOnScreen() ?? .zero }
+        perchTracker.onMoved = { [weak self] c in self?.perchMoved(to: c) }
+        perchTracker.onLost = { [weak self] in self?.perchLost() }
         apply(director.start())
     }
 
     public func stop() {
         scheduler.cancel()
+        perchTracker.detach()
         stopLink()
         pointer.uninstall()
         panel.orderOut(nil)
@@ -472,6 +498,8 @@ public final class Pet {
         var c = Guard.Context()
         c.pointerDistance = lastDistance.isFinite ? lastDistance : nil
         c.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+        c.perched = isPerched
+        c.edge = isPerched ? .windowTop : .floor
         let cal = Calendar.current.dateComponents([.hour, .minute], from: Date())
         c.minutesSinceMidnight = (cal.hour ?? 0) * 60 + (cal.minute ?? 0)
         return c
@@ -495,7 +523,64 @@ public final class Pet {
 
     private func endDrag() {
         guard case .drag = motion.kind else { return }
+        // The drop is the perch selection. Enumerate windows exactly here - once,
+        // inside a user interaction - and never on a timer.
+        if tryPerch(at: NSEvent.mouseLocation) { return }
         send("pointer.release")
+    }
+
+    /// Returns true if the pet took a perch, in which case `perch.acquired` was
+    /// sent instead of `pointer.release`.
+    @discardableResult
+    private func tryPerch(at cursor: CGPoint) -> Bool {
+        guard perchMode, packSupportsPerching else { return false }
+        let h = WindowFinder.primaryScreenHeight
+        guard let target = Perch.target(under: cursor, in: WindowFinder.windows(),
+                                        ownPID: ProcessInfo.processInfo.processIdentifier,
+                                        screenHeight: h) else { return false }
+        switch perchTracker.attach(to: target) {
+        case .attached:
+            perchedOn = target
+            cachedWorld = nil
+            let w = world
+            motion.feet = CGPoint(x: min(max(motion.feet.x, w.left), w.right), y: w.floor)
+            syncWindow()
+            send("perch.acquired")
+            return true
+        case .needsPermission:
+            // Ask now, with the user having just aimed at a specific window, rather
+            // than at launch for no visible reason. The pet falls this time.
+            PerchTracker.requestPermission()
+            return false
+        case .notFound:
+            return false
+        }
+    }
+
+    private func perchMoved(to c: Perch.Candidate) {
+        perchedOn = c
+        cachedWorld = nil
+        guard walk == nil else { endWalk(); return }   // re-seat, then let the state re-plan
+        let w = world
+        motion.feet = CGPoint(x: min(max(motion.feet.x, w.left), w.right), y: w.floor)
+        syncWindow()
+    }
+
+    /// One handler for every way a perch can go away: the window moved off-screen,
+    /// was minimised, hidden, closed, resized too small, or went full screen.
+    private func perchLost() {
+        guard perchedOn != nil else { return }
+        endWalk()
+        perchedOn = nil
+        cachedWorld = nil
+        send("perch.lost")
+    }
+
+    /// Turn window perching on or off. Dropping the perch is a `perch.lost`, so the
+    /// pack's own fall-and-land states bring the pet back to the floor.
+    public func setPerchMode(_ on: Bool) {
+        perchMode = on
+        if !on { perchTracker.detach(); perchLost() }
     }
 
     private var lastPointerSide: Guard.Side?

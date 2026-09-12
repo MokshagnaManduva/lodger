@@ -27,13 +27,21 @@ Design and pipeline groundwork are done; **no application code exists yet**.
 | Multi-part rendering (body/socket/float/overlay) + spring solver | `Body.swift`, `Spring.swift` |
 | Motion: walking, falling, dragging, multi-display, rescue | `Motion.swift`, `Stage.swift` |
 | Render-server locomotion (zero window moves per walk) | `Walk.swift`, `Body.rig` |
+| Perching: policy, permission-free enumeration, single-window AXObserver | `Perch.swift`, `WindowFinder.swift`, `PerchTracker.swift` |
 | 79 engine self-tests, no Xcode needed | `make engine-test` |
 | Measured energy baselines + SIGSTOP proof | `Docs/energy-protocol.md`, `render-server-proof.png` |
 | Minimum viable pack fixture | `Tests/Fixtures/test.solidsquare/` |
 
-Not built: `packtool generate` / `preview`, the hand-finished canonical sprite, perching,
-discrete socket rotation (`orientFrames`), and the app shell (menu bar, settings, pack
-manager, Sparkle, signing).
+Not built: `packtool generate` / `preview`, the hand-finished canonical sprite, discrete
+socket rotation (`orientFrames`), and the app shell (menu bar, settings, pack manager,
+Sparkle, signing).
+
+**Unverified:** the `AXObserver` tracking path. This machine has not granted Accessibility,
+so `attach` -> `.attached`, window-moved re-seating, and live `perch.lost` have been built
+and reasoned about but never run. Everything around them is tested: the perchable filter,
+the coordinate flip, drop targeting against real `CGWindowList` data, and the
+`.needsPermission` degradation. Grant Accessibility and exercise the perch path before
+trusting it.
 
 ```bash
 make test          # negative tests - proves each lint check actually fires
@@ -43,7 +51,8 @@ make sketches      # palette + tracing sketches from the raw reference
 make audit         # re-measure the raw reference art
 ```
 
-**Next, in order:** perching (§4a) → the app shell. In parallel: hand-finish the canonical Klien sprite from
+**Next, in order:** the app shell (menu bar, settings, pack manager), then verifying the
+perch path with Accessibility granted. In parallel: hand-finish the canonical Klien sprite from
 `Packs/klien/reference/sketches/r1c0.png` (§7 Stage 2).
 
 ---
@@ -227,6 +236,23 @@ This is the shipping default and a deliberate product position.
 time**, its *perch target*. The user chooses it by **dragging the pet onto a window**.
 Requires a pack to declare `requires: ["windowEdges"]` *and* the user to grant Accessibility.
 
+### The permission split is better than it looks
+
+**Window geometry needs no permission at all.** `CGWindowList` reports bounds, owner pid
+and layer freely; only window *titles* require Screen Recording, and perching never reads
+them. Measured here: 28 windows enumerated, all with real geometry, with Accessibility
+denied.
+
+Only *tracking* a window needs Accessibility. So the drop hit-test works before anything
+is granted, which means **the permission can be requested at the moment the user drops the
+pet on a window** — with that window aimed at — rather than at first launch for no visible
+reason. `PerchTracker.requestPermission()` exists for exactly that moment and must not be
+called earlier.
+
+Without the grant, `attach` returns `.needsPermission`, the pet falls, and
+`perch.acquired` never fires. A pack that knows nothing about perching is unaffected
+either way.
+
 ### One window at a time is a performance requirement, not a preference
 
 Tracking *all* windows is poll-shaped — there is no system-wide "any window moved"
@@ -241,6 +267,10 @@ window sits still, our cost is zero.
 **Window *enumeration* happens exactly once: at drag-drop, to hit-test what is under the
 cursor.** A one-shot cost inside a user interaction. If you ever find yourself enumerating
 windows outside a drag, you have reintroduced the poll — that is the bug.
+
+`WindowFinder.enumerations` counts them, and the diagnostics line prints it. A soak should
+report **0**. That number existing is the point: the invariant is observable rather than
+merely asserted.
 
 ### Perchable-window filter (engine policy, never pack policy)
 

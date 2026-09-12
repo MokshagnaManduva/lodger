@@ -22,6 +22,7 @@ struct Options {
     var soakSeconds: Double?
     var state: String?
     var headless = false
+    var perch = false
 }
 
 func parse() -> Options {
@@ -33,6 +34,7 @@ func parse() -> Options {
         case "--soak":  o.soakSeconds = it.next().flatMap(Double.init)
         case "--state": o.state = it.next()
         case "--headless": o.headless = true
+        case "--perch": o.perch = true
         case "-h", "--help":
             print("""
             lodger - walking skeleton
@@ -41,6 +43,7 @@ func parse() -> Options {
               --state <name>  start in this state instead of initialState
               --soak <sec>    run for N seconds, then report CPU used
               --headless      load and report, render nothing, exit
+              --perch         enable window perching (needs Accessibility)
             """)
             exit(0)
         default: break
@@ -96,6 +99,7 @@ let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 
 let pet = Pet(loaded: loaded)
+pet.perchMode = opts.perch
 var transitions = 0
 pet.onStateChange = { plan, sched in
     transitions += 1
@@ -124,6 +128,9 @@ claim 1  window
 claim 3  timers
          pointer monitor installed=\(pet.pointer.installed) (only if a state reacts to the pointer)
          live timers now=\(pet.scheduler.liveTimers)  display link=\(pet.hasDisplayLink ? "RUNNING" : "none")
+perching
+         mode=\(pet.perchMode ? "on" : "off")  pack declares windowEdges=\(pet.packSupportsPerching)
+         accessibility granted=\(PerchTracker.hasPermission)  perched=\(pet.isPerched)
 
 pid      : \(ProcessInfo.processInfo.processIdentifier)
 verify   : sudo timerfires -p \(ProcessInfo.processInfo.processIdentifier)
@@ -150,6 +157,7 @@ if let soak = opts.soakSeconds {
                      used / elapsed * 3600))
         print("transitions: \(transitions), scheduler wakes: \(pet.scheduler.scheduledCount)")
         print("display link: starts=\(pet.linkStarts) ticks=\(pet.springTicks) running=\(pet.hasDisplayLink)")
+        print("window enumerations: \(WindowFinder.enumerations)  (must be 0 outside a drag)")
         if !pet.profile.isEmpty {
             let total = pet.profile.values.reduce(0, +)
             print("tick profile (wall seconds inside each phase):")

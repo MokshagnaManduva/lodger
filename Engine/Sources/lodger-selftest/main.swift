@@ -623,6 +623,85 @@ do {
           "walking left resolves min/max correctly", "got \(left)")
 }
 
+// --------------------------------------------------------------------- perch
+section("perch — engine policy, and graceful degradation without permission")
+do {
+    let ours: pid_t = ProcessInfo.processInfo.processIdentifier
+    func cand(_ id: UInt32, pid: pid_t = 9999, x: CGFloat = 100, y: CGFloat = 100,
+              w: CGFloat = 600, h: CGFloat = 400, layer: Int = 0,
+              onScreen: Bool = true) -> Perch.Candidate {
+        Perch.Candidate(windowID: id, pid: pid, ownerName: "Test",
+                        bounds: CGRect(x: x, y: y, width: w, height: h),
+                        layer: layer, onScreen: onScreen)
+    }
+
+    check(Perch.perchable(cand(1), ownPID: ours), "a normal on-screen window is perchable")
+    check(!Perch.perchable(cand(2, pid: ours), ownPID: ours),
+          "the pet never perches on its own window")
+    check(!Perch.perchable(cand(3, layer: 25), ownPID: ours),
+          "a non-zero window layer is rejected — the Dock and menu bar live there")
+    check(!Perch.perchable(cand(4, w: 120, h: 80), ownPID: ours),
+          "a window below the minimum size is rejected")
+    check(!Perch.perchable(cand(5, onScreen: false), ownPID: ours),
+          "an off-screen window is rejected")
+
+    // CGWindowList counts y downward from the primary display's top; AppKit counts
+    // upward from its bottom. Getting this backwards puts the pet under the window.
+    let H: CGFloat = 900
+    let flipped = Perch.flip(CGRect(x: 100, y: 50, width: 600, height: 400), screenHeight: H)
+    check(flipped.minY == 450 && flipped.maxY == 850,
+          "flip converts CGWindowList's top-down y to AppKit's bottom-up",
+          "got \(flipped)")
+    check(Perch.flip(flipped, screenHeight: H) == CGRect(x: 100, y: 50, width: 600, height: 400),
+          "and flipping twice is the identity")
+
+    let surface = Perch.surface(of: CGRect(x: 100, y: 50, width: 600, height: 400),
+                                screenHeight: H, halfWidth: 30)
+    check(surface.floor == 850, "the walkable floor is the window's TOP edge",
+          "got \(surface.floor)")
+    check(surface.left == 130 && surface.right == 670,
+          "inset by the pet's half width so it stays on the window", "got \(surface)")
+
+    // Front-to-back order decides, and unperchable windows are skipped rather than
+    // blocking what is behind them.
+    let stack = [cand(1, pid: ours, x: 0, y: 0, w: 800, h: 800),   // ours, in front
+                 cand(2, x: 0, y: 0, w: 800, h: 800, layer: 25),   // chrome
+                 cand(3, x: 0, y: 0, w: 800, h: 800)]              // the real one
+    let hit = Perch.target(under: CGPoint(x: 400, y: 400), in: stack,
+                           ownPID: ours, screenHeight: H)
+    check(hit?.windowID == 3, "picks the frontmost PERCHABLE window under the point",
+          "got \(hit?.windowID ?? 0)")
+    check(Perch.target(under: CGPoint(x: 4000, y: 4000), in: stack,
+                       ownPID: ours, screenHeight: H) == nil,
+          "a drop on empty space perches on nothing")
+
+    let onscreen = [CGRect(x: 0, y: 0, width: 1440, height: 900)]
+    check(Perch.stillValid(cand(1), ownPID: ours, screens: onscreen),
+          "a window on a display stays valid")
+    check(!Perch.stillValid(cand(1, x: 9000, y: 9000), ownPID: ours, screens: onscreen),
+          "a window dragged off every display is a lost perch")
+
+    // Enumeration is permission-free, so this actually runs here.
+    let live = WindowFinder.windows()
+    check(!live.isEmpty, "CGWindowList enumeration works with no permission",
+          "got \(live.count) windows")
+    check(live.allSatisfy { $0.bounds.width > 0 && $0.bounds.height > 0 },
+          "every enumerated window has real geometry")
+    let normal = live.filter { Perch.perchable($0, ownPID: ours) }
+    print("        (\(live.count) windows on screen, \(normal.count) perchable)")
+
+    // Graceful degradation: without Accessibility the tracker refuses cleanly and
+    // the engine simply never emits perch.acquired.
+    if PerchTracker.hasPermission {
+        print("        (Accessibility IS granted; the attach path is exercisable)")
+    } else {
+        let tracker = PerchTracker()
+        check(tracker.attach(to: cand(1)) == .needsPermission,
+              "without Accessibility, attach reports needsPermission rather than failing oddly")
+        check(tracker.tracked == nil, "and tracks nothing")
+    }
+}
+
 // ------------------------------------------------------------------ benchmark
 // The pointer path is the one thing that runs on an event whose rate the engine
 // does not control, so its per-event cost needs a number, not a shrug.
