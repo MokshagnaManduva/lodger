@@ -35,19 +35,22 @@ public struct Pack: Decodable, Sendable {
         public let cell: Size
         public let bodyHeight: Int
         public let ground: Point
+        public let artFacing: String
         public let pixelPerfect: Bool
         public let scaleSteps: [Int]
         public let defaultScale: Int
         public let defaultFrameMs: Int
 
         enum CodingKeys: String, CodingKey {
-            case cell, bodyHeight, ground, pixelPerfect, scaleSteps, defaultScale, defaultFrameMs
+            case cell, bodyHeight, ground, artFacing, pixelPerfect, scaleSteps
+            case defaultScale, defaultFrameMs
         }
         public init(from d: Decoder) throws {
             let c = try d.container(keyedBy: CodingKeys.self)
             cell = try c.decode(Size.self, forKey: .cell)
             bodyHeight = try c.decode(Int.self, forKey: .bodyHeight)
             ground = try c.decode(Point.self, forKey: .ground)
+            artFacing = try c.decodeIfPresent(String.self, forKey: .artFacing) ?? "left"
             pixelPerfect = try c.decodeIfPresent(Bool.self, forKey: .pixelPerfect) ?? true
             scaleSteps = try c.decodeIfPresent([Int].self, forKey: .scaleSteps) ?? [1, 2, 3]
             defaultScale = try c.decodeIfPresent(Int.self, forKey: .defaultScale) ?? 2
@@ -110,9 +113,11 @@ public struct Pack: Decodable, Sendable {
         public let visibleIn: [String]
         public let hiddenIn: [String]
         public let hitTest: Bool
+        /// When the body flips to face the other way, does this part swap sides too?
+        public let mirrorWithBody: Bool
         public let bind: Bind
         enum CodingKeys: String, CodingKey {
-            case name, z, visibleIn, hiddenIn, hitTest, bind
+            case name, z, visibleIn, hiddenIn, hitTest, mirrorWithBody, bind
         }
         public init(from d: Decoder) throws {
             let c = try d.container(keyedBy: CodingKeys.self)
@@ -121,6 +126,7 @@ public struct Pack: Decodable, Sendable {
             visibleIn = try c.decodeIfPresent([String].self, forKey: .visibleIn) ?? []
             hiddenIn = try c.decodeIfPresent([String].self, forKey: .hiddenIn) ?? []
             hitTest = try c.decodeIfPresent(Bool.self, forKey: .hitTest) ?? true
+            mirrorWithBody = try c.decodeIfPresent(Bool.self, forKey: .mirrorWithBody) ?? true
             bind = try c.decode(Bind.self, forKey: .bind)
         }
         public func visible(in state: String) -> Bool {
@@ -150,7 +156,6 @@ public struct Pack: Decodable, Sendable {
         /// socket
         public let frames: String          // "parent" | "clip"
         public let offset: Point
-        public let orientFrames: [String: Int]
         /// float — defaults mirror Schema/pack.schema.json
         public let rest: Point
         public let stiffness: Double, damping: Double, mass: Double
@@ -158,7 +163,7 @@ public struct Pack: Decodable, Sendable {
         public let bob: Bob
 
         enum CodingKeys: String, CodingKey {
-            case mode, parent, anchor, clip, frames, offset, orientFrames
+            case mode, parent, anchor, clip, frames, offset
             case rest, stiffness, damping, mass, lag, maxOffset, sleepThreshold, bob
         }
         public init(from d: Decoder) throws {
@@ -169,7 +174,6 @@ public struct Pack: Decodable, Sendable {
             clip = try c.decodeIfPresent(String.self, forKey: .clip)
             frames = try c.decodeIfPresent(String.self, forKey: .frames) ?? "parent"
             offset = try c.decodeIfPresent(Point.self, forKey: .offset) ?? Point(x: 0, y: 0)
-            orientFrames = try c.decodeIfPresent([String: Int].self, forKey: .orientFrames) ?? [:]
             rest = try c.decodeIfPresent(Point.self, forKey: .rest) ?? Point(x: 0, y: 0)
             stiffness = try c.decodeIfPresent(Double.self, forKey: .stiffness) ?? 90
             damping = try c.decodeIfPresent(Double.self, forKey: .damping) ?? 12
@@ -222,16 +226,21 @@ public struct Pack: Decodable, Sendable {
     public struct Duration: Decodable, Sendable {
         public let clipDriven: Bool
         public let minMs: Int, maxMs: Int
+        /// Name of a knob in `tuning` to divide this duration by. The engine applies
+        /// it without ever learning what the knob means - which is how a pack gets
+        /// a "liveliness" slider without the engine knowing the word.
+        public let scaleBy: String?
         public init(from d: Decoder) throws {
             if let s = try? d.singleValueContainer().decode(String.self), s == "clip" {
-                clipDriven = true; minMs = 0; maxMs = 0; return
+                clipDriven = true; minMs = 0; maxMs = 0; scaleBy = nil; return
             }
             let c = try d.container(keyedBy: K.self)
             clipDriven = false
             minMs = try c.decode(Int.self, forKey: .minMs)
             maxMs = try c.decode(Int.self, forKey: .maxMs)
+            scaleBy = try c.decodeIfPresent(String.self, forKey: .scaleBy)
         }
-        enum K: String, CodingKey { case minMs, maxMs }
+        enum K: String, CodingKey { case minMs, maxMs, scaleBy }
     }
 
     /// A state's declared motion. The pack states intent; the engine owns the
@@ -268,11 +277,12 @@ public struct Pack: Decodable, Sendable {
         public let surface: String
         public let facing: String
         public let quiescent: Bool
+        public let sound: String?
         public let duration: Duration?
         public let next: [Transition]
         public let interrupts: [Interrupt]
         enum CodingKeys: String, CodingKey {
-            case clip, motion, surface, facing, quiescent, duration, next, interrupts
+            case clip, motion, surface, facing, quiescent, sound, duration, next, interrupts
         }
         public init(from d: Decoder) throws {
             let c = try d.container(keyedBy: CodingKeys.self)
@@ -281,6 +291,7 @@ public struct Pack: Decodable, Sendable {
             surface = try c.decodeIfPresent(String.self, forKey: .surface) ?? "floor"
             facing = try c.decodeIfPresent(String.self, forKey: .facing) ?? "keep"
             quiescent = try c.decodeIfPresent(Bool.self, forKey: .quiescent) ?? false
+            sound = try c.decodeIfPresent(String.self, forKey: .sound)
             duration = try c.decodeIfPresent(Duration.self, forKey: .duration)
             next = try c.decodeIfPresent([Transition].self, forKey: .next) ?? []
             interrupts = try c.decodeIfPresent([Interrupt].self, forKey: .interrupts) ?? []
@@ -290,6 +301,14 @@ public struct Pack: Decodable, Sendable {
     public struct Sound: Decodable, Sendable {
         public let file: String
         public let volume: Double?
+        public let maxConcurrent: Int
+        enum CodingKeys: String, CodingKey { case file, volume, maxConcurrent }
+        public init(from d: Decoder) throws {
+            let c = try d.container(keyedBy: CodingKeys.self)
+            file = try c.decode(String.self, forKey: .file)
+            volume = try c.decodeIfPresent(Double.self, forKey: .volume)
+            maxConcurrent = try c.decodeIfPresent(Int.self, forKey: .maxConcurrent) ?? 1
+        }
     }
 
     /// A scalar knob the pack wants surfaced in Settings. The engine renders a

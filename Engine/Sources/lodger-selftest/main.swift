@@ -389,25 +389,45 @@ do {
     // to a SMALL cell y
     let topLeft = PointerMonitor.read(cursor: CGPoint(x: 105, y: 214),
                                       frame: frame, cellTopLeft: topLeftOnScreen,
-                                      scale: 2, mask: (mask, 0))
+                                      scale: 2, targets: [.init(mask: mask, cell: 0, offset: .zero)])
     check(topLeft.local.y < 2, "screen y-up converts to cell y-down",
           "got local \(topLeft.local)")
     let centre = PointerMonitor.read(cursor: CGPoint(x: 108, y: 208),
                                      frame: frame, cellTopLeft: topLeftOnScreen,
-                                      scale: 2, mask: (mask, 0))
+                                      scale: 2, targets: [.init(mask: mask, cell: 0, offset: .zero)])
     check(centre.inside, "cursor over an opaque pixel reads as inside")
     let corner = PointerMonitor.read(cursor: CGPoint(x: 101, y: 215),
                                      frame: frame, cellTopLeft: topLeftOnScreen,
-                                      scale: 2, mask: (mask, 0))
+                                      scale: 2, targets: [.init(mask: mask, cell: 0, offset: .zero)])
     check(!corner.inside,
           "cursor over a TRANSPARENT pixel inside the frame reads as OUTSIDE",
           "this is the whole point of the alpha mask; got local \(corner.local)")
     let away = PointerMonitor.read(cursor: CGPoint(x: 160, y: 208),
                                    frame: frame, cellTopLeft: topLeftOnScreen,
-                                      scale: 2, mask: (mask, 0))
+                                      scale: 2, targets: [.init(mask: mask, cell: 0, offset: .zero)])
     check(!away.inside && abs(away.distance - 44) < 0.001,
           "distance is measured to the frame edge", "got \(away.distance)")
     check(away.side == .right && topLeft.side == .left, "side is reported")
+
+    // The bug this fixes: only the body texture was ever consulted, so a
+    // free-floating companion was not clickable at all.
+    // cell y 0 is transparent in this mask (opaque rows are 2...5), so the body
+    // alone must miss. A part offset 4px up puts its own opaque row right there.
+    let bodyOnly = PointerMonitor.read(
+        cursor: CGPoint(x: 108, y: 232),
+        frame: CGRect(x: 100, y: 200, width: 16, height: 32),
+        cellTopLeft: CGPoint(x: 100, y: 232), scale: 2,
+        targets: [.init(mask: mask, cell: 0, offset: .zero)])
+    check(!bodyOnly.inside, "a point over transparent body pixels is outside")
+    let withCompanion = PointerMonitor.read(
+        cursor: CGPoint(x: 108, y: 232),
+        frame: CGRect(x: 100, y: 200, width: 16, height: 32),
+        cellTopLeft: CGPoint(x: 100, y: 232), scale: 2,
+        targets: [.init(mask: mask, cell: 0, offset: .zero),
+                  .init(mask: mask, cell: 0, offset: CGPoint(x: 0, y: -4))])
+    check(withCompanion.inside,
+          "the same point IS inside once an offset part is hit-tested too",
+          "an attachment drawn away from the body must be clickable")
 } catch { check(false, "pointer hit testing", "\(error)") }
 
 // -------------------------------------------------------------------- spring
@@ -841,6 +861,88 @@ do {
     }
 }
 
+section("mirroring, tuning and lag — the format's remaining promises")
+do {
+    // Mirroring
+    let root = fixtures.appendingPathComponent("build/socketed.pack")
+    if FileManager.default.fileExists(atPath: root.path) {
+        let store = PackStore(searchPaths: [root.deletingLastPathComponent()])
+        let loaded = try store.load(root: root)
+        let host = CALayer()
+        let body = Body(pack: loaded.pack, host: host) { name in
+            guard let t = loaded.pack.textures[name] else { return nil }
+            return SpriteLayer.atlas(at: root.appendingPathComponent(t.file))
+        }
+        let wave = loaded.pack.clips["wave"]!
+        body.apply(state: "waving", bodyClip: wave)
+        check(body.rig.transform.m11 == 1, "art drawn facing left starts unmirrored")
+        body.setFacing(.right, clip: wave)
+        check(body.rig.transform.m11 == -1, "facing right mirrors the whole rig",
+              "got m11 \(body.rig.transform.m11)")
+        body.setFacing(.left, clip: wave)
+        check(body.rig.transform.m11 == 1, "and facing left again unmirrors it")
+
+        // A clip that says its art is not mirrorable must never be flipped.
+        let fixed = try JSONDecoder().decode(Pack.Clip.self, from: Data(#"""
+        {"texture":"body","loop":"forever","mirrorable":false,"frames":[{"cell":0}]}
+        """#.utf8))
+        body.setFacing(.right, clip: fixed)
+        check(body.rig.transform.m11 == 1,
+              "a clip marked mirrorable:false is never flipped — its author says the art already faces correctly")
+    } else { print("  SKIP  mirroring (run: make build-fixture)") }
+
+    // tuning: the engine divides by a knob it knows nothing about
+    let j = #"""
+    {"format":1,
+     "identity":{"id":"t.k","name":"K","version":"1.0.0","author":"t","license":"CC0-1.0"},
+     "stage":{"cell":{"w":8,"h":8},"bodyHeight":8,"ground":{"x":4,"y":8}},
+     "textures":{"t":{"file":"a.png","columns":1,"rows":1}},
+     "clips":{"c":{"texture":"t","loop":"forever","frames":[{"cell":0}]}},
+     "parts":[{"name":"body","bind":{"mode":"body"}}],
+     "tuning":{"zip":{"label":"Zip","min":0.2,"max":4,"default":1}},
+     "initialState":"a",
+     "states":{"a":{"clip":"c","duration":{"minMs":4000,"maxMs":4000,"scaleBy":"zip"},
+                    "next":[{"state":"a","weight":1}]}}}
+    """#
+    let pk = try JSONDecoder().decode(Pack.self, from: Data(j.utf8))
+    check(pk.tuning["zip"]?.defaultValue == 1, "a pack declares its own knobs")
+
+    let plain = Director(pack: pk, seed: 3)
+    check(plain.start().wake == .after(4.0), "with no value set, the duration is unscaled",
+          "got \(plain.start().wake)")
+    let lively = Director(pack: pk, seed: 3)
+    lively.tuning = ["zip": 2]
+    check(lively.start().wake == .after(2.0),
+          "a higher knob shortens the duration — a livelier pet, and the engine never learns what 'zip' means",
+          "got \(lively.start().wake)")
+    let sluggish = Director(pack: pk, seed: 3)
+    sluggish.tuning = ["zip": 0.5]
+    check(sluggish.start().wake == .after(8.0), "and a lower one lengthens it")
+    let unknown = Director(pack: pk, seed: 3)
+    unknown.tuning = ["somethingElse": 9]
+    check(unknown.start().wake == .after(4.0), "an unrelated knob changes nothing")
+
+    // lag: the follower must genuinely do nothing for a moment
+    var eager = Spring(stiffness: 110, damping: 13, mass: 1, maxOffset: 50,
+                       sleepThreshold: 0.2, lag: 0)
+    eager.displace(by: CGVector(dx: 10, dy: 0))
+    check(eager.offset.x == 10, "with no lag the displacement lands immediately")
+
+    var trailing = Spring(stiffness: 110, damping: 13, mass: 1, maxOffset: 50,
+                          sleepThreshold: 0.2, lag: 0.2)
+    trailing.displace(by: CGVector(dx: 10, dy: 0))
+    check(trailing.offset.x == 0, "with lag it has not moved yet")
+    check(!trailing.settled, "but it is awake, waiting")
+    for _ in 0..<6 { trailing.step(1.0 / 60) }        // 0.1s — still short of the lag
+    check(trailing.offset.x == 0, "still nothing after half the lag",
+          "got \(trailing.offset.x)")
+    for _ in 0..<9 { trailing.step(1.0 / 60) }        // past 0.2s
+    check(trailing.offset.x != 0, "then it starts to follow", "got \(trailing.offset.x)")
+    var n = 0
+    while !trailing.settled && n < 3000 { trailing.step(1.0 / 60); n += 1 }
+    check(trailing.settled, "and still settles")
+}
+
 // ------------------------------------------------------------------ benchmark
 // The pointer path is the one thing that runs on an event whose rate the engine
 // does not control, so its per-event cost needs a number, not a shrug.
@@ -857,7 +959,7 @@ if CommandLine.arguments.contains("--bench") {
     for i in 0..<n {
         let p = CGPoint(x: 400 + Double(i % 400), y: 250 + Double((i / 400) % 400))
         if PointerMonitor.read(cursor: p, frame: frame, cellTopLeft: topLeft,
-                               scale: 2, mask: (mask, 0)).inside {
+                               scale: 2, targets: [.init(mask: mask, cell: 0, offset: .zero)]).inside {
             inside += 1
         }
     }

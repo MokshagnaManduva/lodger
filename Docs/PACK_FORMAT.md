@@ -179,16 +179,18 @@ Locked to a named anchor on the parent. A cane, a sword, a mug.
 ```json
 { "name": "cane", "z": 5, "hiddenIn": ["asleep"],
   "bind": { "mode": "socket", "parent": "body", "anchor": "hand",
-            "frames": "clip", "clip": "cane_hold", "offset": { "x": 0, "y": -2 },
-            "orientFrames": { "-12": 5, "0": 0, "12": 6 } } }
+            "frames": "parent", "offset": { "x": 0, "y": -2 } } }
 ```
 
 `frames: "parent"` means the part's texture has exactly one cell per parent frame;
 `frames: "clip"` gives it its own clip.
 
-**Rotation is discrete.** `orientFrames` maps an angle in degrees to a pre-drawn cell. There is
-no continuous rotation, because rotating pixel art off-axis destroys the grid. If you need
-smoother rotation, draw more buckets.
+**There is no rotation field, deliberately.** Rotating pixel art off-axis destroys the grid,
+so any tilt has to be pre-drawn — and `frames: "parent"` already gives you exactly that: one
+cell of the attachment per frame of the body, so you choose the tilted cane image for the
+frame where the arm is raised. An earlier draft had an `orientFrames` angle-to-cell map; it
+was removed once it became clear it could express nothing that per-frame cells could not,
+while adding a rotation concept the format otherwise does not have.
 
 ### `float` — drifting freely
 
@@ -262,6 +264,17 @@ time. `initialState` is explicit so that no state name is special to the engine.
 `{"type":"fall", "gravity":…, "terminal":…}`, or `{"type":"drag"}`. `surface` is
 `floor` | `windowTop` | `ceiling` | `wallLeft` | `wallRight` | `air`.
 
+### Scaling a duration by one of your own knobs
+
+```json
+"duration": { "minMs": 3000, "maxMs": 12000, "scaleBy": "liveliness" }
+```
+
+`scaleBy` names a knob from your `tuning` block. The engine divides the duration by its
+value — a higher knob means a livelier pet — and **never learns what the knob means**.
+That is how a pack ships a "Liveliness" slider without the word appearing anywhere in the
+engine.
+
 ### `quiescent` — the one field that matters most for battery
 
 ```json
@@ -311,6 +324,17 @@ A pack says *"when I lose my perch, play these states"*. It never says which win
 never enumerates windows, and never sees window metadata — that is engine policy. A pack
 written with no knowledge of perching still behaves correctly: `perch.lost` simply never fires
 for it.
+
+## 7a. Facing
+
+`stage.artFacing` says which way your art is drawn (`"left"` by default). When the
+character should face the other way, the engine mirrors the whole rig — art, sockets and
+floats together. A state's `facing` chooses: `keep`, `left`, `right`, or `toPointer`. A
+walking state that says `keep` naturally faces the way it is going.
+
+Two escapes: a clip with `mirrorable: false` is never flipped, for art that is not
+symmetrical enough to mirror; and a part with `mirrorWithBody: false` is counter-flipped so
+it keeps its handedness and stays on the same visual side.
 
 ## 8. `sounds` and `tuning`
 

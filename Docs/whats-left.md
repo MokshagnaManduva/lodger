@@ -18,22 +18,31 @@ All 24 are emitted now. Observers are installed only for what a pack's reachable
 actually ask for, and `app.occluded` additionally stops the animation rather than just
 reporting it. The only timer is `IdleWatcher`, which self-corrects rather than samples.
 
-**3. There is no horizontal flip anywhere.** `mirrorable`, `mirrorWithBody` and
-`facing: "toPointer"` all decode and are then ignored, so the pet walks left and
-right while always facing the same way. Very visible, and cheap to fix.
+**3. ~~There is no horizontal flip anywhere.~~ Done.** `stage.artFacing` says which way
+the art is drawn; the engine mirrors the whole rig to face the other way. `mirrorable: false`
+opts a clip out, `mirrorWithBody: false` counter-flips a part.
 
-## Declared in the format but inert
+## ~~Declared in the format but inert~~ — resolved
 
-The schema and `Docs/PACK_FORMAT.md` describe these; the engine reads them and does
-nothing with them. Each one is the format telling a pack author a lie.
+All of them, either implemented or removed:
 
-- `orientFrames` — discrete socket rotation
-- per-part `hitTest` — the hit mask only ever uses the body texture, so Klien's
-  floating dumpling is not clickable
-- the `float` bind's `lag` — `Spring` has no lag term
-- `sounds` — no audio API is used anywhere in the project
-- `tuning` — the app resolves the knobs and stores them, but nothing applies them;
-  `liveliness` in particular is documented as scaling behaviour on battery and does not
+- **`orientFrames` — removed.** A socket with `frames: "parent"` already has one cell per
+  parent frame, so the author picks the tilted image for the frame where the arm is
+  raised. The angle-to-cell map could express nothing that per-frame cells could not,
+  while adding a rotation concept the format otherwise does not have. Deleting it was the
+  honest fix.
+- **per-part `hitTest` — implemented.** Every visible part is hit-tested at its own live
+  offset, read from the presentation layer. A free-floating companion is clickable now;
+  before, only the body texture was ever consulted.
+- **the `float` bind's `lag` — implemented.** Displacements are held until they mature, so
+  a companion genuinely does nothing for `lag` seconds rather than merely responding
+  weakly. A spring with something pending cannot report itself settled.
+- **`sounds` — implemented.** Off by default. State-level sounds cost nothing; per-frame
+  sounds are scheduled one wake per sound when the clip is installed, which is the one
+  place in the engine that trades timers for a feature, and it is documented as such.
+- **`tuning` — implemented, without breaking Rule 1.** A duration names a knob via
+  `scaleBy` and the engine divides by its value, never learning what the knob means. That
+  is how Klien gets a Liveliness slider with the word appearing nowhere in `Engine/`.
 
 ## Missing tooling
 

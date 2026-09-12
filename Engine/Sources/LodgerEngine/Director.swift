@@ -34,6 +34,11 @@ public final class Director {
     public let pack: Pack
     public private(set) var current: String
     public private(set) var stateAge: TimeInterval = 0
+    /// Values for the knobs the pack declared in `tuning`. The Director divides a
+    /// duration by the knob a state names in `scaleBy` - and never learns what any
+    /// of them mean, which is what keeps Rule 1 intact while still letting a pack
+    /// ship a "liveliness" slider.
+    public var tuning: [String: Double] = [:]
     private var rng: SplitMix64
 
     public init(pack: Pack, seed: UInt64 = 0x9E3779B97F4A7C15) {
@@ -71,8 +76,12 @@ public final class Director {
                 wake = ms > 0 ? .after(Double(ms) / 1000) : .none
             } else {
                 let span = max(0, d.maxMs - d.minMs)
-                let ms = d.minMs + (span > 0 ? Int(rng.next(upperBound: UInt64(span + 1))) : 0)
-                wake = .after(Double(ms) / 1000)
+                var ms = Double(d.minMs)
+                    + (span > 0 ? Double(rng.next(upperBound: UInt64(span + 1))) : 0)
+                if let knob = d.scaleBy, let value = tuning[knob], value > 0 {
+                    ms /= value        // a higher knob means a livelier pet
+                }
+                wake = .after(max(0.016, ms / 1000))
             }
         } else if let clip, clip.loop == .none, !clip.frames.isEmpty {
             // A finite clip with no declared duration ends when the clip ends.

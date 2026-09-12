@@ -19,31 +19,50 @@ public struct Spring: Sendable {
     public var maxOffset: Double
     /// Speed in px/s below which the spring is considered at rest.
     public var sleepThreshold: Double
+    /// Seconds before the follower reacts to the parent moving.
+    ///
+    /// This is what makes a companion feel loosely attached rather than welded on:
+    /// the body starts walking and the item follows a beat later. Implemented by
+    /// holding each displacement until it matures, so the spring genuinely does
+    /// nothing for `lag` seconds rather than merely responding weakly.
+    public var lag: Double
 
     public private(set) var offset: CGPoint = .zero      // displacement from target
     public private(set) var velocity: CGVector = .zero
     public private(set) var settled = true
 
+    /// Displacements waiting out `lag` before they take effect.
+    private var pending: [(due: TimeInterval, impulse: CGVector)] = []
+    private var clock: TimeInterval = 0
+
     public init(stiffness: Double = 90, damping: Double = 12, mass: Double = 1,
-                maxOffset: Double = 24, sleepThreshold: Double = 0.15) {
+                maxOffset: Double = 24, sleepThreshold: Double = 0.15,
+                lag: Double = 0) {
         self.stiffness = max(0.0001, stiffness)
         self.damping = max(0, damping)
         self.mass = max(0.0001, mass)
         self.maxOffset = max(0, maxOffset)
         self.sleepThreshold = max(0.0001, sleepThreshold)
+        self.lag = max(0, lag)
     }
 
     /// Kick the follower - used when the parent jumps, so it trails rather than
     /// teleporting.
     public mutating func displace(by d: CGVector) {
+        settled = false
+        guard lag > 0 else { apply(d); return }
+        pending.append((due: clock + lag, impulse: d))
+    }
+
+    private mutating func apply(_ d: CGVector) {
         offset.x += d.dx
         offset.y += d.dy
         clamp()
-        settled = false
     }
 
     public mutating func reset() {
         offset = .zero; velocity = .zero; settled = true
+        pending.removeAll()
     }
 
     /// Advance by `dt` seconds. Returns true once the spring has come to rest, at
@@ -51,6 +70,15 @@ public struct Spring: Sendable {
     @discardableResult
     public mutating func step(_ dt: TimeInterval) -> Bool {
         guard !settled, dt > 0 else { return settled }
+
+        clock += dt
+        if !pending.isEmpty {
+            var still: [(due: TimeInterval, impulse: CGVector)] = []
+            for p in pending {
+                if p.due <= clock { apply(p.impulse) } else { still.append(p) }
+            }
+            pending = still
+        }
 
         // Substep so a long frame cannot make a stiff spring explode.
         let maxStep = 1.0 / 240.0
@@ -69,7 +97,9 @@ public struct Spring: Sendable {
 
         let speed = (velocity.dx * velocity.dx + velocity.dy * velocity.dy).squareRoot()
         let displacement = (offset.x * offset.x + offset.y * offset.y).squareRoot()
-        if speed < sleepThreshold && displacement < sleepThreshold {
+        // Something still waiting to arrive means the spring is not done, however
+        // still it looks right now.
+        if pending.isEmpty, speed < sleepThreshold, displacement < sleepThreshold {
             // Snap rather than asymptote, so "settled" is a real state and not a
             // permanently-almost-there one.
             offset = .zero

@@ -167,6 +167,8 @@ final class MenuBar: NSObject, NSMenuDelegate {
 
     @objc private func toggleAudio() {
         Preferences.audioEnabled = !Preferences.audioEnabled
+        app.pet?.audio.enabled = Preferences.audioEnabled
+            && (app.pet?.loaded.pack.requires.contains("audio") ?? false)
     }
 
     @objc private func quit() { onQuit() }

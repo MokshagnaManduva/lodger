@@ -707,16 +707,10 @@
         "mode": "socket",
         "parent": "body",
         "anchor": "hand",
-        "frames": "clip",
-        "clip": "cane_hold",
+        "frames": "parent",
         "offset": {
           "x": 0,
           "y": -2
-        },
-        "orientFrames": {
-          "-12": 5,
-          "0": 0,
-          "12": 6
         }
       }
     },
@@ -756,7 +750,8 @@
       "surface": "floor",
       "duration": {
         "minMs": 3000,
-        "maxMs": 12000
+        "maxMs": 12000,
+        "scaleBy": "liveliness"
       },
       "next": [
         {
@@ -832,7 +827,8 @@
       "surface": "floor",
       "duration": {
         "minMs": 1500,
-        "maxMs": 6000
+        "maxMs": 6000,
+        "scaleBy": "liveliness"
       },
       "next": [
         {
@@ -886,7 +882,8 @@
       "surface": "windowTop",
       "duration": {
         "minMs": 6000,
-        "maxMs": 30000
+        "maxMs": 30000,
+        "scaleBy": "liveliness"
       },
       "next": [
         {
@@ -927,7 +924,8 @@
       "facing": "toPointer",
       "duration": {
         "minMs": 1200,
-        "maxMs": 4000
+        "maxMs": 4000,
+        "scaleBy": "liveliness"
       },
       "next": [
         {
@@ -1022,7 +1020,8 @@
       "clip": "sit",
       "duration": {
         "minMs": 8000,
-        "maxMs": 40000
+        "maxMs": 40000,
+        "scaleBy": "liveliness"
       },
       "next": [
         {

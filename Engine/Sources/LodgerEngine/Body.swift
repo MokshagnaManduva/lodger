@@ -31,10 +31,30 @@ public final class Body {
         public let layer: CALayer
         public var spring: Spring?
         public var restCentre: CGPoint = .zero     // layer position when at rest
+        /// The clip this part is currently showing, so hit testing knows which
+        /// texture and cell to consult.
+        public var clip: Pack.Clip?
+        public var clipName: String?
+    }
+
+    /// One hit-testable piece of the character, as it is on screen right now.
+    public struct HitPart {
+        public let texture: String
+        public let cell: Int
+        /// Where this part's cell sits relative to the body's, in cell pixels.
+        public let offset: CGPoint
     }
 
     public private(set) var parts: [Part] = []
     public private(set) var springsSettled = true
+
+    /// Which way the character is currently facing.
+    ///
+    /// Mirroring is applied to the rig, so the whole character flips together - art,
+    /// sockets and floats. A part that declares `mirrorWithBody: false` is
+    /// counter-flipped so it keeps its own handedness and stays on the same visual
+    /// side, which is what you want for something like a name tag.
+    public private(set) var facing: Guard.Side = .left
 
     /// The layer every part hangs from.
     ///
@@ -91,10 +111,38 @@ public final class Body {
             var p = Part(decl: decl, layer: layer)
             if case let b = decl.bind, b.mode == "float" {
                 p.spring = Spring(stiffness: b.stiffness, damping: b.damping, mass: b.mass,
-                                  maxOffset: b.maxOffset, sleepThreshold: b.sleepThreshold)
+                                  maxOffset: b.maxOffset, sleepThreshold: b.sleepThreshold,
+                                  lag: b.lag)
             }
             parts.append(p)
         }
+    }
+
+    /// Face `side`, mirroring if the clip allows it and the art is drawn the other
+    /// way round. A clip marked `mirrorable: false` is never flipped: its author is
+    /// saying the art already faces correctly.
+    public func setFacing(_ side: Guard.Side, clip: Pack.Clip) {
+        facing = side
+        let drawn: Guard.Side = pack.stage.artFacing == "right" ? .right : .left
+        let shouldFlip = clip.mirrorable && side != drawn
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        rig.transform = shouldFlip ? CATransform3DMakeScale(-1, 1, 1) : CATransform3DIdentity
+        for p in parts {
+            guard !p.decl.mirrorWithBody else {
+                p.layer.transform = CATransform3DIdentity
+                continue
+            }
+            // Undo the parent's mirror for this one part, and reflect its position
+            // back so it does not swap sides either.
+            p.layer.transform = shouldFlip ? CATransform3DMakeScale(-1, 1, 1)
+                                           : CATransform3DIdentity
+            if shouldFlip {
+                p.layer.position = CGPoint(x: panelSize.width - p.layer.position.x,
+                                           y: p.layer.position.y)
+            }
+        }
+        CATransaction.commit()
     }
 
     /// The rig's natural size in points. The window may be wider during a walk; the
@@ -147,12 +195,14 @@ public final class Body {
             switch decl.bind.mode {
             case "body":
                 install(clip: bodyClip, on: p.layer)
+                parts[i].clip = bodyClip
                 p.layer.position = centre(dx: 0, dy: 0)
                 parts[i].restCentre = p.layer.position
 
             case "overlay":
                 if let name = decl.bind.clip, let c = pack.clips[name] {
                     install(clip: c, on: p.layer)
+                    parts[i].clip = c
                 }
                 p.layer.position = centre(dx: 0, dy: 0)
                 parts[i].restCentre = p.layer.position
@@ -169,6 +219,28 @@ public final class Body {
             }
         }
         refreshSettled()
+        // Layers were just rebuilt, so re-apply the mirror.
+        setFacing(facing, clip: bodyClip)
+    }
+
+    /// Everything the pointer could be over, with each piece's current offset.
+    ///
+    /// A socket's offset is read from its presentation layer, because the render
+    /// server owns that position - which is the whole point of animating it there.
+    /// Called once per mouse-move event, never on a tick.
+    public func hitParts(visibleCell: (Pack.Clip) -> Int) -> [HitPart] {
+        var out: [HitPart] = []
+        for p in parts {
+            guard p.decl.hitTest, !p.layer.isHidden, let clip = p.clip else { continue }
+            let live = p.layer.presentation()?.position ?? p.layer.position
+            let rest = centre(dx: 0, dy: 0)
+            let offset = CGPoint(x: (live.x - rest.x) / scale,
+                                 y: (rest.y - live.y) / scale)   // layer y is up
+            out.append(HitPart(texture: clip.texture,
+                               cell: visibleCell(clip),
+                               offset: offset))
+        }
+        return out
     }
 
     private func install(clip: Pack.Clip, on layer: CALayer) {
@@ -184,6 +256,7 @@ public final class Body {
         let ownClip = bind.clip.flatMap { pack.clips[$0] }
         let clip = bind.frames == "clip" ? (ownClip ?? bodyClip) : bodyClip
         install(clip: clip, on: p.layer)
+        p.clip = clip
 
         let off = bind.offset
         guard let anchorName = bind.anchor else { return }
@@ -216,7 +289,10 @@ public final class Body {
 
     private func applyFloat(_ p: inout Part, bodyClip: Pack.Clip) {
         let bind = p.decl.bind
-        if let name = bind.clip, let c = pack.clips[name] { install(clip: c, on: p.layer) }
+        if let name = bind.clip, let c = pack.clips[name] {
+            install(clip: c, on: p.layer)
+            p.clip = c
+        }
 
         // Mean anchor across the clip - deliberately not the per-frame value.
         var sum = CGPoint.zero, n = 0

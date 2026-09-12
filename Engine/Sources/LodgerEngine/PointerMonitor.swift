@@ -33,8 +33,21 @@ public final class PointerMonitor {
     public private(set) var isOverSilhouette = false
     public var onChange: ((Reading) -> Void)?
 
-    /// Resolved lazily so the caller can swap frames without reinstalling.
-    public var currentMask: (() -> (HitMask, Int)?)?
+    /// One entry per hit-testable part, resolved lazily so frames and offsets can
+    /// change without reinstalling. The cursor counts as inside if it is over the
+    /// opaque pixels of **any** of them - which is how a free-floating companion
+    /// becomes clickable rather than only the body.
+    public var hitTargets: (() -> [Target])?
+
+    public struct Target {
+        public let mask: HitMask
+        public let cell: Int
+        /// This part's offset from the body's cell, in cell pixels (y down).
+        public let offset: CGPoint
+        public init(mask: HitMask, cell: Int, offset: CGPoint) {
+            self.mask = mask; self.cell = cell; self.offset = offset
+        }
+    }
     public var scale: CGFloat = 1
     /// Top-left of the character's cell in screen coordinates.
     ///
@@ -76,7 +89,8 @@ public final class PointerMonitor {
         let cursor = NSEvent.mouseLocation
         let topLeft = cellTopLeft?() ?? CGPoint(x: panel.frame.minX, y: panel.frame.maxY)
         let reading = Self.read(cursor: cursor, frame: panel.frame,
-                                cellTopLeft: topLeft, scale: scale, mask: currentMask?())
+                                cellTopLeft: topLeft, scale: scale,
+                                targets: hitTargets?() ?? [])
         if reading.inside != isOverSilhouette {
             isOverSilhouette = reading.inside
             // The whole hit-testing strategy, in one line.
@@ -87,7 +101,7 @@ public final class PointerMonitor {
 
     /// Pure, so it can be tested without a window or a run loop.
     public static func read(cursor: CGPoint, frame: CGRect, cellTopLeft: CGPoint,
-                            scale: CGFloat, mask: (HitMask, Int)?) -> Reading {
+                            scale: CGFloat, targets: [Target]) -> Reading {
         // Screen coords are y-up; cell coords are y-down from the cell's top-left.
         let localX = (cursor.x - cellTopLeft.x) / scale
         let localY = (cellTopLeft.y - cursor.y) / scale
@@ -98,11 +112,14 @@ public final class PointerMonitor {
         let distance = (dx * dx + dy * dy).squareRoot()
 
         var inside = false
-        if let (m, cell) = mask {
-            inside = m.opaque(cell: cell, x: Int(localX.rounded(.down)),
-                              y: Int(localY.rounded(.down)))
-        } else if frame.contains(cursor) {
-            inside = true                       // no mask: fall back to the frame
+        if targets.isEmpty {
+            inside = frame.contains(cursor)     // no masks: fall back to the frame
+        } else {
+            for t in targets {
+                let x = Int((localX - t.offset.x).rounded(.down))
+                let y = Int((localY - t.offset.y).rounded(.down))
+                if t.mask.opaque(cell: t.cell, x: x, y: y) { inside = true; break }
+            }
         }
         let side: Guard.Side = cursor.x < frame.midX ? .left : .right
         return Reading(local: local, distance: distance, inside: inside, side: side)

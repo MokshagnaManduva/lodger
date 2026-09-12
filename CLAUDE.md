@@ -386,7 +386,13 @@ intentional** — it is the seam that keeps packs inert.
     ~38 us and were being read every tick. Anything of that shape belongs in a cache
     invalidated by a notification, not in a per-frame path. `Calendar` is the same shape
     and is read from the guard context, so it is cached for 20 seconds.
-11. **`send()` must stay cheap.** `pointer.near` and `pointer.fast` arrive on *every*
+11. **Sound is the one feature that costs timers.** Sprite frames advance in the render
+    server, so the app cannot know when a frame appears without asking, and asking every
+    frame is the poll Rule 2 forbids. A clip's per-frame sounds are therefore *scheduled*
+    when the clip is installed — one wake per sound, not per frame, and only while audio
+    is on and the clip actually has any. Audio is off by default. State-level `sound`
+    fires once on entry and costs nothing.
+12. **`send()` must stay cheap.** `pointer.near` and `pointer.fast` arrive on *every*
     mouse-move event, so `send` returns immediately unless the current state actually
     lists an interrupt for that event. Building a guard context unconditionally cost
     0.88% of a core against 0.13% — a 6.6x regression, from one missing guard.

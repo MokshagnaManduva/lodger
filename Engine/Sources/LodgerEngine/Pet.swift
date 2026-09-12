@@ -36,6 +36,7 @@ public final class Pet {
     public var perchMode = false
     public let perchTracker = PerchTracker()
     public let systemEvents = SystemEvents()
+    public let audio = Audio()
     /// One for system-wide input, one for the cursor specifically.
     public let userIdle = IdleWatcher()
     public lazy var pointerIdle = IdleWatcher { [weak self] in
@@ -43,6 +44,12 @@ public final class Pet {
         return CACurrentMediaTime() - t
     }
     private var wants: [String: Double?] = [:]
+
+    /// Values for the knobs the pack declared in `tuning`. Set by the host from its
+    /// own settings store; the engine only ever divides durations by them.
+    public var tuning: [String: Double] = [:] {
+        didSet { director.tuning = tuning }
+    }
     private var perchedOn: Perch.Candidate?
     public var isPerched: Bool { perchedOn != nil }
 
@@ -85,10 +92,12 @@ public final class Pet {
         self.pointer = PointerMonitor(panel: panel)
         self.pointer.scale = CGFloat(stage.defaultScale)
         // cellTopLeft is wired in start(), once the rig exists.
-        self.pointer.currentMask = { [weak self] in
-            guard let self, let clip = self.currentClip,
-                  let m = self.masks[clip.texture] else { return nil }
-            return (m, self.visibleCell(of: clip))
+        self.pointer.hitTargets = { [weak self] in
+            guard let self, let body = self.body else { return [] }
+            return body.hitParts { self.visibleCell(of: $0) }.compactMap { hp in
+                guard let m = self.masks[hp.texture] else { return nil }
+                return PointerMonitor.Target(mask: m, cell: hp.cell, offset: hp.offset)
+            }
         }
         let clickView = installClickView()
         clickView.onClick = { [weak self] clicks in
@@ -173,6 +182,7 @@ public final class Pet {
         if packUsesPointer { pointer.install() }
 
         // Observers only for what the pack asks for.
+        audio.load(pack: loaded.pack, root: loaded.root)
         wants = loaded.pack.requestedEvents
         var w: SystemEvents.Wants = []
         if wants["system.wake"] != nil || wants["system.willSleep"] != nil { w.insert(.sleepWake) }
@@ -198,6 +208,7 @@ public final class Pet {
     }
 
     public func stop() {
+        audio.stopAll()
         scheduler.cancel()
         userIdle.cancel()
         pointerIdle.cancel()
@@ -375,6 +386,10 @@ public final class Pet {
         endWalk()                       // adopt the position of any walk in flight
         body?.apply(state: plan.state, bodyClip: clip)
         cachedWorld = nil
+        applyFacing(for: plan.state, clip: clip)
+        if let s = loaded.pack.states[plan.state]?.sound { audio.play(s) }
+        audio.schedule(clip: clip, defaultFrameMs: loaded.pack.stage.defaultFrameMs,
+                       loop: clip.loop != .none)
 
         if case .walk(let speed, let dir) = plan.motion,
            case .after(let planned) = plan.wake {
@@ -420,6 +435,7 @@ public final class Pet {
         default: walkDirection = Bool.random() ? .left : .right
         }
         motion.facing = walkDirection
+        if let clip = currentClip { body?.setFacing(walkDirection, clip: clip) }
         motion.begin(.none, in: world)      // deliberately no display link
         startWalkStretch()
     }
@@ -500,6 +516,25 @@ public final class Pet {
         panel.layout(feetMinX: CGFloat(motion.feet.x), feetMaxX: CGFloat(motion.feet.x),
                      floorY: CGFloat(world.floor), halfWidth: rigHalfWidth,
                      height: rigHeight, groundOffsetFromBottom: groundOffsetFromBottom)
+    }
+
+    /// Resolve which way the character should face and mirror it.
+    ///
+    /// A walk sets `motion.facing` to its own direction, so `"keep"` in a walking
+    /// state naturally means "face the way you are going".
+    private func applyFacing(for state: String, clip: Pack.Clip) {
+        guard let st = loaded.pack.states[state] else { return }
+        switch st.facing {
+        case "left":  motion.facing = .left
+        case "right": motion.facing = .right
+        case "toPointer":
+            if let side = lastPointerSide {
+                // Face the pointer: if it is to our left, look left.
+                motion.facing = side
+            }
+        default: break        // "keep"
+        }
+        body?.setFacing(motion.facing, clip: clip)
     }
 
     private func begin(_ spec: Pack.MotionSpec) {

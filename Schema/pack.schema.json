@@ -56,6 +56,10 @@
           "$ref": "#/$defs/point",
           "description": "Feet contact point within the cell. Every frame is registered onto this."
         },
+        "artFacing": {
+          "enum": ["left", "right"], "default": "left",
+          "description": "Which way the character is drawn. The engine mirrors clips marked mirrorable to face the other way."
+        },
         "pixelPerfect": { "type": "boolean", "default": true },
         "scaleSteps": {
           "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 8 },
@@ -206,7 +210,11 @@
                 "additionalProperties": false,
                 "properties": {
                   "minMs": { "type": "integer", "minimum": 0 },
-                  "maxMs": { "type": "integer", "minimum": 0 }
+                  "maxMs": { "type": "integer", "minimum": 0 },
+                  "scaleBy": {
+                    "type": "string",
+                    "description": "Name of a knob declared in `tuning`. The duration is divided by its value, so a higher knob means a livelier pet. The engine applies this without knowing what the knob means."
+                  }
                 }
               }
             ]
@@ -331,13 +339,7 @@
           "description": "'parent' means this part's texture has exactly one cell per parent frame."
         },
         "clip": { "type": "string" },
-        "offset": { "$ref": "#/$defs/point" },
-        "orientFrames": {
-          "type": "object",
-          "description": "Discrete rotation: angle in degrees (as a key) to cell index. Free rotation destroys a pixel grid, so rotated variants are pre-drawn.",
-          "propertyNames": { "pattern": "^-?\\d+$" },
-          "additionalProperties": { "type": "integer", "minimum": 0 }
-        }
+        "offset": { "$ref": "#/$defs/point" }
       }
     },
 

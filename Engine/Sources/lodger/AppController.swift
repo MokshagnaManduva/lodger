@@ -103,6 +103,9 @@ final class AppController {
         Preferences.packID = chosen.pack.identity.id
 
         let p = Pet(loaded: chosen)
+        p.tuning = Preferences.resolvedTuning(for: chosen.pack)
+        p.audio.enabled = Preferences.audioEnabled && chosen.pack.requires.contains("audio")
+        p.audio.volume = Preferences.volume
         p.perchMode = Preferences.perchMode
         p.start()
         p.panel.orderFrontRegardless()
