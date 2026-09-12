@@ -36,6 +36,18 @@ public final class Body {
     public private(set) var parts: [Part] = []
     public private(set) var springsSettled = true
 
+    /// The layer every part hangs from.
+    ///
+    /// Locomotion animates *this* across a walk segment, so the whole character
+    /// translates with one committed animation and the app does no per-frame work.
+    /// It is a layer of our own because animating an `NSView`'s backing layer is
+    /// fragile - AppKit manages that one.
+    ///
+    /// Verified experimentally: a position animation here composes with the
+    /// per-frame `position` animations Body installs on socket children. Child
+    /// positions are relative, so both run and the absolute position is their sum.
+    public let rig = CALayer()
+
     private let pack: Pack
     private let scale: CGFloat
     private let cell: CGSize
@@ -62,6 +74,9 @@ public final class Body {
                                 height: (cell.height + margin * 2) * scale)
         self.atlas = atlas
 
+        rig.frame = CGRect(origin: .zero, size: panelSize)
+        host.addSublayer(rig)
+
         // Declaration order is z-order unless a part overrides it.
         let ordered = pack.parts.enumerated()
             .sorted { ($0.element.z ?? $0.offset, $0.offset) < ($1.element.z ?? $1.offset, $1.offset) }
@@ -72,7 +87,7 @@ public final class Body {
                                  width: cell.width * scale, height: cell.height * scale)
             layer.magnificationFilter = .nearest
             layer.minificationFilter = .nearest
-            host.addSublayer(layer)
+            rig.addSublayer(layer)
             var p = Part(decl: decl, layer: layer)
             if case let b = decl.bind, b.mode == "float" {
                 p.spring = Spring(stiffness: b.stiffness, damping: b.damping, mass: b.mass,
@@ -81,6 +96,10 @@ public final class Body {
             parts.append(p)
         }
     }
+
+    /// The rig's natural size in points. The window may be wider during a walk; the
+    /// rig slides inside it.
+    public var rigSize: CGSize { panelSize }
 
     /// Convert a cell-space offset (y down) into a layer centre (y up).
     private func centre(dx: Double, dy: Double) -> CGPoint {

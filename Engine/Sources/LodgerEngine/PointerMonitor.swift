@@ -36,8 +36,12 @@ public final class PointerMonitor {
     /// Resolved lazily so the caller can swap frames without reinstalling.
     public var currentMask: (() -> (HitMask, Int)?)?
     public var scale: CGFloat = 1
-    /// Cell-space inset of the artwork inside the (padded) window.
-    public var margin: CGFloat = 0
+    /// Top-left of the character's cell in screen coordinates.
+    ///
+    /// A closure rather than a stored value because during a walk the art slides
+    /// inside a wider window, so this changes continuously while the window does
+    /// not move. Evaluated once per mouse-move event, never on a tick.
+    public var cellTopLeft: (() -> CGPoint)?
 
     public init(panel: NSWindow) { self.panel = panel }
 
@@ -69,8 +73,10 @@ public final class PointerMonitor {
 
     public func sample() {
         guard let panel else { return }
-        let reading = Self.read(cursor: NSEvent.mouseLocation, frame: panel.frame,
-                                scale: scale, margin: margin, mask: currentMask?())
+        let cursor = NSEvent.mouseLocation
+        let topLeft = cellTopLeft?() ?? CGPoint(x: panel.frame.minX, y: panel.frame.maxY)
+        let reading = Self.read(cursor: cursor, frame: panel.frame,
+                                cellTopLeft: topLeft, scale: scale, mask: currentMask?())
         if reading.inside != isOverSilhouette {
             isOverSilhouette = reading.inside
             // The whole hit-testing strategy, in one line.
@@ -80,12 +86,11 @@ public final class PointerMonitor {
     }
 
     /// Pure, so it can be tested without a window or a run loop.
-    public static func read(cursor: CGPoint, frame: CGRect, scale: CGFloat,
-                            margin: CGFloat = 0, mask: (HitMask, Int)?) -> Reading {
-        // Screen coords are y-up; cell coords are y-down from the top-left, and the
-        // artwork is inset by the attachment margin.
-        let localX = (cursor.x - frame.minX) / scale - margin
-        let localY = (frame.maxY - cursor.y) / scale - margin
+    public static func read(cursor: CGPoint, frame: CGRect, cellTopLeft: CGPoint,
+                            scale: CGFloat, mask: (HitMask, Int)?) -> Reading {
+        // Screen coords are y-up; cell coords are y-down from the cell's top-left.
+        let localX = (cursor.x - cellTopLeft.x) / scale
+        let localY = (cellTopLeft.y - cursor.y) / scale
         let local = CGPoint(x: localX, y: localY)
 
         let dx = max(frame.minX - cursor.x, 0, cursor.x - frame.maxX)

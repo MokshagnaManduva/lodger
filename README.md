@@ -34,7 +34,12 @@ our code and the frames keep advancing.
 
 ![render server proof](Docs/render-server-proof.png)
 
-A `quiescent` state installs no timer, no display link and no run-loop source at all.
+A `quiescent` state installs no timer, no display link and no run-loop source at all. The
+same idea extends to movement: a walk is resolved up front and handed to the render server
+as one animation, so the pet keeps walking even while the process is frozen — 0.10% of one
+core, down from 4.5% when the window was moved per frame.
+
+![walking while frozen](Docs/render-server-walk-proof.png)
 
 ## Layout
 

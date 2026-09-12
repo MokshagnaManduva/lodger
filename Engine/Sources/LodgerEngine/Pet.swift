@@ -25,6 +25,10 @@ public final class Pet {
     private var screen: NSScreen?
     private var dragOffset: CGSize = .zero
     private var cachedWorld: Motion.World?
+    private var walk: Walk?
+    private var walkRemaining: Double = 0
+    private var walkSpeed: Double = 0
+    private var walkDirection: Guard.Side = .left
     /// Measurement only: `LODGER_ABLATE=window` skips the window move,
     /// `=springs` skips float displacement, `=both` skips both. Used to attribute
     /// locomotion cost rather than guess at it.
@@ -57,7 +61,7 @@ public final class Pet {
         self.motion = Motion(feet: .zero)
         self.pointer = PointerMonitor(panel: panel)
         self.pointer.scale = CGFloat(stage.defaultScale)
-        self.pointer.margin = CGFloat(Body.attachmentMargin(for: loaded.pack))
+        // cellTopLeft is wired in start(), once the rig exists.
         self.pointer.currentMask = { [weak self] in
             guard let self, let clip = self.currentClip,
                   let m = self.masks[clip.texture] else { return nil }
@@ -80,7 +84,12 @@ public final class Pet {
 
     // MARK: world
 
-    private var halfWidth: CGFloat { panel.frame.width / 2 }
+    /// Half the *character's* width, not the window's.
+    ///
+    /// The window is deliberately wider than the character during a walk so the rig
+    /// can slide inside it. Using the window here would shrink the walkable world
+    /// every time a stretch started, progressively trapping the pet.
+    private var halfWidth: CGFloat { rigHalfWidth }
 
     /// The walkable surface for the display the pet is currently on.
     ///
@@ -112,6 +121,8 @@ public final class Pet {
         panel.placeFeet(at: motion.feet, groundOffsetFromBottom: groundOffsetFromBottom)
     }
 
+    public var isWalking: Bool { walk != nil }
+
     // MARK: lifecycle
 
     public func start() {
@@ -128,6 +139,7 @@ public final class Pet {
         // Install the pointer monitor only if some state actually reacts to it.
         if packUsesPointer { pointer.install() }
         pointer.onChange = { [weak self] r in self?.pointerMoved(r) }
+        pointer.cellTopLeft = { [weak self] in self?.cellTopLeftOnScreen() ?? .zero }
         apply(director.start())
     }
 
@@ -240,7 +252,15 @@ public final class Pet {
     }
 
     public var hasDisplayLink: Bool { link != nil }
-    public var feet: CGPoint { motion.feet }
+    /// Where the pet is now.
+    ///
+    /// While a walk stretch is in flight the render server owns the position, so
+    /// this is interpolated from elapsed time rather than read back. O(1), and only
+    /// evaluated when something asks.
+    public var feet: CGPoint {
+        guard let w = walk else { return motion.feet }
+        return CGPoint(x: w.x(at: Date()), y: motion.feet.y)
+    }
     public var motionKind: Motion.Kind { motion.kind }
 
     /// Distance from the panel's bottom edge up to the character's soles, so the
@@ -292,16 +312,133 @@ public final class Pet {
         if body == nil, let host = panel.contentView?.layer {
             body = Body(pack: loaded.pack, host: host) { [weak self] in self?.atlas(named: $0) }
         }
+        endWalk()                       // adopt the position of any walk in flight
         body?.apply(state: plan.state, bodyClip: clip)
         cachedWorld = nil
-        begin(plan.motion)
-        syncDisplayLink()
 
-        scheduler.apply(plan.wake) { [weak self] in
-            guard let self else { return }
-            if let next = self.director.timeout(self.context()) { self.apply(next) }
+        if case .walk(let speed, let dir) = plan.motion,
+           case .after(let planned) = plan.wake {
+            // Resolved up front and handed to the render server: no display link,
+            // no per-frame window moves. See Walk.swift.
+            beginWalk(speed: speed, directionSpec: dir, plannedSeconds: planned)
+        } else {
+            begin(plan.motion)
+            scheduler.apply(plan.wake) { [weak self] in
+                guard let self else { return }
+                if let next = self.director.timeout(self.context()) { self.apply(next) }
+            }
         }
+        syncDisplayLink()
         onStateChange?(plan, scheduler)
+    }
+
+    // MARK: render-server locomotion
+
+    private var rigHalfWidth: CGFloat { (body?.rigSize.width ?? panel.frame.width) / 2 }
+    private var rigHeight: CGFloat { body?.rigSize.height ?? panel.frame.height }
+
+    /// Top-left of the character's cell in screen coordinates, accounting for the
+    /// rig's current slide inside a walk-wide window.
+    private func cellTopLeftOnScreen() -> CGPoint {
+        let scale = CGFloat(loaded.pack.stage.defaultScale)
+        let margin = panel.margin * scale
+        let rigMinX = (body?.rig.position.x ?? rigHalfWidth) - rigHalfWidth
+        return CGPoint(x: panel.frame.minX + rigMinX + margin,
+                       y: panel.frame.minY + margin
+                        + CGFloat(loaded.pack.stage.cell.h) * scale)
+    }
+
+    private func beginWalk(speed: Double, directionSpec: String, plannedSeconds: Double) {
+        walkSpeed = speed
+        walkRemaining = plannedSeconds
+        switch directionSpec {
+        case "left": walkDirection = .left
+        case "right": walkDirection = .right
+        case "toPointer": walkDirection = lastPointerSide ?? motion.facing
+        case "away": walkDirection = (lastPointerSide ?? .left) == .left ? .right : .left
+        default: walkDirection = Bool.random() ? .left : .right
+        }
+        motion.facing = walkDirection
+        motion.begin(.none, in: world)      // deliberately no display link
+        startWalkStretch()
+    }
+
+    private func startWalkStretch() {
+        let w = world
+        let width = (screen ?? NSScreen.main)?.frame.width ?? 1440
+        guard let stretch = Walk.resolve(from: motion.feet.x, direction: walkDirection,
+                                         speed: walkSpeed, remainingSeconds: walkRemaining,
+                                         world: w, displayWidth: Double(width)) else {
+            // Pinned against the edge it is facing: report and let the pack decide.
+            walk = nil
+            send("edge.reached", value: walkDirection == .left ? 0 : 1)
+            return
+        }
+        walk = stretch
+
+        // One resize, then the window stays put for the whole stretch.
+        panel.layout(feetMinX: CGFloat(stretch.minX), feetMaxX: CGFloat(stretch.maxX),
+                     floorY: CGFloat(w.floor), halfWidth: rigHalfWidth,
+                     height: rigHeight, groundOffsetFromBottom: groundOffsetFromBottom)
+
+        guard let rig = body?.rig else { return }
+        let from = CGFloat(stretch.startX - stretch.minX) + rigHalfWidth
+        let to = CGFloat(stretch.endX - stretch.minX) + rigHalfWidth
+        let y = rigHeight / 2
+        rig.removeAnimation(forKey: "walk")
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        rig.position = CGPoint(x: to, y: y)     // model value = where it ends up
+        CATransaction.commit()
+
+        let slide = CABasicAnimation(keyPath: "position")
+        slide.fromValue = NSValue(point: CGPoint(x: from, y: y))
+        slide.toValue = NSValue(point: CGPoint(x: to, y: y))
+        slide.duration = stretch.seconds
+        slide.timingFunction = CAMediaTimingFunction(name: .linear)
+        slide.isRemovedOnCompletion = false
+        slide.fillMode = .forwards
+        rig.add(slide, forKey: "walk")
+
+        // The walk owns the single scheduled wake for its own duration, and hands
+        // control back to the Director when the last stretch finishes.
+        scheduler.apply(.after(stretch.seconds)) { [weak self] in
+            self?.walkStretchFinished()
+        }
+    }
+
+    private func walkStretchFinished() {
+        guard let stretch = walk else { return }
+        motion.feet.x = stretch.endX
+        walkRemaining = stretch.remainingAfter(walkRemaining)
+
+        if stretch.hitEdge {
+            walk = nil
+            send("edge.reached", value: stretch.direction == .left ? 0 : 1)
+        } else if walkRemaining > 0.02 {
+            startWalkStretch()              // chain the next stretch
+        } else {
+            walk = nil
+            if let next = director.timeout(context()) { apply(next) }
+        }
+    }
+
+    /// Freeze an in-flight walk: adopt the interpolated position and put the window
+    /// back to its normal size. Called on every transition, so an interrupted walk
+    /// leaves the pet where it visibly was, not at the stretch's end.
+    private func endWalk() {
+        guard let stretch = walk else { return }
+        motion.feet.x = stretch.x(at: Date())
+        walk = nil
+        walkRemaining = 0
+        body?.rig.removeAnimation(forKey: "walk")
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        body?.rig.position = CGPoint(x: rigHalfWidth, y: rigHeight / 2)
+        CATransaction.commit()
+        panel.layout(feetMinX: CGFloat(motion.feet.x), feetMaxX: CGFloat(motion.feet.x),
+                     floorY: CGFloat(world.floor), halfWidth: rigHalfWidth,
+                     height: rigHeight, groundOffsetFromBottom: groundOffsetFromBottom)
     }
 
     private func begin(_ spec: Pack.MotionSpec) {

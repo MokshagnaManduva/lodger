@@ -153,19 +153,66 @@ stepping the window in time with the footfalls is both cheaper than sliding it a
 display rate and more faithful to the style. The link takes its rate from the clip's
 own frame timing, clamped to 8-30 Hz. That alone halved the cost.
 
-### Still over budget, and the fix is known
+### Render-server locomotion: 2.4% -> 0.10%
 
-2.4% while walking means a pet that walks 5% of the day costs ~4.3 s CPU per hour,
-against a 2 s target. `test.walker` never stops, so real packs will be better, but the
-honest reading is that per-frame window movement is irreducible at ~450 us a move.
+Implemented. On entering a walk the whole stretch is resolved up front, the window is
+sized **once** to contain it, and the rig layer is animated across it with a single
+committed animation - the same mechanism sockets use. There is **no display link at
+all** during a walk.
 
-**The designed fix is render-server locomotion:** on entering a walk, size the window
-once to span the whole segment, then animate the host layer's `position` across it with
-a single committed animation - the same mechanism sockets already use. Zero window
-moves and no display link for the entire walk. The trade is a wider transparent window
-during walks, moving cost from our process into `WindowServer`; probably favourable,
-because the compositor is already blending that screen region while a synchronous IPC
-round-trip per frame is pure addition. Not yet implemented.
+| | CPU | display link |
+|---|---|---|
+| per-tick window moves, 30 Hz | 4.5% of one core | 1 start, 900 ticks / 30 s |
+| per-tick window moves, sprite-rate link | 2.4% | 1 start, 300 ticks / 30 s |
+| **render-server locomotion** | **0.10%** | **0 starts, 0 ticks** |
+
+Three runs: 0.097%, 0.096%, 0.128%. A 24x improvement, and the remaining cost is at
+the idle noise floor.
+
+A deliberately hostile case - 200 px/s, bouncing off both screen edges, chaining a new
+stretch every couple of seconds - costs 0.24-0.29%, still an order of magnitude better
+than before.
+
+### Verified the same way sprite frames were
+
+`SIGSTOP` while walking. The process is frozen in state `T` and cannot execute a single
+instruction, and the pet keeps walking at the same rate:
+
+| capture | process | pet centre |
+|---|---|---|
+| w0 | running | 559.8 px |
+| w1 | running | 592.5 px |
+| w2 | **stopped** | 604.2 px |
+| w3 | **stopped** | 642.4 px |
+| w4 | **stopped** | 680.6 px |
+
+~32 px/s while running, ~32 px/s while frozen. Visual record:
+`render-server-walk-proof.png`.
+
+### What it cost to get there
+
+Two bugs found by measurement rather than reading:
+
+- The walkable world was derived from `panel.frame.width`, and the window is
+  deliberately *wider* than the character during a walk. So every stretch shrank the
+  world and progressively trapped the pet. Now derived from the rig's width.
+- An earlier version animated the `NSView`'s own backing layer. Parts now hang from a
+  `rig` layer of our own, because AppKit manages the view's.
+
+And one assumption checked before building on it: a `position` animation on a parent
+layer **does** compose with the per-frame `position` animations Body installs on socket
+children - the parent travelled 270 px while the child's socket animation ran
+independently, and the absolute position was their sum.
+
+### The accepted, unverified trade
+
+A walk-wide window moves compositing cost into `WindowServer`, which still cannot be
+measured here (its idle baseline drifts +/-2 percentage points). The span is capped at
+`min(displayWidth / 3, 400)` points and long walks chain stretches, so no window is ever
+near full-screen - which also matters because a near-full-screen transparent window is
+what the Tahoe 26.3 hit-testing regression broke. The reasoning for accepting it: the
+compositor is already blending that screen region, whereas a synchronous IPC round-trip
+per frame was pure addition. **Recorded as reasoning, not evidence.**
 
 ## Pointer path: 21 ns per mouse-move event
 

@@ -312,7 +312,7 @@ do {
 
     // Weighted selection: b is weighted 3:1 over a, and must be reproducible.
     var counts: [String: Int] = [:]
-    var sampler = Director(pack: dpack, seed: 7)
+    let sampler = Director(pack: dpack, seed: 7)
     for _ in 0..<400 {
         _ = sampler.enter("idle", reason: "t")
         if let p = sampler.timeout(Guard.Context()) { counts[p.state, default: 0] += 1 }
@@ -321,13 +321,13 @@ do {
     check(ratio > 2.2 && ratio < 4.2, "weights are honoured (b:a about 3:1)",
           "got \(counts) ratio \(String(format: "%.2f", ratio))")
 
-    var replay = Director(pack: dpack, seed: 7)
+    let replay = Director(pack: dpack, seed: 7)
     var second: [String] = []
     for _ in 0..<400 {
         _ = replay.enter("idle", reason: "t")
         if let p = replay.timeout(Guard.Context()) { second.append(p.state) }
     }
-    var replay2 = Director(pack: dpack, seed: 7)
+    let replay2 = Director(pack: dpack, seed: 7)
     var third: [String] = []
     for _ in 0..<400 {
         _ = replay2.enter("idle", reason: "t")
@@ -382,23 +382,28 @@ do {
     for y in 2..<6 { for x in 2..<6 { flat[y * 8 + x] = true } }   // opaque core
     let mask = try HitMask(data: encodeMask([flat], 8, 8))
     let frame = CGRect(x: 100, y: 200, width: 16, height: 16)      // 8x8 cell at 2x
+    let topLeftOnScreen = CGPoint(x: frame.minX, y: frame.maxY)
 
     // screen y is up, cell y is down: a cursor near the TOP of the frame must map
     // to a SMALL cell y
     let topLeft = PointerMonitor.read(cursor: CGPoint(x: 105, y: 214),
-                                      frame: frame, scale: 2, mask: (mask, 0))
+                                      frame: frame, cellTopLeft: topLeftOnScreen,
+                                      scale: 2, mask: (mask, 0))
     check(topLeft.local.y < 2, "screen y-up converts to cell y-down",
           "got local \(topLeft.local)")
     let centre = PointerMonitor.read(cursor: CGPoint(x: 108, y: 208),
-                                     frame: frame, scale: 2, mask: (mask, 0))
+                                     frame: frame, cellTopLeft: topLeftOnScreen,
+                                      scale: 2, mask: (mask, 0))
     check(centre.inside, "cursor over an opaque pixel reads as inside")
     let corner = PointerMonitor.read(cursor: CGPoint(x: 101, y: 215),
-                                     frame: frame, scale: 2, mask: (mask, 0))
+                                     frame: frame, cellTopLeft: topLeftOnScreen,
+                                      scale: 2, mask: (mask, 0))
     check(!corner.inside,
           "cursor over a TRANSPARENT pixel inside the frame reads as OUTSIDE",
           "this is the whole point of the alpha mask; got local \(corner.local)")
     let away = PointerMonitor.read(cursor: CGPoint(x: 160, y: 208),
-                                   frame: frame, scale: 2, mask: (mask, 0))
+                                   frame: frame, cellTopLeft: topLeftOnScreen,
+                                      scale: 2, mask: (mask, 0))
     check(!away.inside && abs(away.distance - 44) < 0.001,
           "distance is measured to the frame edge", "got \(away.distance)")
     check(away.side == .right && topLeft.side == .left, "side is reported")
@@ -564,6 +569,60 @@ do {
     check(!fine.rescue(into: world), "a pet already in the world is left alone")
 }
 
+// ---------------------------------------------------------------------- walk
+section("walk — resolved up front, handed to the render server")
+do {
+    let w = Motion.World(floor: 100, left: 200, right: 800)
+    let t0 = Date(timeIntervalSince1970: 1_000_000)
+    let wide = 2400.0     // span cap = min(width/3, 400) = 400
+
+    // A stretch that fits comfortably.
+    let s1 = Walk.resolve(from: 400, direction: .right, speed: 100,
+                          remainingSeconds: 2, world: w, displayWidth: wide, now: t0)
+    check(s1?.endX == 600, "travels speed x duration", "got \(s1?.endX ?? -1)")
+    check(abs((s1?.seconds ?? 0) - 2) < 0.001, "and takes that long")
+    check(s1?.hitEdge == false && s1?.capped == false, "neither clamped nor capped")
+
+    // Clamped by the world.
+    let s2 = Walk.resolve(from: 700, direction: .right, speed: 100,
+                          remainingSeconds: 5, world: w, displayWidth: wide, now: t0)
+    check(s2?.endX == 800, "clamps to the world edge", "got \(s2?.endX ?? -1)")
+    check(abs((s2?.seconds ?? 0) - 1) < 0.001, "duration shrinks to match the distance",
+          "got \(s2?.seconds ?? -1)")
+    check(s2?.hitEdge == true, "and reports that it hit the edge")
+
+    // Cut short by the span cap, not by the edge: a long walk must not demand a
+    // near-full-screen transparent window.
+    let s3 = Walk.resolve(from: 210, direction: .right, speed: 100,
+                          remainingSeconds: 20, world: Motion.World(floor: 100, left: 200, right: 5000),
+                          displayWidth: wide, now: t0)
+    check(s3?.span == 400, "a long walk is capped to the span limit", "got \(s3?.span ?? -1)")
+    check(s3?.capped == true && s3?.hitEdge == false, "and says it was capped, not clamped")
+    check(abs(s3!.remainingAfter(20) - 16) < 0.001,
+          "the rest of the duration is carried into the next stretch",
+          "got \(s3!.remainingAfter(20))")
+    check(Walk.spanCap(displayWidth: 900) == 300, "the cap follows a narrow display")
+
+    // Pinned against the edge it faces.
+    check(Walk.resolve(from: 200, direction: .left, speed: 100, remainingSeconds: 2,
+                       world: w, displayWidth: wide, now: t0) == nil,
+          "a pet already at the edge resolves to no stretch")
+
+    // Interpolation is what a mid-walk grab depends on.
+    let s = s1!
+    check(s.x(at: t0) == 400, "position at t=0 is the start")
+    check(abs(s.x(at: t0.addingTimeInterval(1)) - 500) < 0.001, "halfway at t=half",
+          "got \(s.x(at: t0.addingTimeInterval(1)))")
+    check(s.x(at: t0.addingTimeInterval(2)) == 600, "the end at t=end")
+    check(s.x(at: t0.addingTimeInterval(99)) == 600, "and clamps past the end")
+    check(s.x(at: t0.addingTimeInterval(-5)) == 400, "and before the start")
+
+    let left = Walk.resolve(from: 500, direction: .left, speed: 50,
+                            remainingSeconds: 2, world: w, displayWidth: wide, now: t0)!
+    check(left.endX == 400 && left.minX == 400 && left.maxX == 500,
+          "walking left resolves min/max correctly", "got \(left)")
+}
+
 // ------------------------------------------------------------------ benchmark
 // The pointer path is the one thing that runs on an event whose rate the engine
 // does not control, so its per-event cost needs a number, not a shrug.
@@ -573,12 +632,14 @@ if CommandLine.arguments.contains("--bench") {
     for y in 20..<110 { for x in 30..<100 { flat[y * 128 + x] = true } }
     let mask = try! HitMask(data: encodeMask([flat], 128, 128))
     let frame = CGRect(x: 500, y: 300, width: 256, height: 256)
+    let topLeft = CGPoint(x: frame.minX, y: frame.maxY)
     let n = 2_000_000
     var inside = 0
     let t0 = Date()
     for i in 0..<n {
         let p = CGPoint(x: 400 + Double(i % 400), y: 250 + Double((i / 400) % 400))
-        if PointerMonitor.read(cursor: p, frame: frame, scale: 2, mask: (mask, 0)).inside {
+        if PointerMonitor.read(cursor: p, frame: frame, cellTopLeft: topLeft,
+                               scale: 2, mask: (mask, 0)).inside {
             inside += 1
         }
     }

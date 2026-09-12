@@ -26,14 +26,14 @@ Design and pipeline groundwork are done; **no application code exists yet**.
 | Engine: panel, sprite layer, Director, Scheduler, pointer monitor | `Engine/Sources/LodgerEngine/` |
 | Multi-part rendering (body/socket/float/overlay) + spring solver | `Body.swift`, `Spring.swift` |
 | Motion: walking, falling, dragging, multi-display, rescue | `Motion.swift`, `Stage.swift` |
+| Render-server locomotion (zero window moves per walk) | `Walk.swift`, `Body.rig` |
 | 79 engine self-tests, no Xcode needed | `make engine-test` |
 | Measured energy baselines + SIGSTOP proof | `Docs/energy-protocol.md`, `render-server-proof.png` |
 | Minimum viable pack fixture | `Tests/Fixtures/test.solidsquare/` |
 
-Not built: `packtool generate` / `preview`, the hand-finished canonical sprite,
-render-server locomotion (the known fix for walking cost), perching, discrete socket
-rotation (`orientFrames`), and the app shell (menu bar, settings, pack manager, Sparkle,
-signing).
+Not built: `packtool generate` / `preview`, the hand-finished canonical sprite, perching,
+discrete socket rotation (`orientFrames`), and the app shell (menu bar, settings, pack
+manager, Sparkle, signing).
 
 ```bash
 make test          # negative tests - proves each lint check actually fires
@@ -43,7 +43,7 @@ make sketches      # palette + tracing sketches from the raw reference
 make audit         # re-measure the raw reference art
 ```
 
-**Next, in order:** render-server locomotion → perching → the app shell. In parallel: hand-finish the canonical Klien sprite from
+**Next, in order:** perching (§4a) → the app shell. In parallel: hand-finish the canonical Klien sprite from
 `Packs/klien/reference/sketches/r1c0.png` (§7 Stage 2).
 
 ---
@@ -333,11 +333,12 @@ intentional** — it is the seam that keeps packs inert.
 7. Atlases load lazily per page and evict after a configurable unused interval.
 8. Nothing polls. If you are about to write a timer that checks whether something changed,
    find the notification instead.
-9. **Moving the window is the most expensive thing the engine does** — measured at
-   ~340-450 us per move once the deferred Core Animation commit is counted, which is 6x
-   the cost of `setFrameOrigin` alone. The locomotion display link therefore runs at the
-   *sprite's* frame rate (8-30 Hz, taken from the clip), not the display's. Never move
-   the window from a 60 Hz tick.
+9. **Never move the window from a per-frame tick.** A window move costs ~340-450 us
+   once the deferred Core Animation commit is counted — 6x the cost of `setFrameOrigin`
+   alone. Walking instead resolves the whole stretch up front, sizes the window once,
+   and animates the `rig` layer across it (`Walk.swift`, `Pet.startWalkStretch`). That
+   took walking from 4.5% of a core to 0.10% and removed the display link entirely.
+   The display link now exists only for falling and unsettled springs.
 10. **AppKit accessors are not arithmetic.** `NSScreen.screens` and `visibleFrame` cost
     ~38 us and were being read every tick. Anything of that shape belongs in a cache
     invalidated by a notification, not in a per-frame path.
@@ -349,7 +350,7 @@ intentional** — it is the seam that keeps packs inert.
 | CPU seconds per idle hour | **< 2 s** (~0.05%) | **MET — median ~1.2-1.4 s/hr** across configurations. Single soaks are worthless at this magnitude (see `Docs/energy-protocol.md`); always take a median. |
 | Timers in a quiescent state | **0** | **MET — scheduler live-timer count drops to 0 and stays there** |
 | Pointer hit test | cheap enough to own | **MET — 21 ns/event; 0.009 s/hr at 120 events/s** |
-| CPU while walking | as low as the platform allows | **2.4% of one core** (was 4.5%). Over budget at high duty cycles; fix is render-server locomotion, see `Docs/energy-protocol.md` |
+| CPU while walking | as low as the platform allows | **MET — 0.10% of one core** (from 4.5%) via render-server locomotion, with **no display link at all**. Verified by `SIGSTOP`: the pet keeps walking with the process frozen. |
 | Animation is render-server resident | app does no per-frame work | **VERIFIED** — frames keep advancing under `SIGSTOP`; see `Docs/energy-protocol.md` |
 | Idle wake-ups, deep idle | **0/s** | not yet measured (needs `sudo timerfires`); zero by construction |
 | Idle wake-ups, breathing idle | <= 1/s | not yet measured |

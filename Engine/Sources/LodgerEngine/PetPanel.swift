@@ -58,6 +58,23 @@ public final class PetPanel: NSPanel {
         return layer
     }
 
+    /// Size and place the window so it contains every feet-x from `minX` to `maxX`.
+    ///
+    /// Used once at the start of a walk stretch: the window then stays put while the
+    /// rig layer slides inside it, so a walk costs no window moves at all.
+    @discardableResult
+    public func layout(feetMinX: CGFloat, feetMaxX: CGFloat, floorY: CGFloat,
+                       halfWidth: CGFloat, height: CGFloat,
+                       groundOffsetFromBottom: CGFloat) -> Bool {
+        let target = CGRect(x: (feetMinX - halfWidth).rounded(),
+                            y: (floorY - groundOffsetFromBottom).rounded(),
+                            width: ((feetMaxX - feetMinX) + halfWidth * 2).rounded(),
+                            height: height)
+        guard target != frame else { return false }
+        setFrame(target, display: false)
+        return true
+    }
+
     /// Place the pet's feet at `point` in screen coordinates, snapping to whole
     /// logical pixels so a pixel-art sprite never lands on a half pixel.
     /// Moving a window is an IPC round-trip to the window server, so it is the most
