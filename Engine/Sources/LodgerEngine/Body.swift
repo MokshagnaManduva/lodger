@@ -270,6 +270,30 @@ public final class Body {
         layer.add(a, forKey: "bob")
     }
 
+    /// Freeze or resume every animation under the rig.
+    ///
+    /// Used when the pet is fully covered by another window. Animating behind a
+    /// full-screen editor is work nobody can see, and the render server still
+    /// composites it - so occlusion should stop the animation, not merely tell the
+    /// pack about it.
+    public func setPaused(_ paused: Bool) {
+        if paused {
+            guard rig.speed != 0 else { return }
+            let t = rig.convertTime(CACurrentMediaTime(), from: nil)
+            rig.speed = 0
+            rig.timeOffset = t
+        } else {
+            guard rig.speed == 0 else { return }
+            let paused = rig.timeOffset
+            rig.speed = 1
+            rig.timeOffset = 0
+            rig.beginTime = 0
+            rig.beginTime = rig.convertTime(CACurrentMediaTime(), from: nil) - paused
+        }
+    }
+
+    public var isPaused: Bool { rig.speed == 0 }
+
     // MARK: springs
 
     /// Nudge every float, e.g. because the window moved.

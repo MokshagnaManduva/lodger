@@ -195,6 +195,12 @@
       ],
       "interrupts": [
         {
+          "on": {
+            "user.idle": 4
+          },
+          "state": "sleeping"
+        },
+        {
           "on": "pointer.grab",
           "state": "held"
         },
@@ -222,6 +228,12 @@
         }
       ],
       "interrupts": [
+        {
+          "on": {
+            "user.idle": 4
+          },
+          "state": "sleeping"
+        },
         {
           "on": {
             "edge.reached": "left"
@@ -284,6 +296,12 @@
       "clip": "rest",
       "quiescent": true,
       "interrupts": [
+        {
+          "on": {
+            "pointer.fast": 800
+          },
+          "state": "waving"
+        },
         {
           "on": "pointer.click",
           "state": "waving"

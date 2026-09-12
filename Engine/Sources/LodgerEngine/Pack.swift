@@ -309,6 +309,24 @@ public struct Pack: Decodable, Sendable {
         }
     }
 
+    /// Every event name any reachable state listens for, with the largest threshold
+    /// per name. The engine installs observers only for what is actually wanted, so
+    /// a pack that ignores the battery costs nothing to watch it.
+    public var requestedEvents: [String: Double?] {
+        var out: [String: Double?] = [:]
+        for st in states.values {
+            for it in st.interrupts {
+                let name = it.on.name
+                if let existing = out[name] ?? nil, let v = it.on.value {
+                    out[name] = Swift.max(existing, v)
+                } else if out[name] == nil {
+                    out[name] = it.on.value
+                }
+            }
+        }
+        return out
+    }
+
     enum CodingKeys: String, CodingKey {
         case format, engineMin, requires, identity, stage, textures, clips
         case parts, initialState, states, hitMasks, sounds, tuning

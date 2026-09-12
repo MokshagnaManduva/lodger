@@ -3,6 +3,9 @@
 Audited 2026-09-12 against the code, not from memory. Grouped by whether it blocks
 the thing working.
 
+> **Update 2026-09-13:** item 2 below is done — all 24 declared events are now emitted,
+> and the idle route into the quiescent state works. Items 1 and 3 stand.
+
 ## Blocking
 
 **1. Klien has no art.** 18 clips referencing 47 cells, 14 states, 4 parts — all
@@ -10,21 +13,10 @@ declared, none drawn. `PackStore.load` now correctly refuses the pack and the me
 says why. Everything in the pipeline downstream of §7 Stage 2 is waiting on this.
 It is the long pole and it needs a human.
 
-**2. Fourteen of the twenty-three declared events are never emitted.** The format
-promises them, `packtool validate` accepts them, and nothing fires them:
-
-| never emitted | consequence |
-|---|---|
-| `user.idle` | **the main route into the quiescent sleep state.** Klien sleeps only via the `timeOfDay` / `lowPower` branch off `sitting`, so the headline battery behaviour is reachable at night and not otherwise |
-| `pointer.fast` | Klien's `startled` state is strictly unreachable |
-| `power.lowPowerMode`, `power.onBattery` | no reaction to battery state |
-| `system.wake`, `system.willSleep` | no reaction to lid open/close |
-| `app.occluded` | the pet keeps animating while fully covered — a Rule 2 hole |
-| `display.changed`, `space.changed` | no reaction to plugging in a monitor |
-| `clip.ended`, `state.timeout`, `physics.settled`, `pointer.idle`, `pointer.doubleClick` | packs cannot use them |
-
-All of these are notification- or observer-driven, so none of them needs a poll.
-This is the cheapest high-value work remaining.
+**2. ~~Fourteen of the twenty-three declared events are never emitted.~~ Done.**
+All 24 are emitted now. Observers are installed only for what a pack's reachable states
+actually ask for, and `app.occluded` additionally stops the animation rather than just
+reporting it. The only timer is `IdleWatcher`, which self-corrects rather than samples.
 
 **3. There is no horizontal flip anywhere.** `mirrorable`, `mirrorWithBody` and
 `facing: "toPointer"` all decode and are then ignored, so the pet walks left and

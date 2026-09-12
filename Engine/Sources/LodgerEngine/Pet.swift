@@ -35,6 +35,14 @@ public final class Pet {
     // Off by default, so the app ships asking for nothing. See CLAUDE.md 4a.
     public var perchMode = false
     public let perchTracker = PerchTracker()
+    public let systemEvents = SystemEvents()
+    /// One for system-wide input, one for the cursor specifically.
+    public let userIdle = IdleWatcher()
+    public lazy var pointerIdle = IdleWatcher { [weak self] in
+        guard let t = self?.lastPointerTime, t > 0 else { return 0 }
+        return CACurrentMediaTime() - t
+    }
+    private var wants: [String: Double?] = [:]
     private var perchedOn: Perch.Candidate?
     public var isPerched: Bool { perchedOn != nil }
 
@@ -83,7 +91,9 @@ public final class Pet {
             return (m, self.visibleCell(of: clip))
         }
         let clickView = installClickView()
-        clickView.onClick = { [weak self] in self?.send("pointer.click") }
+        clickView.onClick = { [weak self] clicks in
+            self?.send(clicks >= 2 ? "pointer.doubleClick" : "pointer.click")
+        }
         clickView.onDragBegin = { [weak self] p in self?.beginDrag(at: p) }
         clickView.onDrag = { [weak self] p in self?.continueDrag(to: p) }
         clickView.onDragEnd = { [weak self] in self?.endDrag() }
@@ -161,6 +171,25 @@ public final class Pet {
         }
         // Install the pointer monitor only if some state actually reacts to it.
         if packUsesPointer { pointer.install() }
+
+        // Observers only for what the pack asks for.
+        wants = loaded.pack.requestedEvents
+        var w: SystemEvents.Wants = []
+        if wants["system.wake"] != nil || wants["system.willSleep"] != nil { w.insert(.sleepWake) }
+        if wants["power.lowPowerMode"] != nil || wants["power.onBattery"] != nil { w.insert(.power) }
+        if wants["display.changed"] != nil { w.insert(.displays) }
+        if wants["space.changed"] != nil { w.insert(.space) }
+        // Occlusion always earns its place: it lets the engine stop animating behind
+        // another window whether or not the pack asked to hear about it.
+        w.insert(.occlusion)
+        systemEvents.onEvent = { [weak self] name, value in self?.send(name, value: value) }
+        systemEvents.onOcclusionChanged = { [weak self] hidden in
+            self?.body?.setPaused(hidden)
+        }
+        systemEvents.install(w, window: panel)
+
+        userIdle.onIdle = { [weak self] secs in self?.send("user.idle", value: secs) }
+        pointerIdle.onIdle = { [weak self] secs in self?.send("pointer.idle", value: secs) }
         pointer.onChange = { [weak self] r in self?.pointerMoved(r) }
         pointer.cellTopLeft = { [weak self] in self?.cellTopLeftOnScreen() ?? .zero }
         perchTracker.onMoved = { [weak self] c in self?.perchMoved(to: c) }
@@ -170,6 +199,9 @@ public final class Pet {
 
     public func stop() {
         scheduler.cancel()
+        userIdle.cancel()
+        pointerIdle.cancel()
+        systemEvents.uninstall()
         perchTracker.detach()
         stopLink()
         pointer.uninstall()
@@ -238,8 +270,10 @@ public final class Pet {
             for e in events { deliver(e) }
         }
 
+        let wasSettled = body?.springsSettled ?? true
         var settled = true
         timed("stepSprings") { settled = body?.stepSprings(dt) ?? true }
+        if settled && !wasSettled { send("physics.settled") }
         if settled && !motion.needsTicking { stopLink() }
     }
 
@@ -349,11 +383,12 @@ public final class Pet {
             beginWalk(speed: speed, directionSpec: dir, plannedSeconds: planned)
         } else {
             begin(plan.motion)
+            let clipDriven = loaded.pack.states[plan.state]?.duration?.clipDriven ?? false
             scheduler.apply(plan.wake) { [weak self] in
-                guard let self else { return }
-                if let next = self.director.timeout(self.context()) { self.apply(next) }
+                self?.durationElapsed(clipDriven: clipDriven)
             }
         }
+        rearmIdleWatchers()
         syncDisplayLink()
         onStateChange?(plan, scheduler)
     }
@@ -488,10 +523,48 @@ public final class Pet {
         }
     }
 
+    /// A state's own duration ran out. Give the pack its chance to interrupt on
+    /// `state.timeout` - and on `clip.ended` when the duration came from the clip -
+    /// before falling through to the weighted `next` list.
+    private func durationElapsed(clipDriven: Bool) {
+        let ctx = context()
+        if let plan = director.deliver(event: "state.timeout", ctx) { apply(plan); return }
+        if clipDriven, let plan = director.deliver(event: "clip.ended", ctx) {
+            apply(plan); return
+        }
+        if let next = director.timeout(ctx) { apply(next) }
+    }
+
+    /// Re-armed on every state change, so a pet that just did something starts
+    /// counting from now rather than inheriting the previous state's clock.
+    private func rearmIdleWatchers() {
+        if let secs = wants["user.idle"] ?? nil { userIdle.arm(after: secs) }
+        else { userIdle.cancel() }
+        if let secs = wants["pointer.idle"] ?? nil { pointerIdle.arm(after: secs) }
+        else { pointerIdle.cancel() }
+    }
+
     private func send(_ event: String, value: Double? = nil) {
+        // pointer.near and pointer.fast arrive on every mouse-move event, and
+        // building a guard context reads the calendar. Skip all of it unless the
+        // state actually listens for this event.
+        guard let st = loaded.pack.states[director.current],
+              st.interrupts.contains(where: { $0.on.name == event }) else { return }
         if let plan = director.deliver(event: event, value: value, context()) {
             apply(plan)
         }
+    }
+
+    /// Minutes since midnight, recomputed at most once a minute. `Calendar` is not
+    /// arithmetic, and this is read from the guard context.
+    private nonisolated(unsafe) static var clockCache: (minute: Int, until: CFTimeInterval) = (0, 0)
+    private static func minutesSinceMidnight() -> Int {
+        let now = CACurrentMediaTime()
+        if now < clockCache.until { return clockCache.minute }
+        let c = Calendar.current.dateComponents([.hour, .minute], from: Date())
+        let m = (c.hour ?? 0) * 60 + (c.minute ?? 0)
+        clockCache = (m, now + 20)
+        return m
     }
 
     private func context() -> Guard.Context {
@@ -500,8 +573,7 @@ public final class Pet {
         c.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
         c.perched = isPerched
         c.edge = isPerched ? .windowTop : .floor
-        let cal = Calendar.current.dateComponents([.hour, .minute], from: Date())
-        c.minutesSinceMidnight = (cal.hour ?? 0) * 60 + (cal.minute ?? 0)
+        c.minutesSinceMidnight = Self.minutesSinceMidnight()
         return c
     }
 
@@ -584,10 +656,27 @@ public final class Pet {
     }
 
     private var lastPointerSide: Guard.Side?
+    private var lastPointerPoint: CGPoint?
+    private var lastPointerTime: CFTimeInterval = 0
 
     private func pointerMoved(_ r: PointerMonitor.Reading) {
         lastDistance = r.distance
         lastPointerSide = r.side
+
+        // Cursor speed, derived from events we are already handling. No sampling.
+        let now = CACurrentMediaTime()
+        let here = NSEvent.mouseLocation
+        if let last = lastPointerPoint, lastPointerTime > 0 {
+            let dt = now - lastPointerTime
+            if dt > 0.004 {
+                let d = ((here.x - last.x) * (here.x - last.x)
+                       + (here.y - last.y) * (here.y - last.y)).squareRoot()
+                let speed = d / dt
+                if speed > 1 { send("pointer.fast", value: speed) }
+            }
+        }
+        lastPointerPoint = here
+        lastPointerTime = now
         if r.inside != wasInside {
             wasInside = r.inside
             send(r.inside ? "pointer.enter" : "pointer.exit")
@@ -609,7 +698,7 @@ public final class Pet {
 /// monitor flips based on the alpha mask - so a click on a transparent pixel goes
 /// to whatever is behind the pet, as it should.
 public final class ClickForwardingView: NSView {
-    public var onClick: (() -> Void)?
+    public var onClick: ((Int) -> Void)?
     public var onDragBegin: ((CGPoint) -> Void)?
     public var onDrag: ((CGPoint) -> Void)?
     public var onDragEnd: (() -> Void)?
@@ -617,7 +706,7 @@ public final class ClickForwardingView: NSView {
 
     public override func mouseDown(with event: NSEvent) {
         dragging = false
-        onClick?()
+        onClick?(event.clickCount)
     }
     public override func mouseDragged(with event: NSEvent) {
         let p = NSEvent.mouseLocation

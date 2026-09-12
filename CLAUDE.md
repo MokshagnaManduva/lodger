@@ -29,6 +29,7 @@ Design and pipeline groundwork are done; **no application code exists yet**.
 | Render-server locomotion (zero window moves per walk) | `Walk.swift`, `Body.rig` |
 | Perching: policy, permission-free enumeration, single-window AXObserver | `Perch.swift`, `WindowFinder.swift`, `PerchTracker.swift` |
 | App shell: menu bar, pack manager, preferences, bundle assembly | `Sources/lodger/`, `Scripts/bundle.sh` |
+| All 24 declared events emitted, observers installed only on demand | `SystemEvents.swift`, `IdleWatcher.swift` |
 | 79 engine self-tests, no Xcode needed | `make engine-test` |
 | Measured energy baselines + SIGSTOP proof | `Docs/energy-protocol.md`, `render-server-proof.png` |
 | Minimum viable pack fixture | `Tests/Fixtures/test.solidsquare/` |
@@ -370,7 +371,11 @@ intentional** — it is the seam that keeps packs inert.
    static poses, and on-battery -> scale the pack's `liveliness` knob down.
 7. Atlases load lazily per page and evict after a configurable unused interval.
 8. Nothing polls. If you are about to write a timer that checks whether something changed,
-   find the notification instead.
+   find the notification instead. **The one exception is `IdleWatcher`**, because macOS
+   has no "the user went idle" notification. It does not sample: it asks how long the
+   system has already been idle, sleeps for exactly the remainder, and re-asks on waking.
+   With a 300-second threshold that is at most one wake every five minutes while the
+   machine is in use, and none once the pet is asleep.
 9. **Never move the window from a per-frame tick.** A window move costs ~340-450 us
    once the deferred Core Animation commit is counted — 6x the cost of `setFrameOrigin`
    alone. Walking instead resolves the whole stretch up front, sizes the window once,
@@ -379,7 +384,12 @@ intentional** — it is the seam that keeps packs inert.
    The display link now exists only for falling and unsettled springs.
 10. **AppKit accessors are not arithmetic.** `NSScreen.screens` and `visibleFrame` cost
     ~38 us and were being read every tick. Anything of that shape belongs in a cache
-    invalidated by a notification, not in a per-frame path.
+    invalidated by a notification, not in a per-frame path. `Calendar` is the same shape
+    and is read from the guard context, so it is cached for 20 seconds.
+11. **`send()` must stay cheap.** `pointer.near` and `pointer.fast` arrive on *every*
+    mouse-move event, so `send` returns immediately unless the current state actually
+    lists an interrupt for that event. Building a guard context unconditionally cost
+    0.88% of a core against 0.13% — a 6.6x regression, from one missing guard.
 
 ### Targets
 

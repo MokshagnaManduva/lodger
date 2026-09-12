@@ -726,6 +726,121 @@ do {
     }
 }
 
+// -------------------------------------------------------------------- events
+section("requested events — nothing is observed that no state asks for")
+do {
+    let j = #"""
+    {"format":1,
+     "identity":{"id":"t.e","name":"E","version":"1.0.0","author":"t","license":"CC0-1.0"},
+     "stage":{"cell":{"w":8,"h":8},"bodyHeight":8,"ground":{"x":4,"y":8}},
+     "textures":{"t":{"file":"a.png","columns":1,"rows":1}},
+     "clips":{"c":{"texture":"t","loop":"forever","frames":[{"cell":0}]}},
+     "parts":[{"name":"body","bind":{"mode":"body"}}],
+     "initialState":"a",
+     "states":{"a":{"clip":"c","interrupts":[
+        {"on":{"user.idle":120},"state":"a"},
+        {"on":"system.wake","state":"a"},
+        {"on":{"pointer.near":40},"state":"b"}]},
+       "b":{"clip":"c","interrupts":[
+        {"on":{"user.idle":300},"state":"a"},
+        {"on":{"pointer.near":90},"state":"a"}]}}}
+    """#
+    let pk = try JSONDecoder().decode(Pack.self, from: Data(j.utf8))
+    let want = pk.requestedEvents
+    check(want["user.idle"] ?? nil == 300,
+          "the largest threshold across states wins", "got \(String(describing: want["user.idle"] ?? nil))")
+    check(want["pointer.near"] ?? nil == 90, "same for pointer.near")
+    check(want.keys.contains("system.wake"), "valueless events are listed too")
+    check(!want.keys.contains("power.onBattery"),
+          "an event no state asks for is absent, so no observer is installed for it")
+    check(want.count == 3, "exactly the three asked for", "got \(want.count)")
+}
+
+section("idle watcher — one self-correcting wake, never a poll")
+do {
+    // The load-bearing property: with the user constantly active, this must NOT
+    // wake once a second. It sleeps for the remaining time and re-asks.
+    var idle: TimeInterval = 0
+    let w = IdleWatcher { idle }
+    var fired: TimeInterval?
+    w.onIdle = { fired = $0 }
+
+    idle = 0
+    w.arm(after: 0.6)
+    check(w.isArmed, "arming schedules a wake")
+
+    // Keep resetting the clock for a second: it should reschedule, not fire.
+    let deadline = Date().addingTimeInterval(1.0)
+    while Date() < deadline {
+        idle = 0
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+    }
+    check(fired == nil, "does not fire while activity keeps resetting the clock")
+    check(w.scheduledCount <= 4,
+          "and reschedules a handful of times, not once a tick",
+          "scheduled \(w.scheduledCount) times in 1s against a 0.6s threshold")
+
+    // Now let it go quiet.
+    idle = 5
+    RunLoop.current.run(until: Date().addingTimeInterval(0.9))
+    check(fired != nil, "fires once activity really has stopped")
+    let countAfter = w.scheduledCount
+    RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+    check(w.scheduledCount == countAfter, "and stops scheduling once it has fired")
+    check(!w.isArmed, "leaving no timer behind")
+
+    // The bug this caught: the engine re-arms on every state change, and a pet
+    // that changes state every couple of seconds would have reset a five-minute
+    // idle countdown forever. user.idle means the USER went quiet, not the pet.
+    var live: TimeInterval = 0
+    let w2 = IdleWatcher { live }
+    var w2Fired = false
+    w2.onIdle = { _ in w2Fired = true }
+    w2.arm(after: 0.7)
+    let firstSchedule = w2.scheduledCount
+    for _ in 0..<6 {                       // six "state changes" inside the threshold
+        w2.arm(after: 0.7)
+        live += 0.12
+        RunLoop.current.run(until: Date().addingTimeInterval(0.12))
+    }
+    check(w2.scheduledCount == firstSchedule,
+          "re-arming an already-counting watcher does NOT reset it",
+          "rescheduled \(w2.scheduledCount - firstSchedule) extra times")
+    live = 5
+    RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+    check(w2Fired, "so the threshold can actually elapse through state changes")
+
+    let w3 = IdleWatcher { 0 }
+    w3.arm(after: 10)
+    check(w3.isArmed, "arming schedules")
+    w3.arm(after: 99)
+    check(w3.isArmed, "a different threshold re-arms")
+    w3.cancel()
+    check(!w3.isArmed, "cancel clears it")
+}
+
+section("occlusion pauses the animation, not just the pack")
+do {
+    let root = fixtures.appendingPathComponent("build/socketed.pack")
+    if FileManager.default.fileExists(atPath: root.path) {
+        let store = PackStore(searchPaths: [root.deletingLastPathComponent()])
+        let loaded = try store.load(root: root)
+        let host = CALayer()
+        let body = Body(pack: loaded.pack, host: host) { name in
+            guard let t = loaded.pack.textures[name] else { return nil }
+            return SpriteLayer.atlas(at: root.appendingPathComponent(t.file))
+        }
+        body.apply(state: "waving", bodyClip: loaded.pack.clips["wave"]!)
+        check(!body.isPaused, "starts running")
+        body.setPaused(true)
+        check(body.isPaused, "covered by another window: the whole rig freezes")
+        body.setPaused(false)
+        check(!body.isPaused, "and resumes")
+    } else {
+        print("  SKIP  occlusion (run: make build-fixture)")
+    }
+}
+
 // ------------------------------------------------------------------ benchmark
 // The pointer path is the one thing that runs on an event whose rate the engine
 // does not control, so its per-event cost needs a number, not a shrug.
