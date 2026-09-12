@@ -60,9 +60,15 @@ public final class PetPanel: NSPanel {
 
     /// Place the pet's feet at `point` in screen coordinates, snapping to whole
     /// logical pixels so a pixel-art sprite never lands on a half pixel.
-    public func placeFeet(at point: CGPoint, groundOffsetFromBottom: CGFloat) {
+    /// Moving a window is an IPC round-trip to the window server, so it is the most
+    /// expensive thing a walking pet does. Pixel-art positions are whole logical
+    /// pixels anyway, so skip the call whenever the rounded origin has not changed.
+    @discardableResult
+    public func placeFeet(at point: CGPoint, groundOffsetFromBottom: CGFloat) -> Bool {
         let origin = CGPoint(x: (point.x - frame.width / 2).rounded(),
                              y: (point.y - groundOffsetFromBottom).rounded())
+        guard origin != frame.origin else { return false }
         setFrameOrigin(origin)
+        return true
     }
 }

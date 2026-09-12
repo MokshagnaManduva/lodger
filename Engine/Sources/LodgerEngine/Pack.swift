@@ -233,18 +233,52 @@ public struct Pack: Decodable, Sendable {
         enum K: String, CodingKey { case minMs, maxMs }
     }
 
+    /// A state's declared motion. The pack states intent; the engine owns the
+    /// integration and, critically, the scheduling.
+    public enum MotionSpec: Decodable, Sendable {
+        case none
+        case walk(speed: Double, direction: String)
+        case fall(gravity: Double, terminal: Double)
+        case drag
+
+        private struct Body: Decodable {
+            let type: String
+            let speed: Double?, direction: String?
+            let gravity: Double?, terminal: Double?
+        }
+        public init(from d: Decoder) throws {
+            if let s = try? d.singleValueContainer().decode(String.self) {
+                self = s == "none" ? .none : .none
+                return
+            }
+            let b = try d.singleValueContainer().decode(Body.self)
+            switch b.type {
+            case "walk": self = .walk(speed: b.speed ?? 20, direction: b.direction ?? "random")
+            case "fall": self = .fall(gravity: b.gravity ?? 900, terminal: b.terminal ?? 700)
+            case "drag": self = .drag
+            default: self = .none
+            }
+        }
+    }
+
     public struct State: Decodable, Sendable {
         public let clip: String
+        public let motion: MotionSpec
+        public let surface: String
+        public let facing: String
         public let quiescent: Bool
         public let duration: Duration?
         public let next: [Transition]
         public let interrupts: [Interrupt]
         enum CodingKeys: String, CodingKey {
-            case clip, quiescent, duration, next, interrupts
+            case clip, motion, surface, facing, quiescent, duration, next, interrupts
         }
         public init(from d: Decoder) throws {
             let c = try d.container(keyedBy: CodingKeys.self)
             clip = try c.decode(String.self, forKey: .clip)
+            motion = try c.decodeIfPresent(MotionSpec.self, forKey: .motion) ?? .none
+            surface = try c.decodeIfPresent(String.self, forKey: .surface) ?? "floor"
+            facing = try c.decodeIfPresent(String.self, forKey: .facing) ?? "keep"
             quiescent = try c.decodeIfPresent(Bool.self, forKey: .quiescent) ?? false
             duration = try c.decodeIfPresent(Duration.self, forKey: .duration)
             next = try c.decodeIfPresent([Transition].self, forKey: .next) ?? []

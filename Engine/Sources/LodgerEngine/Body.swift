@@ -265,6 +265,13 @@ public final class Body {
     /// signal to tear the display link down.
     @discardableResult
     public func stepSprings(_ dt: TimeInterval) -> Bool {
+        // Early out before touching Core Animation at all. A transaction commit per
+        // tick for zero unsettled springs is pure waste, and the locomotion tick
+        // calls this every frame.
+        guard parts.contains(where: { !($0.spring?.settled ?? true) }) else {
+            springsSettled = true
+            return true
+        }
         var all = true
         CATransaction.begin()
         CATransaction.setDisableActions(true)

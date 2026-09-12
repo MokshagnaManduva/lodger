@@ -103,6 +103,70 @@ timer count drops to **0** and stays there.
 Note the wake accounting: 18 transitions, 18 wakes. Exactly one scheduled wake per
 state, never a repeating tick.
 
+## Locomotion: the one genuinely expensive path
+
+Unlike the idle numbers, walking is **reproducible** - the signal is ~50x the noise
+floor, and three runs agree to within 0.1 percentage points. So these figures can be
+trusted.
+
+Continuous walking, `test.walker` (a deliberately hyperactive fixture that never
+stops), measured our process only:
+
+| | CPU | |
+|---|---|---|
+| 30 Hz display link, `world` recomputed per tick | **4.5%** of one core | starting point |
+| + `world` cached, link paced at the sprite's frame rate | **2.4%** of one core | shipped |
+
+### What it is, measured not guessed
+
+Ablation (`LODGER_ABLATE=window|springs|both`) attributed the original 4.5%:
+
+| | CPU |
+|---|---|
+| nothing ablated | 4.50% |
+| skip float displacement | 4.66% (springs cost nothing) |
+| skip the window move | **0.85%** |
+| skip both | 0.56% |
+
+So the window move was ~82% of it. Two wrong guesses were eliminated along the way:
+
+- **`setFrameOrigin` alone is cheap** - 45-52 us per call in isolation, 0.16% of a
+  core at 30 Hz. That is 26x too small to explain the ablation.
+- **Animated sublayers do not make window moves more expensive.** A panel with four
+  layers running discrete keyframe animations moved at exactly the same 52 us per
+  call as one static layer.
+
+In-tick profiling (`LODGER_PROFILE=1`) found the real shape: `windowMove` accounts for
+87-96% of measured tick time at **~340-450 us per move**, far above the isolated call
+cost. The gap is the deferred Core Animation commit - moving the window dirties the
+layer tree and the commit lands later in the run-loop cycle, outside the call.
+
+A second, smaller find: `world` was recomputing `NSScreen.screens` and `visibleFrame`
+every tick at 38 us. Those are AppKit accessors, not arithmetic. Caching them, with
+invalidation on state entry and display changes, took that phase to 2.1 us - an 18x
+reduction on a line that looked free.
+
+### Why the link now runs at the sprite's frame rate
+
+A pixel-art walk cycle advances at roughly 7-10 fps and translates in whole pixels, so
+stepping the window in time with the footfalls is both cheaper than sliding it at
+display rate and more faithful to the style. The link takes its rate from the clip's
+own frame timing, clamped to 8-30 Hz. That alone halved the cost.
+
+### Still over budget, and the fix is known
+
+2.4% while walking means a pet that walks 5% of the day costs ~4.3 s CPU per hour,
+against a 2 s target. `test.walker` never stops, so real packs will be better, but the
+honest reading is that per-frame window movement is irreducible at ~450 us a move.
+
+**The designed fix is render-server locomotion:** on entering a walk, size the window
+once to span the whole segment, then animate the host layer's `position` across it with
+a single committed animation - the same mechanism sockets already use. Zero window
+moves and no display link for the entire walk. The trade is a wider transparent window
+during walks, moving cost from our process into `WindowServer`; probably favourable,
+because the compositor is already blending that screen region while a synchronous IPC
+round-trip per frame is pure addition. Not yet implemented.
+
 ## Pointer path: 21 ns per mouse-move event
 
 The one thing running at a rate the engine does not control, so it needs a number.

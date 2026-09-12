@@ -25,6 +25,8 @@ public final class Director {
         public let state: String
         public let clip: String
         public let quiescent: Bool
+        public let motion: Pack.MotionSpec
+        public let surface: String
         public let wake: Wake
         public let reason: String
     }
@@ -53,8 +55,8 @@ public final class Director {
 
     private func plan(entering name: String, reason: String) -> Plan {
         guard let st = pack.states[name] else {
-            return Plan(state: name, clip: "", quiescent: false, wake: .none,
-                        reason: "unknown state")
+            return Plan(state: name, clip: "", quiescent: false, motion: .none,
+                        surface: "floor", wake: .none, reason: "unknown state")
         }
         let clip = pack.clips[st.clip]
         var wake: Wake = .none
@@ -79,7 +81,7 @@ public final class Director {
         }
 
         return Plan(state: name, clip: st.clip, quiescent: st.quiescent,
-                    wake: wake, reason: reason)
+                    motion: st.motion, surface: st.surface, wake: wake, reason: reason)
     }
 
     // MARK: transitions

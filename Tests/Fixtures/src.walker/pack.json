@@ -1,12 +1,12 @@
 {
   "format": 1,
   "identity": {
-    "id": "test.socketed",
-    "name": "Socketed",
+    "id": "test.walker",
+    "name": "Walker",
     "version": "1.0.0",
     "author": "engine tests",
     "license": "CC0-1.0",
-    "description": "Build fixture exercising all four bind modes: body, socket, float, overlay."
+    "description": "Walks continuously. Exists to measure locomotion cost in isolation."
   },
   "stage": {
     "cell": {
@@ -125,9 +125,6 @@
       "name": "face",
       "z": 9,
       "hitTest": false,
-      "hiddenIn": [
-        "sleeping"
-      ],
       "bind": {
         "mode": "overlay",
         "parent": "body",
@@ -158,13 +155,13 @@
         "anchor": "orbit",
         "clip": "orb_idle",
         "rest": {
-          "x": -2,
-          "y": -1
+          "x": 0,
+          "y": 0
         },
         "stiffness": 110,
         "damping": 13,
         "mass": 1.0,
-        "maxOffset": 10,
+        "maxOffset": 4,
         "sleepThreshold": 0.2,
         "bob": {
           "amplitudeX": 1,
@@ -175,45 +172,22 @@
       }
     }
   ],
-  "initialState": "waving",
+  "initialState": "walking",
   "states": {
-    "waving": {
-      "clip": "wave",
-      "duration": {
-        "minMs": 1500,
-        "maxMs": 2500
-      },
-      "next": [
-        {
-          "state": "walking",
-          "weight": 3
-        },
-        {
-          "state": "sleeping",
-          "weight": 1
-        }
-      ],
-      "interrupts": [
-        {
-          "on": "pointer.grab",
-          "state": "held"
-        }
-      ]
-    },
     "walking": {
       "clip": "wave",
       "motion": {
         "type": "walk",
-        "speed": 60,
+        "speed": 40,
         "direction": "random"
       },
       "duration": {
-        "minMs": 1500,
-        "maxMs": 3000
+        "minMs": 9000,
+        "maxMs": 11000
       },
       "next": [
         {
-          "state": "waving",
+          "state": "walking",
           "weight": 1
         }
       ],
@@ -222,63 +196,13 @@
           "on": {
             "edge.reached": "left"
           },
-          "state": "waving"
+          "state": "walking"
         },
         {
           "on": {
             "edge.reached": "right"
           },
-          "state": "waving"
-        },
-        {
-          "on": "pointer.grab",
-          "state": "held"
-        }
-      ]
-    },
-    "held": {
-      "clip": "wave",
-      "motion": {
-        "type": "drag"
-      },
-      "surface": "air",
-      "interrupts": [
-        {
-          "on": "pointer.release",
-          "state": "falling"
-        }
-      ]
-    },
-    "falling": {
-      "clip": "wave",
-      "motion": {
-        "type": "fall",
-        "gravity": 1400,
-        "terminal": 900
-      },
-      "surface": "air",
-      "interrupts": [
-        {
-          "on": "physics.landed",
-          "state": "waving"
-        },
-        {
-          "on": "pointer.grab",
-          "state": "held"
-        }
-      ]
-    },
-    "sleeping": {
-      "clip": "rest",
-      "quiescent": true,
-      "interrupts": [
-        {
-          "on": "pointer.click",
-          "state": "waving"
-        },
-        {
-          "on": "pointer.grab",
-          "state": "held"
+          "state": "walking"
         }
       ]
     }

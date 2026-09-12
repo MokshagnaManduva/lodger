@@ -504,6 +504,66 @@ do {
     }
 } catch { check(false, "body", "\(error)") }
 
+// -------------------------------------------------------------------- motion
+section("motion — kinematics, pure and testable")
+do {
+    let world = Motion.World(floor: 100, left: 200, right: 800)
+
+    var m = Motion(feet: CGPoint(x: 500, y: 100))
+    check(!m.needsTicking, "a still pet needs no display link")
+    m.begin(.walk(speed: 100, direction: .right), in: world)
+    check(m.needsTicking, "walking justifies a display link")
+    check(m.facing == .right, "beginning a walk sets facing")
+    _ = m.step(0.5, in: world)
+    check(abs(m.feet.x - 550) < 0.001, "walks at the declared speed", "got \(m.feet.x)")
+    check(abs(m.feet.y - 100) < 0.001, "stays on the floor while walking")
+
+    // Clamp before reporting, so the pet is never outside the world even for the
+    // frame in which it turns around.
+    var e = Motion(feet: CGPoint(x: 790, y: 100))
+    e.begin(.walk(speed: 1000, direction: .right), in: world)
+    let hits = e.step(0.5, in: world)
+    check(e.feet.x == 800, "clamps exactly to the edge, never past it", "got \(e.feet.x)")
+    check(hits == [.edgeReached(.right)], "and reports the edge once", "got \(hits)")
+
+    var l = Motion(feet: CGPoint(x: 210, y: 100))
+    l.begin(.walk(speed: 1000, direction: .left), in: world)
+    check(l.step(0.5, in: world) == [.edgeReached(.left)], "left edge reports too")
+    check(l.feet.x == 200, "and clamps")
+
+    // Falling
+    var f = Motion(feet: CGPoint(x: 500, y: 400))
+    f.begin(.fall(gravity: 900, terminal: 700), in: world)
+    check(f.needsTicking, "falling justifies a display link")
+    var events: [Motion.Event] = [], ticks = 0
+    while events.isEmpty && ticks < 600 { events = f.step(1.0/60, in: world); ticks += 1 }
+    check(events == [.landed], "falling ends in exactly one landed event", "got \(events)")
+    check(f.feet.y == 100, "lands exactly on the floor, not below it", "got \(f.feet.y)")
+    check(f.velocity == .zero, "landing kills velocity")
+
+    var t = Motion(feet: CGPoint(x: 500, y: 100000))
+    t.begin(.fall(gravity: 900, terminal: 700), in: world)
+    for _ in 0..<600 { _ = t.step(1.0/60, in: world) }
+    check(abs(t.velocity.dy) <= 700.0001, "terminal velocity is respected",
+          "got \(t.velocity.dy)")
+
+    // Dragging is driven by mouse events, not a tick.
+    var d = Motion(feet: CGPoint(x: 500, y: 100))
+    d.begin(.drag, in: world)
+    check(!d.needsTicking, "being dragged needs NO display link — the OS is already "
+                           + "delivering the events")
+    let delta = d.moveTo(CGPoint(x: 520, y: 130))
+    check(delta.dx == 20 && delta.dy == 30, "moveTo returns the delta for the springs")
+
+    // The pet must never end up unreachable.
+    var lost = Motion(feet: CGPoint(x: -5000, y: -5000))
+    check(lost.rescue(into: world), "an off-world pet is rescued")
+    check(lost.feet.x == 200 && lost.feet.y == 100, "back onto the floor",
+          "got \(lost.feet)")
+    var fine = Motion(feet: CGPoint(x: 500, y: 100))
+    check(!fine.rescue(into: world), "a pet already in the world is left alone")
+}
+
 // ------------------------------------------------------------------ benchmark
 // The pointer path is the one thing that runs on an event whose rate the engine
 // does not control, so its per-event cost needs a number, not a shrug.

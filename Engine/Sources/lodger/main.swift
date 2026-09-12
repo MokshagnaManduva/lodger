@@ -99,20 +99,19 @@ let pet = Pet(loaded: loaded)
 var transitions = 0
 pet.onStateChange = { plan, sched in
     transitions += 1
+    let pos = String(format: "x=%.0f", pet.feet.x)
     let wake = plan.wake == .none ? "no timer"
                                   : String(format: "wake in %.2fs", { if case .after(let t) = plan.wake { return t } else { return 0 } }())
-    print(String(format: "  %-14s %-12s %-22s timers=%d",
+    print(String(format: "  %-10s %-16s %-18s timers=%d link=%@ %@",
                  (plan.state as NSString).utf8String!,
                  (plan.reason as NSString).utf8String!,
                  (wake as NSString).utf8String!,
-                 sched.liveTimers))
+                 sched.liveTimers,
+                 pet.hasDisplayLink ? "YES" : "no ",
+                 pos))
 }
 pet.start()
 
-if let screen = NSScreen.main {
-    pet.panel.placeFeet(at: CGPoint(x: screen.visibleFrame.midX, y: screen.visibleFrame.minY),
-                        groundOffsetFromBottom: 0)
-}
 pet.panel.orderFrontRegardless()
 
 let policyOK = app.activationPolicy() == .accessory
@@ -151,6 +150,15 @@ if let soak = opts.soakSeconds {
                      used / elapsed * 3600))
         print("transitions: \(transitions), scheduler wakes: \(pet.scheduler.scheduledCount)")
         print("display link: starts=\(pet.linkStarts) ticks=\(pet.springTicks) running=\(pet.hasDisplayLink)")
+        if !pet.profile.isEmpty {
+            let total = pet.profile.values.reduce(0, +)
+            print("tick profile (wall seconds inside each phase):")
+            for (k, v) in pet.profile.sorted(by: { $0.value > $1.value }) {
+                print(String(format: "  %-16s %8.4f s  %5.1f%% of measured  %7.1f us/tick",
+                             (k as NSString).utf8String!, v, v / total * 100,
+                             v / Double(max(1, pet.springTicks)) * 1e6))
+            }
+        }
         exit(0)
     }
 }
