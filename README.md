@@ -14,19 +14,47 @@ There is a working app. `make app` assembles `build/Lodger.app` without Xcode �
 a menu bar item up, discovers characters from
 `~/Library/Application Support/Lodger/Packs/`, and runs one on screen.
 
-What it does not yet have: the reference character's art (the pipeline is waiting on it),
-audio playback, a settings window beyond the menu bar toggles, Sparkle updates, and
-Developer ID signing.
+Klien has a complete scenario set, with a gold sun-emblem toss and compact leg
+poses in the current polish pass. Audio playback infrastructure is implemented;
+the bundled character stays silent. Remaining work includes art refinements,
+interaction/perching and energy verification, settings, safe pack import, and
+release preparation. See [the current backlog](left.md) and the
+[interaction verification order](Docs/interaction-plan.md).
 
 ```bash
-make test          # packtool: 17 negative tests proving each lint check fires
-make engine-test   # engine: 103 self-tests, no Xcode needed
+make test          # pack validation and native-art acceptance checks
+make engine-test   # engine self-tests, no Xcode needed
 make all           # both, plus pack validation
 make soak          # CPU soaks, repeated runs with the spread reported
 ```
 
 Start with [`CLAUDE.md`](CLAUDE.md) — it carries the architecture and the reasoning.
 [`Docs/PACK_FORMAT.md`](Docs/PACK_FORMAT.md) is the pack format for authors.
+
+## Install and use
+
+Requires macOS 14+ and a Swift toolchain (Xcode or the Command Line Tools) — no
+Xcode project is needed to build or run.
+
+```bash
+git clone https://github.com/MokshagnaManduva/lodger.git
+cd lodger
+make app     # builds and ad-hoc signs build/Lodger.app
+open build/Lodger.app
+```
+
+`make run` builds and launches it directly from the terminal instead. The app
+puts a menu-bar item up (it has no Dock icon or window, by design — see
+`LSUIElement` in `CLAUDE.md` §4) and starts the bundled `klien` character.
+
+**Installing a different character:** drop its folder into
+`~/Library/Application Support/Lodger/Packs/`, or use the menu bar item's
+*Add Character…* (also has *Reveal Characters Folder*). Packs are watched, so a
+valid one appears immediately; an invalid one shows its exact loading error in
+the menu instead of failing silently. See `Docs/PACK_FORMAT.md` if you're
+authoring one yourself.
+
+**Quitting:** *Quit Lodger* (⌘Q) in the menu bar item — there's no window to close.
 
 ## The two rules
 

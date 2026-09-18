@@ -1,4 +1,8 @@
-# Next: render-server locomotion
+# Completed plan: render-server locomotion
+
+> Completed: implemented and verified, including walking under SIGSTOP.
+> Current priorities live in [whats-left.md](whats-left.md); measurements are in
+> [energy-protocol.md](energy-protocol.md). The design below is historical.
 
 Written 2026-09-12, before implementation. The previous round's plan is complete;
 `git log` has the record.

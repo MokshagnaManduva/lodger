@@ -43,6 +43,7 @@ public final class Body {
         public let cell: Int
         /// Where this part's cell sits relative to the body's, in cell pixels.
         public let offset: CGPoint
+        public let mirrored: Bool
     }
 
     public private(set) var parts: [Part] = []
@@ -122,8 +123,13 @@ public final class Body {
     /// way round. A clip marked `mirrorable: false` is never flipped: its author is
     /// saying the art already faces correctly.
     public func setFacing(_ side: Guard.Side, clip: Pack.Clip) {
+        applyFacing(side, clip: clip, positionsReset: false)
+    }
+
+    private func applyFacing(_ side: Guard.Side, clip: Pack.Clip, positionsReset: Bool) {
         facing = side
         let drawn: Guard.Side = pack.stage.artFacing == "right" ? .right : .left
+        let wasFlipped = rig.transform.m11 < 0
         let shouldFlip = clip.mirrorable && side != drawn
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -137,7 +143,7 @@ public final class Body {
             // back so it does not swap sides either.
             p.layer.transform = shouldFlip ? CATransform3DMakeScale(-1, 1, 1)
                                            : CATransform3DIdentity
-            if shouldFlip {
+            if positionsReset ? shouldFlip : shouldFlip != wasFlipped {
                 p.layer.position = CGPoint(x: panelSize.width - p.layer.position.x,
                                            y: p.layer.position.y)
             }
@@ -220,7 +226,7 @@ public final class Body {
         }
         refreshSettled()
         // Layers were just rebuilt, so re-apply the mirror.
-        setFacing(facing, clip: bodyClip)
+        applyFacing(facing, clip: bodyClip, positionsReset: true)
     }
 
     /// Everything the pointer could be over, with each piece's current offset.
@@ -234,11 +240,13 @@ public final class Body {
             guard p.decl.hitTest, !p.layer.isHidden, let clip = p.clip else { continue }
             let live = p.layer.presentation()?.position ?? p.layer.position
             let rest = centre(dx: 0, dy: 0)
-            let offset = CGPoint(x: (live.x - rest.x) / scale,
+            let rigFlipped = rig.transform.m11 < 0
+            let offset = CGPoint(x: (live.x - rest.x) / scale * (rigFlipped ? -1 : 1),
                                  y: (rest.y - live.y) / scale)   // layer y is up
             out.append(HitPart(texture: clip.texture,
                                cell: visibleCell(clip),
-                               offset: offset))
+                               offset: offset,
+                               mirrored: rigFlipped != (p.layer.transform.m11 < 0)))
         }
         return out
     }

@@ -23,6 +23,7 @@ struct Options {
     var state: String?
     var headless = false
     var perch = false
+    var requestAX = false
 }
 
 func parse() -> Options {
@@ -35,6 +36,7 @@ func parse() -> Options {
         case "--state": o.state = it.next()
         case "--headless": o.headless = true
         case "--perch": o.perch = true
+        case "--ax":    o.requestAX = true
         case "-h", "--help":
             print("""
             lodger - walking skeleton
@@ -44,6 +46,7 @@ func parse() -> Options {
               --soak <sec>    run for N seconds, then report CPU used
               --headless      load and report, render nothing, exit
               --perch         enable window perching (needs Accessibility)
+              --ax            request Accessibility and report, then exit
             """)
             exit(0)
         default: break
@@ -62,6 +65,25 @@ func cpuSeconds() -> Double {
 
 let opts = parse()
 let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+
+if opts.requestAX {
+    // Requested from the signed bundle on purpose: a TCC grant attaches to the
+    // binary that asked, so asking from a throwaway test executable would not help
+    // the app. In normal use this is called at the moment the user drops the pet on
+    // a window, never at launch.
+    print("already trusted : \(PerchTracker.hasPermission)")
+    if !PerchTracker.hasPermission {
+        print("requesting… a system dialog should appear; approve it in System Settings")
+        _ = PerchTracker.requestPermission()
+        for i in 1...60 {
+            if PerchTracker.hasPermission { break }
+            Thread.sleep(forTimeInterval: 1)
+            if i % 10 == 0 { print("  still waiting (\(i)s)…") }
+        }
+    }
+    print("trusted now     : \(PerchTracker.hasPermission)")
+    exit(PerchTracker.hasPermission ? 0 : 1)
+}
 
 // Normal operation, unless a measurement flag asked for something else.
 if opts.packPath == nil, opts.soakSeconds == nil, !opts.headless, opts.state == nil {
@@ -162,7 +184,7 @@ if let soak = opts.soakSeconds {
         let elapsed = Date().timeIntervalSince(wall)
         print(String(format: "\nCPU used : %.4f s over %.1f s wall  (%.4f%% of one core)",
                      used, elapsed, used / elapsed * 100))
-        print(String(format: "projected: %.2f s CPU per idle hour  (target < 2 s)",
+        print(String(format: "projected: %.2f s CPU per idle hour  (target < 7 s)",
                      used / elapsed * 3600))
         print("transitions: \(transitions), scheduler wakes: \(pet.scheduler.scheduledCount)")
         print("display link: starts=\(pet.linkStarts) ticks=\(pet.springTicks) running=\(pet.hasDisplayLink)")

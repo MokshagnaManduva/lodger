@@ -1,0 +1,180 @@
+{
+  "format": 1,
+  "engineMin": "1.0.0",
+  "requires": ["windowEdges"],
+  "identity": {
+    "id": "com.mokshagna.klien",
+    "name": "Klien",
+    "version": "0.2.0",
+    "author": "Mokshagna",
+    "license": "CC-BY-NC-4.0",
+    "description": "A small gentleman breathing gently, blinking, and accompanied by a bobbing leaf-wrapped dumpling. First idle milestone.",
+    "preview": "preview.png"
+  },
+  "stage": {
+    "cell": {
+      "w": 128,
+      "h": 128
+    },
+    "bodyHeight": 96,
+    "ground": {
+      "x": 64,
+      "y": 120
+    },
+    "pixelPerfect": true,
+    "scaleSteps": [
+      1,
+      2,
+      3
+    ],
+    "defaultScale": 2,
+    "defaultFrameMs": 250
+  },
+  "textures": {
+    "body": {
+      "strip": "art/body.png",
+      "preload": true
+    },
+    "dumpling": {
+      "strip": "art/dumpling.png",
+      "preload": true
+    }
+  },
+  "clips": {
+    "idle": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 400,
+          "anchors": {
+            "orbit": {
+              "x": 22,
+              "y": 63
+            }
+          }
+        },
+        {
+          "cell": 3,
+          "ms": 120,
+          "anchors": {
+            "orbit": {
+              "x": 22,
+              "y": 63
+            }
+          }
+        },
+        {
+          "cell": 0,
+          "ms": 380,
+          "anchors": {
+            "orbit": {
+              "x": 22,
+              "y": 63
+            }
+          }
+        },
+        {
+          "cell": 1,
+          "ms": 250,
+          "anchors": {
+            "orbit": {
+              "x": 22,
+              "y": 63
+            }
+          }
+        },
+        {
+          "cell": 2,
+          "ms": 300,
+          "anchors": {
+            "orbit": {
+              "x": 22,
+              "y": 63
+            }
+          }
+        },
+        {
+          "cell": 1,
+          "ms": 250,
+          "anchors": {
+            "orbit": {
+              "x": 22,
+              "y": 63
+            }
+          }
+        },
+        {
+          "cell": 0,
+          "ms": 1300,
+          "anchors": {
+            "orbit": {
+              "x": 22,
+              "y": 63
+            }
+          }
+        }
+      ]
+    },
+    "dumpling_idle": {
+      "texture": "dumpling",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 3000
+        }
+      ]
+    }
+  },
+  "parts": [
+    {
+      "name": "body",
+      "bind": {
+        "mode": "body"
+      }
+    },
+    {
+      "name": "dumpling",
+      "z": -1,
+      "hitTest": false,
+      "bind": {
+        "mode": "float",
+        "parent": "body",
+        "anchor": "orbit",
+        "clip": "dumpling_idle",
+        "rest": {
+          "x": 0,
+          "y": 0
+        },
+        "stiffness": 90,
+        "damping": 11,
+        "mass": 1.0,
+        "lag": 0,
+        "maxOffset": 2,
+        "sleepThreshold": 0.15,
+        "bob": {
+          "amplitudeX": 0,
+          "amplitudeY": 2,
+          "periodMs": 3000,
+          "phase": 0.5
+        }
+      }
+    }
+  ],
+  "initialState": "idle",
+  "states": {
+    "idle": {
+      "clip": "idle",
+      "quiescent": true,
+      "surface": "floor",
+      "interrupts": [
+        {
+          "on": "system.wake",
+          "state": "idle"
+        }
+      ]
+    }
+  }
+}

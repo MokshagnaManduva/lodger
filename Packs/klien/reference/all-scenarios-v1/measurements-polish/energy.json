@@ -1,0 +1,13 @@
+{
+  "target_cpu_seconds_per_idle_hour": 7,
+  "runs": [
+    3.75,
+    3.12,
+    1.08
+  ],
+  "median": 3.12,
+  "passes_target": true,
+  "scheduler_wakes": 0,
+  "display_link_ticks": 0,
+  "method": "Three sequential requested 60s process-CPU soaks; actual shipped art, state scheduling isolated to quiescent idle."
+}

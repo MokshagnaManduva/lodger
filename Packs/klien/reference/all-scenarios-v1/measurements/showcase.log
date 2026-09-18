@@ -1,0 +1,44 @@
+pack     : com.mokshagna.klien v0.3.0 — Klien
+state    : idle
+clip     : idle  7 frame(s), loop=forever
+cell     : 128x128 @2x
+hit mask : 43 cells, 128x128, cell 0 has 3445 opaque px
+  idle       initialState     wake in 3.00s      timers=1 link=no  x=735
+
+claim 1  window
+         borderless=true nonactivating=true opaque=false
+         level=3 ignoresMouseEvents=true canBecomeKey=false
+         activationPolicy=accessory (no Dock, no cmd-Tab)
+claim 3  timers
+         pointer monitor installed=false (only if a state reacts to the pointer)
+         live timers now=1  display link=none
+perching
+         mode=off  pack declares windowEdges=true
+         accessibility granted=true  perched=false
+
+pid      : 11103
+verify   : sudo timerfires -p 11103
+CAPTURE_RECT 599,638,272,272
+soaking 38s from state 'idle' ...
+  walking    timeout          wake in 1.80s      timers=1 link=no  x=735
+  turning    timeout          wake in 1.80s      timers=1 link=no  x=735
+  perched    timeout          wake in 3.00s      timers=1 link=no  x=735
+  watching   timeout          wake in 3.00s      timers=1 link=no  x=735
+  startled   timeout          wake in 1.80s      timers=1 link=no  x=735
+  tipping_hat timeout          wake in 1.80s      timers=1 link=no  x=735
+  held       timeout          wake in 1.80s      timers=1 link=no  x=735
+  falling    timeout          wake in 1.80s      timers=1 link=no  x=735
+  landing    timeout          wake in 1.80s      timers=1 link=no  x=735
+  sitting    timeout          wake in 3.00s      timers=1 link=no  x=735
+  sleeping   timeout          wake in 1.80s      timers=1 link=no  x=735
+  asleep     timeout          wake in 3.60s      timers=1 link=no  x=735
+  waking     timeout          wake in 1.80s      timers=1 link=no  x=735
+  sitting_down timeout          wake in 1.80s      timers=1 link=no  x=735
+  sleep_preparing timeout          wake in 1.80s      timers=1 link=no  x=735
+
+CPU used : 0.6467 s over 38.9 s wall  (1.6630% of one core)
+projected: 59.87 s CPU per idle hour  (target < 7 s)
+transitions: 17, scheduler wakes: 17
+display link: starts=0 ticks=0 running=false
+  standing_up timeout          wake in 1.80s      timers=1 link=no  x=735
+window enumerations: 0  (must be 0 outside a drag)

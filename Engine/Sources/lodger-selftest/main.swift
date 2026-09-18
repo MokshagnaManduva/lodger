@@ -430,6 +430,65 @@ do {
           "an attachment drawn away from the body must be clickable")
 } catch { check(false, "pointer hit testing", "\(error)") }
 
+// Asymmetric silhouettes expose mirror bugs that a centered square cannot.
+section("pointer regression: mirroring, frames, velocity and click lifecycle")
+do {
+    var pixels = [Bool](repeating: false, count: 32)
+    pixels[1 * 8 + 1] = true
+    let mask = try HitMask(data: encodeMask([pixels, [Bool](repeating: false, count: 32)], 8, 4))
+    for scale in [CGFloat(1), 2, 3] {
+        let frame = CGRect(x: 100, y: 200, width: 8*scale, height: 4*scale)
+        let top = CGPoint(x: frame.minX, y: frame.maxY)
+        func read(_ x: CGFloat, mirror: Bool, cell: Int = 0) -> Bool {
+            PointerMonitor.read(cursor: CGPoint(x: top.x+x*scale, y: top.y-1.5*scale),
+                frame: frame, cellTopLeft: top, scale: scale,
+                targets: [.init(mask: mask, cell: cell, offset: .zero, mirrored: mirror)]).inside
+        }
+        check(read(1.5, mirror: false) && !read(6.5, mirror: false), "native asymmetry at \(scale)x")
+        check(!read(1.5, mirror: true) && read(6.5, mirror: true), "mirrored mask matches mirrored art at \(scale)x")
+        check(!read(-0.1, mirror: true) && !read(8, mirror: true), "mirrored bounds reject outside pixels at \(scale)x")
+        check(!read(6.5, mirror: true, cell: 1), "hit testing follows changing atlas cells at \(scale)x")
+    }
+    var velocity = PointerVelocity()
+    check(velocity.sample(at: .zero, time: 1) == nil, "first pointer sample cannot startle")
+    check(velocity.sample(at: CGPoint(x: 3, y: 0), time: 1.001) == nil, "high-frequency event accumulates")
+    let speed = velocity.sample(at: CGPoint(x: 15, y: 0), time: 1.005)
+    check(abs((speed ?? 0)-3000)<0.01, "fast mice still produce a speed reading")
+    check(velocity.sample(at: CGPoint(x: 500, y: 0), time: 10) == nil, "first movement after a pause does not imply a fast sweep")
+
+    let view = ClickForwardingView(frame: .zero)
+    var clicks = [Int](), grabs = 0, releases = 0
+    view.onClick = { clicks.append($0) }
+    view.onDragBegin = { _ in grabs += 1 }; view.onDragEnd = { releases += 1 }
+    func event(_ type: NSEvent.EventType, count: Int = 1) -> NSEvent {
+        NSEvent.mouseEvent(with: type, location: .zero, modifierFlags: [], timestamp: 0,
+                          windowNumber: 0, context: nil, eventNumber: 0, clickCount: count, pressure: 0)!
+    }
+    view.mouseDown(with: event(.leftMouseDown))
+    check(clicks.isEmpty, "press does not fire a click before drag intent is known")
+    view.mouseUp(with: event(.leftMouseUp))
+    check(clicks == [1], "release fires exactly one click")
+    view.mouseDown(with: event(.leftMouseDown, count: 2)); view.mouseUp(with: event(.leftMouseUp, count: 2))
+    check(clicks == [1,2], "double-click count survives until release")
+    view.mouseDown(with: event(.leftMouseDown)); view.mouseDragged(with: event(.leftMouseDragged)); view.mouseUp(with: event(.leftMouseUp))
+    check(clicks == [1,2] && grabs == 1 && releases == 1, "drag does not also fire a click")
+    let panel = PetPanel(cellSize: CGSize(width: 8, height: 4), scale: 2)
+    check(panel.acceptsMouseMovedEvents, "local pointer monitor receives mouse-move exits")
+    check(!panel.canBecomeKey && !panel.canBecomeMain && view.acceptsFirstMouse(for: nil),
+          "pet accepts first click without requesting key/main status")
+    let cursor = NSEvent.mouseLocation
+    panel.setFrame(CGRect(x: cursor.x-40, y: cursor.y-10, width: 200, height: 20), display: false)
+    let monitor = PointerMonitor(panel: panel)
+    monitor.interactionFrame = { CGRect(x: cursor.x+30, y: cursor.y-10, width: 20, height: 20) }
+    var readings = [PointerMonitor.Reading]()
+    monitor.onChange = { readings.append($0) }
+    monitor.sample()
+    check(readings.count == 1 && near(readings[0].distance, 30) && !readings[0].inside,
+          "wide walking window uses the current cell for proximity and fallback hits")
+    monitor.sample(notify: false)
+    check(readings.count == 1, "routing refresh does not recursively emit pointer reactions")
+} catch { check(false, "pointer regression", "\(error)") }
+
 // -------------------------------------------------------------------- spring
 section("spring — a float must be able to fall asleep")
 do {
@@ -879,8 +938,29 @@ do {
         body.setFacing(.right, clip: wave)
         check(body.rig.transform.m11 == -1, "facing right mirrors the whole rig",
               "got m11 \(body.rig.transform.m11)")
+        check(body.hitParts { _ in 0 }.allSatisfy { $0.mirrored }, "mirrored layers publish mirrored hit targets")
         body.setFacing(.left, clip: wave)
         check(body.rig.transform.m11 == 1, "and facing left again unmirrors it")
+
+        var document = try JSONSerialization.jsonObject(with: Data(contentsOf: root.appendingPathComponent("pack.json"))) as! [String: Any]
+        var declarations = document["parts"] as! [[String: Any]]
+        declarations[0]["mirrorWithBody"] = false
+        document["parts"] = declarations
+        let counterPack = try JSONDecoder().decode(Pack.self, from: JSONSerialization.data(withJSONObject: document))
+        let counter = Body(pack: counterPack, host: CALayer()) { _ in nil }
+        counter.apply(state: "waving", bodyClip: wave)
+        let part = counter.parts.first { !$0.decl.mirrorWithBody }!
+        let original = part.layer.position.x + 6
+        part.layer.position.x = original
+        counter.setFacing(.right, clip: wave)
+        let reflected = part.layer.position.x
+        counter.setFacing(.right, clip: wave)
+        check(part.layer.position.x == reflected, "repeated facing leaves counter-mirrored parts in place")
+        counter.setFacing(.left, clip: wave)
+        check(part.layer.position.x == original, "counter-mirrored part returns to original position")
+        counter.setFacing(.right, clip: wave)
+        check(counter.hitParts { _ in 0 }.first(where: { $0.texture == part.clip?.texture })?.mirrored == false,
+              "counter-mirrored part keeps an unmirrored hit mask")
 
         // A clip that says its art is not mirrorable must never be flipped.
         let fixed = try JSONDecoder().decode(Pack.Clip.self, from: Data(#"""

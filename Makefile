@@ -1,13 +1,15 @@
 PACK ?= Packs/klien
 PY   ?= python3
 
-.PHONY: help validate validate-dev test audit sketches engine engine-test build-fixture soak proof bench app run all
+.PHONY: help validate validate-dev test audit sketches engine engine-test build-fixture klien-idle klien-animations soak proof bench app run all
 
 help:
 	@echo "make validate      strict pack validation (release gate)"
 	@echo "make validate-dev  validation with missing art as warnings"
 	@echo "make test          negative tests proving each lint check fires"
 	@echo "make sketches      palette + tracing sketches from the raw reference"
+	@echo "make klien-idle    rebuild the archived approved idle artwork"
+	@echo "make klien-animations build all Klien scenarios and animation previews"
 	@echo "make engine        build the engine (debug)"
 	@echo "make engine-test   engine self-tests (no Xcode needed)"
 	@echo "make build-fixture packtool build over the synthetic source pack"
@@ -27,9 +29,22 @@ validate-dev:
 
 test:
 	$(PY) Tools/packtool/test_packtool.py
+	$(PY) Tools/packtool/test_klien_idle.py
+	$(PY) Tools/packtool/test_klien_scenarios.py
 	$(PY) Tools/packtool/packtool.py validate Tests/Fixtures/test.solidsquare --no-assets
 
+klien-idle:
+	$(PY) Tools/packtool/build_klien_idle.py
+	$(PY) Tools/packtool/packtool.py validate Packs/klien
+	$(PY) Tools/packtool/test_klien_idle.py
+
 REF ?= Packs/klien/reference/klien.png
+
+klien-animations:
+	$(PY) Tools/packtool/animate_klien.py --install
+	$(PY) Tools/packtool/packtool.py validate Packs/klien
+	$(PY) Tools/packtool/test_klien_idle.py
+	$(PY) Tools/packtool/test_klien_scenarios.py
 
 sketches:
 	$(PY) Tools/packtool/packtool.py palette $(REF) --colors 26

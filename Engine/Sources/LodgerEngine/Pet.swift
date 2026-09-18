@@ -96,7 +96,7 @@ public final class Pet {
             guard let self, let body = self.body else { return [] }
             return body.hitParts { self.visibleCell(of: $0) }.compactMap { hp in
                 guard let m = self.masks[hp.texture] else { return nil }
-                return PointerMonitor.Target(mask: m, cell: hp.cell, offset: hp.offset)
+                return PointerMonitor.Target(mask: m, cell: hp.cell, offset: hp.offset, mirrored: hp.mirrored)
             }
         }
         let clickView = installClickView()
@@ -178,8 +178,6 @@ public final class Pet {
             masks[name] = try? PackStore(searchPaths: []).hitMask(
                 for: loaded, texture: name) ?? nil
         }
-        // Install the pointer monitor only if some state actually reacts to it.
-        if packUsesPointer { pointer.install() }
 
         // Observers only for what the pack asks for.
         audio.load(pack: loaded.pack, root: loaded.root)
@@ -204,7 +202,18 @@ public final class Pet {
         pointer.cellTopLeft = { [weak self] in self?.cellTopLeftOnScreen() ?? .zero }
         perchTracker.onMoved = { [weak self] c in self?.perchMoved(to: c) }
         perchTracker.onLost = { [weak self] in self?.perchLost() }
+        pointer.interactionFrame = { [weak self] in
+            guard let self else { return .zero }
+            let top = self.cellTopLeftOnScreen()
+            let stage = self.loaded.pack.stage
+            let scale = CGFloat(stage.defaultScale)
+            return CGRect(x: top.x, y: top.y - CGFloat(stage.cell.h) * scale,
+                          width: CGFloat(stage.cell.w) * scale, height: CGFloat(stage.cell.h) * scale)
+        }
         apply(director.start())
+        // Install after layers, masks and callbacks exist; never fall back to a
+        // rectangular hit target during startup.
+        if packUsesPointer { pointer.install() }
     }
 
     public func stop() {
@@ -235,14 +244,26 @@ public final class Pet {
     private func startLink() {
         guard link == nil, let view = panel.contentView else { return }
         let l = view.displayLink(target: self, selector: #selector(tick))
-        // Move the window at the sprite's own frame rate, not the display's.
-        //
-        // Measured: a window move costs ~337 us of app time once the deferred Core
-        // Animation commit is counted, which made 30 Hz locomotion 4.7% of a core.
-        // A pixel-art walk cycle advances at about 9 fps and translates in whole
-        // pixels, so stepping the window in time with the footfalls is both cheaper
-        // and more faithful to the style than smoothly sliding it at display rate.
-        let hz = max(8.0, min(30.0, clipFrameRate))
+        let hz: Double
+        if case .fall = motion.kind {
+            // Falling is physics, not sprite art: gravity integrates every tick
+            // regardless of how many art frames the falling clip has. Pacing the
+            // window move to the clip's own frame rate - the walking-era policy
+            // below - clamped a 140 ms/frame, four-pose falling clip to ~8 Hz of
+            // actual translation, which is the jitter this pack reported. Discrete
+            // pose timing is unaffected: `apply`/`visibleCell` still hold each art
+            // frame for its authored duration, independent of this cadence.
+            hz = 60
+        } else {
+            // Move the window at the sprite's own frame rate, not the display's.
+            //
+            // Measured: a window move costs ~337 us of app time once the deferred
+            // Core Animation commit is counted, which made 30 Hz locomotion 4.7% of
+            // a core. Walking itself now runs in the render server (`beginWalk`
+            // deliberately starts no display link), so this path is left for any
+            // other clip-driven, per-tick motion and keeps its original pacing.
+            hz = max(8.0, min(30.0, clipFrameRate))
+        }
         l.preferredFrameRateRange = CAFrameRateRange(minimum: Float(max(8, hz - 4)),
                                                      maximum: Float(hz),
                                                      preferred: Float(hz))
@@ -405,6 +426,7 @@ public final class Pet {
         }
         rearmIdleWatchers()
         syncDisplayLink()
+        if pointer.installed { pointer.sample(notify: false) }
         onStateChange?(plan, scheduler)
     }
 
@@ -605,6 +627,8 @@ public final class Pet {
     private func context() -> Guard.Context {
         var c = Guard.Context()
         c.pointerDistance = lastDistance.isFinite ? lastDistance : nil
+        c.pointerSide = lastPointerSide
+        c.facing = motion.facing
         c.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
         c.perched = isPerched
         c.edge = isPerched ? .windowTop : .floor
@@ -691,27 +715,25 @@ public final class Pet {
     }
 
     private var lastPointerSide: Guard.Side?
-    private var lastPointerPoint: CGPoint?
+    private var pointerVelocity = PointerVelocity()
     private var lastPointerTime: CFTimeInterval = 0
 
     private func pointerMoved(_ r: PointerMonitor.Reading) {
         lastDistance = r.distance
         lastPointerSide = r.side
 
-        // Cursor speed, derived from events we are already handling. No sampling.
+        // Cursor speed comes only from actual mouse events, never a polling timer.
         let now = CACurrentMediaTime()
-        let here = NSEvent.mouseLocation
-        if let last = lastPointerPoint, lastPointerTime > 0 {
-            let dt = now - lastPointerTime
-            if dt > 0.004 {
-                let d = ((here.x - last.x) * (here.x - last.x)
-                       + (here.y - last.y) * (here.y - last.y)).squareRoot()
-                let speed = d / dt
-                if speed > 1 { send("pointer.fast", value: speed) }
-            }
+        if let speed = pointerVelocity.sample(at: NSEvent.mouseLocation, time: now), speed > 1 {
+            send("pointer.fast", value: speed)
         }
-        lastPointerPoint = here
         lastPointerTime = now
+        if let clip = currentClip,
+           loaded.pack.states[director.current]?.facing == "toPointer",
+           motion.facing != r.side {
+            applyFacing(for: director.current, clip: clip)
+            pointer.sample(notify: false)
+        }
         if r.inside != wasInside {
             wasInside = r.inside
             send(r.inside ? "pointer.enter" : "pointer.exit")
@@ -738,17 +760,23 @@ public final class ClickForwardingView: NSView {
     public var onDrag: ((CGPoint) -> Void)?
     public var onDragEnd: (() -> Void)?
     private var dragging = false
+    private var downPoint = CGPoint.zero
+    private var clickCount = 0
+
+    public override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     public override func mouseDown(with event: NSEvent) {
         dragging = false
-        onClick?(event.clickCount)
+        downPoint = NSEvent.mouseLocation
+        clickCount = event.clickCount
     }
     public override func mouseDragged(with event: NSEvent) {
         let p = NSEvent.mouseLocation
-        if !dragging { dragging = true; onDragBegin?(p) }
+        if !dragging { dragging = true; onDragBegin?(downPoint) }
         onDrag?(p)
     }
     public override func mouseUp(with event: NSEvent) {
         if dragging { dragging = false; onDragEnd?() }
+        else { onClick?(clickCount) }
     }
 }

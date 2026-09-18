@@ -43,14 +43,16 @@ def expect(name: str, rep: packtool.Report, needle: str, kind: str = "error") ->
 
 
 def main() -> int:
-    base = json.loads((KLIEN / "pack.json").read_text())
+    # The full blueprint exercises walk, sleep, sockets and audio. Keep those
+    # negative tests independent of the smaller playable idle milestone.
+    base = json.loads((KLIEN / "reference/planned-pack.json").read_text())
     minimal = json.loads((MIN / "pack.json").read_text())
     ok = True
 
     print("baseline")
     rep = run(copy.deepcopy(base), KLIEN)
     good = not rep.errors
-    print(f"  {'PASS' if good else 'FAIL'}  klien manifest is clean (assets aside)")
+    print(f"  {'PASS' if good else 'FAIL'}  full Klien blueprint is clean (assets aside)")
     if not good:
         for e in rep.errors:
             print(f"        - {e}")

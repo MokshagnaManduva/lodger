@@ -2,16 +2,15 @@
   "format": 1,
   "engineMin": "1.0.0",
   "requires": [
-    "audio",
     "windowEdges"
   ],
   "identity": {
     "id": "com.mokshagna.klien",
     "name": "Klien",
-    "version": "0.1.0",
+    "version": "0.4.0",
     "author": "Mokshagna",
     "license": "CC-BY-NC-4.0",
-    "description": "A small gentleman in a top hat and cape, with a cane and a leaf-wrapped dumpling that follows him around.",
+    "description": "Klien: a golden sun-emblem toss, compact walking, hat tips, reactions, sitting and sleep/wake animations.",
     "preview": "preview.png"
   },
   "stage": {
@@ -30,148 +29,382 @@
       2,
       3
     ],
-    "defaultScale": 2,
+    "defaultScale": 1,
     "defaultFrameMs": 250
   },
   "textures": {
     "body": {
+      "preload": true,
       "file": "atlas/body.png",
       "columns": 8,
-      "rows": 8,
-      "preload": true
-    },
-    "body_alt": {
-      "file": "atlas/body_alt.png",
-      "columns": 8,
-      "rows": 4
-    },
-    "cane": {
-      "file": "atlas/cane.png",
-      "columns": 8,
-      "rows": 2
-    },
-    "dumpling": {
-      "file": "atlas/dumpling.png",
-      "columns": 4,
-      "rows": 2,
-      "preload": true
-    },
-    "face": {
-      "file": "atlas/face.png",
-      "columns": 4,
-      "rows": 1,
-      "preload": true
+      "rows": 7
     }
   },
   "clips": {
     "idle": {
       "texture": "body",
-      "loop": "pingpong",
+      "loop": "forever",
       "frames": [
         {
           "cell": 0,
-          "ms": 900,
+          "ms": 400,
           "anchors": {
             "hand": {
-              "x": 92,
-              "y": 74
+              "x": 81,
+              "y": 93
             },
-            "orbit": {
-              "x": 34,
-              "y": 52
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 3,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 0,
+          "ms": 380,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
             }
           }
         },
         {
           "cell": 1,
-          "ms": 260,
+          "ms": 250,
           "anchors": {
             "hand": {
-              "x": 92,
-              "y": 75
+              "x": 81,
+              "y": 93
             },
-            "orbit": {
-              "x": 34,
-              "y": 53
+            "emblem": {
+              "x": 38,
+              "y": 71
             }
           }
         },
         {
           "cell": 2,
-          "ms": 260,
+          "ms": 300,
           "anchors": {
             "hand": {
-              "x": 92,
-              "y": 75
+              "x": 81,
+              "y": 93
             },
-            "orbit": {
-              "x": 34,
-              "y": 54
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 1,
+          "ms": 250,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 0,
+          "ms": 1300,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
             }
           }
         }
       ]
     },
+    "toss_emblem": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 46,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 73
+            }
+          }
+        },
+        {
+          "cell": 47,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 37,
+              "y": 64
+            }
+          }
+        },
+        {
+          "cell": 48,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 35,
+              "y": 57
+            }
+          }
+        },
+        {
+          "cell": 49,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 33,
+              "y": 53
+            }
+          }
+        },
+        {
+          "cell": 50,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 32,
+              "y": 51
+            }
+          }
+        },
+        {
+          "cell": 51,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 32,
+              "y": 51
+            }
+          }
+        },
+        {
+          "cell": 52,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 33,
+              "y": 53
+            }
+          }
+        },
+        {
+          "cell": 53,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 35,
+              "y": 57
+            }
+          }
+        },
+        {
+          "cell": 54,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 37,
+              "y": 64
+            }
+          }
+        },
+        {
+          "cell": 55,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 72
+            }
+          }
+        },
+        {
+          "cell": 0,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        }
+      ],
+      "anchorJumpLimit": 10
+    },
     "walk": {
       "texture": "body",
       "loop": "forever",
-      "mirrorable": true,
       "frames": [
         {
-          "cell": 8,
-          "ms": 110,
-          "sound": "step",
+          "cell": 4,
+          "ms": 120,
           "anchors": {
             "hand": {
-              "x": 93,
-              "y": 73
+              "x": 81,
+              "y": 93
             },
-            "orbit": {
-              "x": 33,
-              "y": 50
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 5,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 6,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 7,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 8,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
             }
           }
         },
         {
           "cell": 9,
-          "ms": 110,
+          "ms": 120,
           "anchors": {
             "hand": {
-              "x": 94,
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
               "y": 71
-            },
-            "orbit": {
-              "x": 33,
-              "y": 49
-            }
-          }
-        },
-        {
-          "cell": 10,
-          "ms": 110,
-          "sound": "step",
-          "anchors": {
-            "hand": {
-              "x": 93,
-              "y": 73
-            },
-            "orbit": {
-              "x": 34,
-              "y": 50
-            }
-          }
-        },
-        {
-          "cell": 11,
-          "ms": 110,
-          "anchors": {
-            "hand": {
-              "x": 92,
-              "y": 75
-            },
-            "orbit": {
-              "x": 35,
-              "y": 52
             }
           }
         }
@@ -179,47 +412,123 @@
     },
     "turn": {
       "texture": "body",
-      "anchorJumpLimit": 16,
+      "loop": "none",
       "frames": [
         {
-          "cell": 16,
-          "ms": 90,
+          "cell": 0,
+          "ms": 80,
           "anchors": {
             "hand": {
-              "x": 88,
-              "y": 74
+              "x": 81,
+              "y": 93
             },
-            "orbit": {
-              "x": 40,
-              "y": 52
+            "emblem": {
+              "x": 38,
+              "y": 71
             }
           }
         },
         {
-          "cell": 17,
-          "ms": 90,
+          "cell": 10,
+          "ms": 100,
           "anchors": {
             "hand": {
-              "x": 76,
-              "y": 74
+              "x": 81,
+              "y": 93
             },
-            "orbit": {
-              "x": 52,
-              "y": 52
+            "emblem": {
+              "x": 38,
+              "y": 71
             }
           }
         },
         {
-          "cell": 18,
+          "cell": 11,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 12,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 0,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        }
+      ]
+    },
+    "watch": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 44,
+          "ms": 1200,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 45,
           "ms": 120,
           "anchors": {
             "hand": {
-              "x": 64,
-              "y": 74
+              "x": 81,
+              "y": 93
             },
-            "orbit": {
-              "x": 64,
-              "y": 52
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        },
+        {
+          "cell": 44,
+          "ms": 1680,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
             }
           }
         }
@@ -227,61 +536,173 @@
     },
     "tip_hat": {
       "texture": "body",
+      "loop": "none",
       "frames": [
         {
-          "cell": 24,
-          "ms": 120,
-          "sound": "hat",
+          "cell": 0,
+          "ms": 100,
           "anchors": {
             "hand": {
-              "x": 92,
-              "y": 74
+              "x": 81,
+              "y": 93
             },
-            "orbit": {
-              "x": 34,
-              "y": 50
+            "emblem": {
+              "x": 38,
+              "y": 71
             }
           }
         },
         {
-          "cell": 25,
+          "cell": 13,
+          "ms": 80,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 39,
+              "y": 65
+            }
+          }
+        },
+        {
+          "cell": 14,
+          "ms": 80,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 40,
+              "y": 58
+            }
+          }
+        },
+        {
+          "cell": 15,
+          "ms": 80,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 41,
+              "y": 51
+            }
+          }
+        },
+        {
+          "cell": 16,
+          "ms": 140,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 41,
+              "y": 45
+            }
+          }
+        },
+        {
+          "cell": 17,
           "ms": 160,
           "anchors": {
             "hand": {
-              "x": 92,
-              "y": 74
+              "x": 81,
+              "y": 94
             },
-            "orbit": {
-              "x": 34,
+            "emblem": {
+              "x": 41,
               "y": 46
             }
           }
         },
         {
-          "cell": 26,
-          "ms": 220,
+          "cell": 18,
+          "ms": 300,
           "anchors": {
             "hand": {
-              "x": 92,
-              "y": 74
+              "x": 81,
+              "y": 96
             },
-            "orbit": {
-              "x": 34,
-              "y": 44
+            "emblem": {
+              "x": 41,
+              "y": 48
             }
           }
         },
         {
-          "cell": 27,
+          "cell": 19,
           "ms": 160,
           "anchors": {
             "hand": {
-              "x": 92,
-              "y": 74
+              "x": 81,
+              "y": 94
             },
-            "orbit": {
-              "x": 34,
-              "y": 48
+            "emblem": {
+              "x": 41,
+              "y": 46
+            }
+          }
+        },
+        {
+          "cell": 15,
+          "ms": 80,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 41,
+              "y": 51
+            }
+          }
+        },
+        {
+          "cell": 14,
+          "ms": 80,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 40,
+              "y": 58
+            }
+          }
+        },
+        {
+          "cell": 13,
+          "ms": 80,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 39,
+              "y": 65
+            }
+          }
+        },
+        {
+          "cell": 0,
+          "ms": 160,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
             }
           }
         }
@@ -289,46 +710,61 @@
     },
     "startle": {
       "texture": "body",
+      "loop": "none",
       "frames": [
         {
-          "cell": 32,
-          "ms": 70,
+          "cell": 20,
+          "ms": 80,
           "anchors": {
             "hand": {
-              "x": 95,
-              "y": 70
+              "x": 81,
+              "y": 92
             },
-            "orbit": {
-              "x": 28,
-              "y": 42
+            "emblem": {
+              "x": 45,
+              "y": 77
             }
           }
         },
         {
-          "cell": 33,
-          "ms": 90,
+          "cell": 21,
+          "ms": 120,
           "anchors": {
             "hand": {
-              "x": 95,
-              "y": 71
+              "x": 81,
+              "y": 91
             },
-            "orbit": {
-              "x": 29,
-              "y": 44
+            "emblem": {
+              "x": 45,
+              "y": 76
             }
           }
         },
         {
-          "cell": 34,
+          "cell": 22,
+          "ms": 160,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 45,
+              "y": 78
+            }
+          }
+        },
+        {
+          "cell": 0,
           "ms": 140,
           "anchors": {
             "hand": {
-              "x": 93,
-              "y": 73
+              "x": 81,
+              "y": 93
             },
-            "orbit": {
-              "x": 32,
-              "y": 48
+            "emblem": {
+              "x": 38,
+              "y": 71
             }
           }
         }
@@ -336,33 +772,61 @@
     },
     "grabbed": {
       "texture": "body",
-      "loop": "pingpong",
+      "loop": "forever",
       "frames": [
         {
-          "cell": 40,
-          "ms": 140,
+          "cell": 23,
+          "ms": 180,
           "anchors": {
             "hand": {
-              "x": 96,
-              "y": 82
+              "x": 81,
+              "y": 90
             },
-            "orbit": {
-              "x": 30,
+            "emblem": {
+              "x": 38,
               "y": 60
             }
           }
         },
         {
-          "cell": 41,
-          "ms": 140,
+          "cell": 24,
+          "ms": 180,
           "anchors": {
             "hand": {
-              "x": 98,
-              "y": 84
+              "x": 81,
+              "y": 90
             },
-            "orbit": {
-              "x": 28,
-              "y": 62
+            "emblem": {
+              "x": 38,
+              "y": 60
+            }
+          }
+        },
+        {
+          "cell": 25,
+          "ms": 180,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 90
+            },
+            "emblem": {
+              "x": 38,
+              "y": 60
+            }
+          }
+        },
+        {
+          "cell": 26,
+          "ms": 180,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 90
+            },
+            "emblem": {
+              "x": 38,
+              "y": 60
             }
           }
         }
@@ -373,30 +837,58 @@
       "loop": "forever",
       "frames": [
         {
-          "cell": 48,
-          "ms": 120,
+          "cell": 27,
+          "ms": 140,
           "anchors": {
             "hand": {
-              "x": 97,
-              "y": 80
+              "x": 81,
+              "y": 88
             },
-            "orbit": {
-              "x": 26,
-              "y": 56
+            "emblem": {
+              "x": 38,
+              "y": 58
             }
           }
         },
         {
-          "cell": 49,
-          "ms": 120,
+          "cell": 28,
+          "ms": 140,
           "anchors": {
             "hand": {
-              "x": 99,
-              "y": 78
+              "x": 81,
+              "y": 88
             },
-            "orbit": {
-              "x": 24,
-              "y": 54
+            "emblem": {
+              "x": 38,
+              "y": 58
+            }
+          }
+        },
+        {
+          "cell": 29,
+          "ms": 140,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 88
+            },
+            "emblem": {
+              "x": 38,
+              "y": 58
+            }
+          }
+        },
+        {
+          "cell": 28,
+          "ms": 140,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 88
+            },
+            "emblem": {
+              "x": 38,
+              "y": 58
             }
           }
         }
@@ -404,273 +896,596 @@
     },
     "land": {
       "texture": "body",
+      "loop": "none",
       "frames": [
         {
-          "cell": 50,
-          "ms": 70,
-          "anchors": {
-            "hand": {
-              "x": 90,
-              "y": 84
-            },
-            "orbit": {
-              "x": 32,
-              "y": 64
-            }
-          }
-        },
-        {
-          "cell": 51,
+          "cell": 30,
           "ms": 90,
           "anchors": {
             "hand": {
-              "x": 91,
-              "y": 78
+              "x": 81,
+              "y": 99
             },
-            "orbit": {
-              "x": 33,
-              "y": 56
+            "emblem": {
+              "x": 45,
+              "y": 84
             }
           }
         },
         {
-          "cell": 52,
+          "cell": 31,
+          "ms": 100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 96
+            },
+            "emblem": {
+              "x": 41,
+              "y": 78
+            }
+          }
+        },
+        {
+          "cell": 32,
           "ms": 120,
           "anchors": {
             "hand": {
-              "x": 92,
-              "y": 75
+              "x": 81,
+              "y": 94
             },
-            "orbit": {
-              "x": 34,
-              "y": 52
+            "emblem": {
+              "x": 38,
+              "y": 72
+            }
+          }
+        },
+        {
+          "cell": 0,
+          "ms": 180,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
             }
           }
         }
       ]
     },
-    "sit": {
-      "texture": "body_alt",
-      "loop": "pingpong",
+    "sit_down": {
+      "texture": "body",
+      "loop": "none",
       "frames": [
         {
           "cell": 0,
-          "ms": 1200,
+          "ms": 100,
           "anchors": {
             "hand": {
-              "x": 90,
-              "y": 92
+              "x": 81,
+              "y": 93
             },
-            "orbit": {
-              "x": 36,
-              "y": 70
+            "emblem": {
+              "x": 38,
+              "y": 71
             }
           }
         },
         {
-          "cell": 1,
-          "ms": 1200,
+          "cell": 43,
+          "ms": 120,
           "anchors": {
             "hand": {
-              "x": 90,
+              "x": 81,
+              "y": 96
+            },
+            "emblem": {
+              "x": 41,
+              "y": 78
+            }
+          }
+        },
+        {
+          "cell": 42,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 99
+            },
+            "emblem": {
+              "x": 44,
+              "y": 86
+            }
+          }
+        },
+        {
+          "cell": 41,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 102
+            },
+            "emblem": {
+              "x": 47,
+              "y": 94
+            }
+          }
+        },
+        {
+          "cell": 33,
+          "ms": 200,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 105
+            },
+            "emblem": {
+              "x": 49,
+              "y": 101
+            }
+          }
+        }
+      ],
+      "anchorJumpLimit": 10
+    },
+    "stand_up": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 33,
+          "ms": 140,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 105
+            },
+            "emblem": {
+              "x": 49,
+              "y": 101
+            }
+          }
+        },
+        {
+          "cell": 41,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 102
+            },
+            "emblem": {
+              "x": 47,
+              "y": 94
+            }
+          }
+        },
+        {
+          "cell": 42,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 99
+            },
+            "emblem": {
+              "x": 44,
+              "y": 86
+            }
+          }
+        },
+        {
+          "cell": 43,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 96
+            },
+            "emblem": {
+              "x": 41,
+              "y": 78
+            }
+          }
+        },
+        {
+          "cell": 0,
+          "ms": 160,
+          "anchors": {
+            "hand": {
+              "x": 81,
               "y": 93
             },
-            "orbit": {
-              "x": 36,
-              "y": 72
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
+        }
+      ],
+      "anchorJumpLimit": 10
+    },
+    "sit": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 33,
+          "ms": 1100,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 105
+            },
+            "emblem": {
+              "x": 49,
+              "y": 101
+            }
+          }
+        },
+        {
+          "cell": 35,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 105
+            },
+            "emblem": {
+              "x": 49,
+              "y": 101
+            }
+          }
+        },
+        {
+          "cell": 33,
+          "ms": 480,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 105
+            },
+            "emblem": {
+              "x": 49,
+              "y": 101
+            }
+          }
+        },
+        {
+          "cell": 34,
+          "ms": 600,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 104
+            },
+            "emblem": {
+              "x": 49,
+              "y": 100
+            }
+          }
+        },
+        {
+          "cell": 33,
+          "ms": 700,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 105
+            },
+            "emblem": {
+              "x": 49,
+              "y": 101
+            }
+          }
+        }
+      ]
+    },
+    "perch": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 39,
+          "ms": 1600,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 105
+            },
+            "emblem": {
+              "x": 49,
+              "y": 101
+            }
+          }
+        },
+        {
+          "cell": 40,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 105
+            },
+            "emblem": {
+              "x": 49,
+              "y": 101
+            }
+          }
+        },
+        {
+          "cell": 39,
+          "ms": 1280,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 105
+            },
+            "emblem": {
+              "x": 49,
+              "y": 101
             }
           }
         }
       ]
     },
     "sleep_in": {
-      "texture": "body_alt",
+      "texture": "body",
+      "loop": "none",
       "frames": [
         {
-          "cell": 8,
+          "cell": 33,
           "ms": 300,
           "anchors": {
-            "orbit": {
-              "x": 36,
-              "y": 68
+            "hand": {
+              "x": 81,
+              "y": 105
+            },
+            "emblem": {
+              "x": 49,
+              "y": 101
             }
           }
         },
         {
-          "cell": 9,
-          "ms": 300,
+          "cell": 36,
+          "ms": 500,
           "anchors": {
-            "orbit": {
-              "x": 36,
-              "y": 66
+            "hand": {
+              "x": 81,
+              "y": 105
+            },
+            "emblem": {
+              "x": 49,
+              "y": 101
             }
           }
         },
         {
-          "cell": 10,
-          "ms": 400,
+          "cell": 37,
+          "ms": 600,
           "anchors": {
-            "orbit": {
-              "x": 36,
-              "y": 66
+            "hand": {
+              "x": 81,
+              "y": 106
+            },
+            "emblem": {
+              "x": 49,
+              "y": 102
             }
           }
         }
       ]
     },
     "sleep": {
-      "texture": "body_alt",
-      "loop": "pingpong",
+      "texture": "body",
+      "loop": "forever",
       "frames": [
         {
-          "cell": 12,
-          "ms": 1600,
+          "cell": 37,
+          "ms": 1800,
           "anchors": {
-            "orbit": {
-              "x": 36,
-              "y": 66
+            "hand": {
+              "x": 81,
+              "y": 106
+            },
+            "emblem": {
+              "x": 49,
+              "y": 102
             }
           }
         },
         {
-          "cell": 13,
-          "ms": 1600,
+          "cell": 38,
+          "ms": 1800,
           "anchors": {
-            "orbit": {
-              "x": 36,
-              "y": 68
+            "hand": {
+              "x": 81,
+              "y": 105
+            },
+            "emblem": {
+              "x": 49,
+              "y": 101
             }
           }
         }
       ]
     },
     "wake": {
-      "texture": "body_alt",
+      "texture": "body",
+      "loop": "none",
       "frames": [
         {
-          "cell": 16,
-          "ms": 220,
+          "cell": 37,
+          "ms": 200,
           "anchors": {
             "hand": {
-              "x": 89,
-              "y": 88
+              "x": 81,
+              "y": 106
             },
-            "orbit": {
-              "x": 36,
-              "y": 64
+            "emblem": {
+              "x": 49,
+              "y": 102
             }
           }
         },
         {
-          "cell": 17,
-          "ms": 220,
+          "cell": 36,
+          "ms": 200,
           "anchors": {
             "hand": {
-              "x": 91,
-              "y": 81
+              "x": 81,
+              "y": 105
             },
-            "orbit": {
-              "x": 35,
-              "y": 58
+            "emblem": {
+              "x": 49,
+              "y": 101
             }
           }
         },
         {
-          "cell": 18,
-          "ms": 260,
+          "cell": 33,
+          "ms": 300,
           "anchors": {
             "hand": {
-              "x": 92,
-              "y": 75
+              "x": 81,
+              "y": 105
             },
-            "orbit": {
-              "x": 34,
-              "y": 52
+            "emblem": {
+              "x": 49,
+              "y": 101
             }
           }
-        }
-      ]
-    },
-    "cane_hold": {
-      "texture": "cane",
-      "frames": [
-        {
-          "cell": 0
-        }
-      ]
-    },
-    "cane_walk": {
-      "texture": "cane",
-      "loop": "forever",
-      "frames": [
-        {
-          "cell": 1,
-          "ms": 110
         },
         {
-          "cell": 2,
-          "ms": 110
+          "cell": 41,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 102
+            },
+            "emblem": {
+              "x": 47,
+              "y": 94
+            }
+          }
         },
         {
-          "cell": 3,
-          "ms": 110
+          "cell": 42,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 99
+            },
+            "emblem": {
+              "x": 44,
+              "y": 86
+            }
+          }
         },
         {
-          "cell": 4,
-          "ms": 110
-        }
-      ]
-    },
-    "dumpling_idle": {
-      "texture": "dumpling",
-      "loop": "pingpong",
-      "frames": [
+          "cell": 43,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 96
+            },
+            "emblem": {
+              "x": 41,
+              "y": 78
+            }
+          }
+        },
         {
           "cell": 0,
-          "ms": 400
-        },
-        {
-          "cell": 1,
-          "ms": 400
+          "ms": 200,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
         }
-      ]
-    },
-    "dumpling_squash": {
-      "texture": "dumpling",
-      "frames": [
-        {
-          "cell": 4,
-          "ms": 80
-        },
-        {
-          "cell": 5,
-          "ms": 120
-        }
-      ]
+      ],
+      "anchorJumpLimit": 10
     },
     "blink": {
-      "texture": "face",
+      "texture": "body",
       "loop": "none",
       "frames": [
         {
           "cell": 0,
-          "ms": 60
+          "ms": 60,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
         },
         {
-          "cell": 1,
-          "ms": 60
+          "cell": 3,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
         },
         {
           "cell": 0,
-          "ms": 60
+          "ms": 60,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
         }
       ]
     },
     "eyes_shut": {
-      "texture": "face",
+      "texture": "body",
+      "loop": "forever",
       "frames": [
         {
-          "cell": 2
+          "cell": 3,
+          "ms": 1500,
+          "anchors": {
+            "hand": {
+              "x": 81,
+              "y": 93
+            },
+            "emblem": {
+              "x": 38,
+              "y": 71
+            }
+          }
         }
       ]
     }
@@ -680,65 +1495,6 @@
       "name": "body",
       "bind": {
         "mode": "body"
-      }
-    },
-    {
-      "name": "face",
-      "z": 10,
-      "hitTest": false,
-      "hiddenIn": [
-        "sleeping",
-        "asleep"
-      ],
-      "bind": {
-        "mode": "overlay",
-        "parent": "body",
-        "clip": "blink"
-      }
-    },
-    {
-      "name": "cane",
-      "z": 5,
-      "hiddenIn": [
-        "sleeping",
-        "asleep"
-      ],
-      "bind": {
-        "mode": "socket",
-        "parent": "body",
-        "anchor": "hand",
-        "frames": "parent",
-        "offset": {
-          "x": 0,
-          "y": -2
-        }
-      }
-    },
-    {
-      "name": "dumpling",
-      "z": -1,
-      "mirrorWithBody": true,
-      "bind": {
-        "mode": "float",
-        "parent": "body",
-        "anchor": "orbit",
-        "clip": "dumpling_idle",
-        "rest": {
-          "x": 0,
-          "y": 0
-        },
-        "stiffness": 90,
-        "damping": 11,
-        "mass": 1.0,
-        "lag": 0.09,
-        "maxOffset": 12,
-        "sleepThreshold": 0.15,
-        "bob": {
-          "amplitudeX": 1,
-          "amplitudeY": 3,
-          "periodMs": 2600,
-          "phase": 0.25
-        }
       }
     }
   ],
@@ -756,7 +1512,7 @@
       "next": [
         {
           "state": "idle",
-          "weight": 40
+          "weight": 25
         },
         {
           "state": "walking",
@@ -767,11 +1523,15 @@
           "weight": 10
         },
         {
-          "state": "sitting",
+          "state": "sitting_down",
           "weight": 15,
           "when": {
             "random": 0.5
           }
+        },
+        {
+          "state": "toss_emblem",
+          "weight": 15
         }
       ],
       "interrupts": [
@@ -785,7 +1545,13 @@
           "on": {
             "pointer.fast": 1400
           },
-          "state": "startled"
+          "state": "startled",
+          "when": {
+            "pointerDistance": {
+              "op": "lte",
+              "px": 60
+            }
+          }
         },
         {
           "on": "pointer.grab",
@@ -799,13 +1565,13 @@
           "on": {
             "user.idle": 300
           },
-          "state": "sleeping"
+          "state": "sleep_preparing"
         },
         {
           "on": {
             "power.lowPowerMode": true
           },
-          "state": "sitting"
+          "state": "sitting_down"
         },
         {
           "on": "perch.acquired",
@@ -878,7 +1644,7 @@
       ]
     },
     "perched": {
-      "clip": "sit",
+      "clip": "perch",
       "surface": "windowTop",
       "duration": {
         "minMs": 6000,
@@ -891,7 +1657,7 @@
           "weight": 70
         },
         {
-          "state": "walking",
+          "state": "standing_up",
           "weight": 30,
           "when": {
             "perched": true
@@ -909,7 +1675,7 @@
         },
         {
           "on": "pointer.click",
-          "state": "tipping_hat"
+          "state": "standing_up"
         },
         {
           "on": {
@@ -920,7 +1686,7 @@
       ]
     },
     "watching": {
-      "clip": "idle",
+      "clip": "watch",
       "facing": "toPointer",
       "duration": {
         "minMs": 1200,
@@ -951,6 +1717,22 @@
         {
           "on": "perch.lost",
           "state": "falling"
+        },
+        {
+          "on": "pointer.click",
+          "state": "tipping_hat"
+        },
+        {
+          "on": {
+            "pointer.fast": 1400
+          },
+          "state": "startled",
+          "when": {
+            "pointerDistance": {
+              "op": "lte",
+              "px": 60
+            }
+          }
         }
       ]
     },
@@ -1025,7 +1807,7 @@
       },
       "next": [
         {
-          "state": "idle",
+          "state": "standing_up",
           "weight": 60
         },
         {
@@ -1049,7 +1831,7 @@
       "interrupts": [
         {
           "on": "pointer.click",
-          "state": "idle"
+          "state": "standing_up"
         },
         {
           "on": "pointer.grab",
@@ -1108,16 +1890,96 @@
           "weight": 100
         }
       ]
-    }
-  },
-  "sounds": {
-    "step": {
-      "file": "audio/step.wav",
-      "volume": 0.15
     },
-    "hat": {
-      "file": "audio/hat.wav",
-      "volume": 0.4
+    "sitting_down": {
+      "clip": "sit_down",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "sitting",
+          "weight": 100
+        }
+      ]
+    },
+    "sleep_preparing": {
+      "clip": "sit_down",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "sleeping",
+          "weight": 100
+        }
+      ]
+    },
+    "standing_up": {
+      "clip": "stand_up",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 100
+        }
+      ]
+    },
+    "toss_emblem": {
+      "clip": "toss_emblem",
+      "motion": "none",
+      "surface": "floor",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 100
+        }
+      ],
+      "interrupts": [
+        {
+          "on": {
+            "pointer.near": 60
+          },
+          "state": "watching"
+        },
+        {
+          "on": {
+            "pointer.fast": 1400
+          },
+          "state": "startled",
+          "when": {
+            "pointerDistance": {
+              "op": "lte",
+              "px": 60
+            }
+          }
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "pointer.click",
+          "state": "tipping_hat"
+        },
+        {
+          "on": {
+            "user.idle": 300
+          },
+          "state": "sleep_preparing"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "sitting_down"
+        },
+        {
+          "on": "perch.acquired",
+          "state": "perched"
+        },
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        }
+      ]
     }
   },
   "tuning": {
@@ -1133,5 +1995,8 @@
       "max": 120,
       "default": 5
     }
+  },
+  "hitMasks": {
+    "body": "masks/body.mask"
   }
 }

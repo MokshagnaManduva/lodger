@@ -1,0 +1,9 @@
+GIMP Palette
+Name: Sun emblem gold extension
+Columns: 5
+# Body palette remains unchanged. Native gold ramp for sun-emblem.tiff.
+ 92  59  23  #5C3B17
+159 108  35  #9F6C23
+219 166  57  #DBA639
+250 211 103  #FAD367
+255 238 172  #FFEEAC

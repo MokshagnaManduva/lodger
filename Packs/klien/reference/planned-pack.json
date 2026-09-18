@@ -1,0 +1,1137 @@
+{
+  "format": 1,
+  "engineMin": "1.0.0",
+  "requires": [
+    "audio",
+    "windowEdges"
+  ],
+  "identity": {
+    "id": "com.mokshagna.klien",
+    "name": "Klien",
+    "version": "0.1.0",
+    "author": "Mokshagna",
+    "license": "CC-BY-NC-4.0",
+    "description": "A small gentleman in a top hat and cape, with a cane and a leaf-wrapped dumpling that follows him around.",
+    "preview": "preview.png"
+  },
+  "stage": {
+    "cell": {
+      "w": 128,
+      "h": 128
+    },
+    "bodyHeight": 96,
+    "ground": {
+      "x": 64,
+      "y": 120
+    },
+    "pixelPerfect": true,
+    "scaleSteps": [
+      1,
+      2,
+      3
+    ],
+    "defaultScale": 2,
+    "defaultFrameMs": 250
+  },
+  "textures": {
+    "body": {
+      "file": "atlas/body.png",
+      "columns": 8,
+      "rows": 8,
+      "preload": true
+    },
+    "body_alt": {
+      "file": "atlas/body_alt.png",
+      "columns": 8,
+      "rows": 4
+    },
+    "cane": {
+      "file": "atlas/cane.png",
+      "columns": 8,
+      "rows": 2
+    },
+    "dumpling": {
+      "file": "atlas/dumpling.png",
+      "columns": 4,
+      "rows": 2,
+      "preload": true
+    },
+    "face": {
+      "file": "atlas/face.png",
+      "columns": 4,
+      "rows": 1,
+      "preload": true
+    }
+  },
+  "clips": {
+    "idle": {
+      "texture": "body",
+      "loop": "pingpong",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 900,
+          "anchors": {
+            "hand": {
+              "x": 92,
+              "y": 74
+            },
+            "orbit": {
+              "x": 34,
+              "y": 52
+            }
+          }
+        },
+        {
+          "cell": 1,
+          "ms": 260,
+          "anchors": {
+            "hand": {
+              "x": 92,
+              "y": 75
+            },
+            "orbit": {
+              "x": 34,
+              "y": 53
+            }
+          }
+        },
+        {
+          "cell": 2,
+          "ms": 260,
+          "anchors": {
+            "hand": {
+              "x": 92,
+              "y": 75
+            },
+            "orbit": {
+              "x": 34,
+              "y": 54
+            }
+          }
+        }
+      ]
+    },
+    "walk": {
+      "texture": "body",
+      "loop": "forever",
+      "mirrorable": true,
+      "frames": [
+        {
+          "cell": 8,
+          "ms": 110,
+          "sound": "step",
+          "anchors": {
+            "hand": {
+              "x": 93,
+              "y": 73
+            },
+            "orbit": {
+              "x": 33,
+              "y": 50
+            }
+          }
+        },
+        {
+          "cell": 9,
+          "ms": 110,
+          "anchors": {
+            "hand": {
+              "x": 94,
+              "y": 71
+            },
+            "orbit": {
+              "x": 33,
+              "y": 49
+            }
+          }
+        },
+        {
+          "cell": 10,
+          "ms": 110,
+          "sound": "step",
+          "anchors": {
+            "hand": {
+              "x": 93,
+              "y": 73
+            },
+            "orbit": {
+              "x": 34,
+              "y": 50
+            }
+          }
+        },
+        {
+          "cell": 11,
+          "ms": 110,
+          "anchors": {
+            "hand": {
+              "x": 92,
+              "y": 75
+            },
+            "orbit": {
+              "x": 35,
+              "y": 52
+            }
+          }
+        }
+      ]
+    },
+    "turn": {
+      "texture": "body",
+      "anchorJumpLimit": 16,
+      "frames": [
+        {
+          "cell": 16,
+          "ms": 90,
+          "anchors": {
+            "hand": {
+              "x": 88,
+              "y": 74
+            },
+            "orbit": {
+              "x": 40,
+              "y": 52
+            }
+          }
+        },
+        {
+          "cell": 17,
+          "ms": 90,
+          "anchors": {
+            "hand": {
+              "x": 76,
+              "y": 74
+            },
+            "orbit": {
+              "x": 52,
+              "y": 52
+            }
+          }
+        },
+        {
+          "cell": 18,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 64,
+              "y": 74
+            },
+            "orbit": {
+              "x": 64,
+              "y": 52
+            }
+          }
+        }
+      ]
+    },
+    "tip_hat": {
+      "texture": "body",
+      "frames": [
+        {
+          "cell": 24,
+          "ms": 120,
+          "sound": "hat",
+          "anchors": {
+            "hand": {
+              "x": 92,
+              "y": 74
+            },
+            "orbit": {
+              "x": 34,
+              "y": 50
+            }
+          }
+        },
+        {
+          "cell": 25,
+          "ms": 160,
+          "anchors": {
+            "hand": {
+              "x": 92,
+              "y": 74
+            },
+            "orbit": {
+              "x": 34,
+              "y": 46
+            }
+          }
+        },
+        {
+          "cell": 26,
+          "ms": 220,
+          "anchors": {
+            "hand": {
+              "x": 92,
+              "y": 74
+            },
+            "orbit": {
+              "x": 34,
+              "y": 44
+            }
+          }
+        },
+        {
+          "cell": 27,
+          "ms": 160,
+          "anchors": {
+            "hand": {
+              "x": 92,
+              "y": 74
+            },
+            "orbit": {
+              "x": 34,
+              "y": 48
+            }
+          }
+        }
+      ]
+    },
+    "startle": {
+      "texture": "body",
+      "frames": [
+        {
+          "cell": 32,
+          "ms": 70,
+          "anchors": {
+            "hand": {
+              "x": 95,
+              "y": 70
+            },
+            "orbit": {
+              "x": 28,
+              "y": 42
+            }
+          }
+        },
+        {
+          "cell": 33,
+          "ms": 90,
+          "anchors": {
+            "hand": {
+              "x": 95,
+              "y": 71
+            },
+            "orbit": {
+              "x": 29,
+              "y": 44
+            }
+          }
+        },
+        {
+          "cell": 34,
+          "ms": 140,
+          "anchors": {
+            "hand": {
+              "x": 93,
+              "y": 73
+            },
+            "orbit": {
+              "x": 32,
+              "y": 48
+            }
+          }
+        }
+      ]
+    },
+    "grabbed": {
+      "texture": "body",
+      "loop": "pingpong",
+      "frames": [
+        {
+          "cell": 40,
+          "ms": 140,
+          "anchors": {
+            "hand": {
+              "x": 96,
+              "y": 82
+            },
+            "orbit": {
+              "x": 30,
+              "y": 60
+            }
+          }
+        },
+        {
+          "cell": 41,
+          "ms": 140,
+          "anchors": {
+            "hand": {
+              "x": 98,
+              "y": 84
+            },
+            "orbit": {
+              "x": 28,
+              "y": 62
+            }
+          }
+        }
+      ]
+    },
+    "falling": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 48,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 97,
+              "y": 80
+            },
+            "orbit": {
+              "x": 26,
+              "y": 56
+            }
+          }
+        },
+        {
+          "cell": 49,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 99,
+              "y": 78
+            },
+            "orbit": {
+              "x": 24,
+              "y": 54
+            }
+          }
+        }
+      ]
+    },
+    "land": {
+      "texture": "body",
+      "frames": [
+        {
+          "cell": 50,
+          "ms": 70,
+          "anchors": {
+            "hand": {
+              "x": 90,
+              "y": 84
+            },
+            "orbit": {
+              "x": 32,
+              "y": 64
+            }
+          }
+        },
+        {
+          "cell": 51,
+          "ms": 90,
+          "anchors": {
+            "hand": {
+              "x": 91,
+              "y": 78
+            },
+            "orbit": {
+              "x": 33,
+              "y": 56
+            }
+          }
+        },
+        {
+          "cell": 52,
+          "ms": 120,
+          "anchors": {
+            "hand": {
+              "x": 92,
+              "y": 75
+            },
+            "orbit": {
+              "x": 34,
+              "y": 52
+            }
+          }
+        }
+      ]
+    },
+    "sit": {
+      "texture": "body_alt",
+      "loop": "pingpong",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 1200,
+          "anchors": {
+            "hand": {
+              "x": 90,
+              "y": 92
+            },
+            "orbit": {
+              "x": 36,
+              "y": 70
+            }
+          }
+        },
+        {
+          "cell": 1,
+          "ms": 1200,
+          "anchors": {
+            "hand": {
+              "x": 90,
+              "y": 93
+            },
+            "orbit": {
+              "x": 36,
+              "y": 72
+            }
+          }
+        }
+      ]
+    },
+    "sleep_in": {
+      "texture": "body_alt",
+      "frames": [
+        {
+          "cell": 8,
+          "ms": 300,
+          "anchors": {
+            "orbit": {
+              "x": 36,
+              "y": 68
+            }
+          }
+        },
+        {
+          "cell": 9,
+          "ms": 300,
+          "anchors": {
+            "orbit": {
+              "x": 36,
+              "y": 66
+            }
+          }
+        },
+        {
+          "cell": 10,
+          "ms": 400,
+          "anchors": {
+            "orbit": {
+              "x": 36,
+              "y": 66
+            }
+          }
+        }
+      ]
+    },
+    "sleep": {
+      "texture": "body_alt",
+      "loop": "pingpong",
+      "frames": [
+        {
+          "cell": 12,
+          "ms": 1600,
+          "anchors": {
+            "orbit": {
+              "x": 36,
+              "y": 66
+            }
+          }
+        },
+        {
+          "cell": 13,
+          "ms": 1600,
+          "anchors": {
+            "orbit": {
+              "x": 36,
+              "y": 68
+            }
+          }
+        }
+      ]
+    },
+    "wake": {
+      "texture": "body_alt",
+      "frames": [
+        {
+          "cell": 16,
+          "ms": 220,
+          "anchors": {
+            "hand": {
+              "x": 89,
+              "y": 88
+            },
+            "orbit": {
+              "x": 36,
+              "y": 64
+            }
+          }
+        },
+        {
+          "cell": 17,
+          "ms": 220,
+          "anchors": {
+            "hand": {
+              "x": 91,
+              "y": 81
+            },
+            "orbit": {
+              "x": 35,
+              "y": 58
+            }
+          }
+        },
+        {
+          "cell": 18,
+          "ms": 260,
+          "anchors": {
+            "hand": {
+              "x": 92,
+              "y": 75
+            },
+            "orbit": {
+              "x": 34,
+              "y": 52
+            }
+          }
+        }
+      ]
+    },
+    "cane_hold": {
+      "texture": "cane",
+      "frames": [
+        {
+          "cell": 0
+        }
+      ]
+    },
+    "cane_walk": {
+      "texture": "cane",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 1,
+          "ms": 110
+        },
+        {
+          "cell": 2,
+          "ms": 110
+        },
+        {
+          "cell": 3,
+          "ms": 110
+        },
+        {
+          "cell": 4,
+          "ms": 110
+        }
+      ]
+    },
+    "dumpling_idle": {
+      "texture": "dumpling",
+      "loop": "pingpong",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 400
+        },
+        {
+          "cell": 1,
+          "ms": 400
+        }
+      ]
+    },
+    "dumpling_squash": {
+      "texture": "dumpling",
+      "frames": [
+        {
+          "cell": 4,
+          "ms": 80
+        },
+        {
+          "cell": 5,
+          "ms": 120
+        }
+      ]
+    },
+    "blink": {
+      "texture": "face",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 60
+        },
+        {
+          "cell": 1,
+          "ms": 60
+        },
+        {
+          "cell": 0,
+          "ms": 60
+        }
+      ]
+    },
+    "eyes_shut": {
+      "texture": "face",
+      "frames": [
+        {
+          "cell": 2
+        }
+      ]
+    }
+  },
+  "parts": [
+    {
+      "name": "body",
+      "bind": {
+        "mode": "body"
+      }
+    },
+    {
+      "name": "face",
+      "z": 10,
+      "hitTest": false,
+      "hiddenIn": [
+        "sleeping",
+        "asleep"
+      ],
+      "bind": {
+        "mode": "overlay",
+        "parent": "body",
+        "clip": "blink"
+      }
+    },
+    {
+      "name": "cane",
+      "z": 5,
+      "hiddenIn": [
+        "sleeping",
+        "asleep"
+      ],
+      "bind": {
+        "mode": "socket",
+        "parent": "body",
+        "anchor": "hand",
+        "frames": "parent",
+        "offset": {
+          "x": 0,
+          "y": -2
+        }
+      }
+    },
+    {
+      "name": "dumpling",
+      "z": -1,
+      "mirrorWithBody": true,
+      "bind": {
+        "mode": "float",
+        "parent": "body",
+        "anchor": "orbit",
+        "clip": "dumpling_idle",
+        "rest": {
+          "x": 0,
+          "y": 0
+        },
+        "stiffness": 90,
+        "damping": 11,
+        "mass": 1.0,
+        "lag": 0.09,
+        "maxOffset": 12,
+        "sleepThreshold": 0.15,
+        "bob": {
+          "amplitudeX": 1,
+          "amplitudeY": 3,
+          "periodMs": 2600,
+          "phase": 0.25
+        }
+      }
+    }
+  ],
+  "initialState": "idle",
+  "states": {
+    "idle": {
+      "clip": "idle",
+      "motion": "none",
+      "surface": "floor",
+      "duration": {
+        "minMs": 3000,
+        "maxMs": 12000,
+        "scaleBy": "liveliness"
+      },
+      "next": [
+        {
+          "state": "idle",
+          "weight": 40
+        },
+        {
+          "state": "walking",
+          "weight": 35
+        },
+        {
+          "state": "tipping_hat",
+          "weight": 10
+        },
+        {
+          "state": "sitting",
+          "weight": 15,
+          "when": {
+            "random": 0.5
+          }
+        }
+      ],
+      "interrupts": [
+        {
+          "on": {
+            "pointer.near": 60
+          },
+          "state": "watching"
+        },
+        {
+          "on": {
+            "pointer.fast": 1400
+          },
+          "state": "startled"
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "pointer.click",
+          "state": "tipping_hat"
+        },
+        {
+          "on": {
+            "user.idle": 300
+          },
+          "state": "sleeping"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "sitting"
+        },
+        {
+          "on": "perch.acquired",
+          "state": "perched"
+        },
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        }
+      ]
+    },
+    "walking": {
+      "clip": "walk",
+      "motion": {
+        "type": "walk",
+        "speed": 22,
+        "direction": "random"
+      },
+      "surface": "floor",
+      "duration": {
+        "minMs": 1500,
+        "maxMs": 6000,
+        "scaleBy": "liveliness"
+      },
+      "next": [
+        {
+          "state": "idle",
+          "weight": 70
+        },
+        {
+          "state": "turning",
+          "weight": 30
+        }
+      ],
+      "interrupts": [
+        {
+          "on": {
+            "edge.reached": "left"
+          },
+          "state": "turning"
+        },
+        {
+          "on": {
+            "edge.reached": "right"
+          },
+          "state": "turning"
+        },
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        }
+      ]
+    },
+    "turning": {
+      "clip": "turn",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "walking",
+          "weight": 60
+        },
+        {
+          "state": "idle",
+          "weight": 40
+        }
+      ]
+    },
+    "perched": {
+      "clip": "sit",
+      "surface": "windowTop",
+      "duration": {
+        "minMs": 6000,
+        "maxMs": 30000,
+        "scaleBy": "liveliness"
+      },
+      "next": [
+        {
+          "state": "perched",
+          "weight": 70
+        },
+        {
+          "state": "walking",
+          "weight": 30,
+          "when": {
+            "perched": true
+          }
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "pointer.click",
+          "state": "tipping_hat"
+        },
+        {
+          "on": {
+            "user.idle": 300
+          },
+          "state": "sleeping"
+        }
+      ]
+    },
+    "watching": {
+      "clip": "idle",
+      "facing": "toPointer",
+      "duration": {
+        "minMs": 1200,
+        "maxMs": 4000,
+        "scaleBy": "liveliness"
+      },
+      "next": [
+        {
+          "state": "idle",
+          "weight": 80
+        },
+        {
+          "state": "tipping_hat",
+          "weight": 20,
+          "when": {
+            "pointerDistance": {
+              "op": "lt",
+              "px": 40
+            }
+          }
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        }
+      ]
+    },
+    "startled": {
+      "clip": "startle",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "watching",
+          "weight": 100
+        }
+      ]
+    },
+    "tipping_hat": {
+      "clip": "tip_hat",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 100
+        }
+      ]
+    },
+    "held": {
+      "clip": "grabbed",
+      "motion": {
+        "type": "drag"
+      },
+      "surface": "air",
+      "interrupts": [
+        {
+          "on": "pointer.release",
+          "state": "falling"
+        }
+      ]
+    },
+    "falling": {
+      "clip": "falling",
+      "motion": {
+        "type": "fall",
+        "gravity": 900,
+        "terminal": 700
+      },
+      "surface": "air",
+      "interrupts": [
+        {
+          "on": "physics.landed",
+          "state": "landing"
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        }
+      ]
+    },
+    "landing": {
+      "clip": "land",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 100
+        }
+      ]
+    },
+    "sitting": {
+      "clip": "sit",
+      "duration": {
+        "minMs": 8000,
+        "maxMs": 40000,
+        "scaleBy": "liveliness"
+      },
+      "next": [
+        {
+          "state": "idle",
+          "weight": 60
+        },
+        {
+          "state": "sleeping",
+          "weight": 40,
+          "when": {
+            "any": [
+              {
+                "lowPower": true
+              },
+              {
+                "timeOfDay": {
+                  "from": "23:00",
+                  "to": "06:00"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "pointer.click",
+          "state": "idle"
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        }
+      ]
+    },
+    "sleeping": {
+      "clip": "sleep_in",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "asleep",
+          "weight": 100
+        }
+      ]
+    },
+    "asleep": {
+      "clip": "sleep",
+      "quiescent": true,
+      "interrupts": [
+        {
+          "on": "pointer.click",
+          "state": "waking"
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": {
+            "pointer.near": 24
+          },
+          "state": "waking"
+        },
+        {
+          "on": "system.wake",
+          "state": "waking"
+        },
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        }
+      ]
+    },
+    "waking": {
+      "clip": "wake",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 100
+        }
+      ]
+    }
+  },
+  "sounds": {
+    "step": {
+      "file": "audio/step.wav",
+      "volume": 0.15
+    },
+    "hat": {
+      "file": "audio/hat.wav",
+      "volume": 0.4
+    }
+  },
+  "tuning": {
+    "liveliness": {
+      "label": "Liveliness",
+      "min": 0.2,
+      "max": 2.0,
+      "default": 1.0
+    },
+    "sleepAfter": {
+      "label": "Sleep after (minutes)",
+      "min": 1,
+      "max": 120,
+      "default": 5
+    }
+  }
+}

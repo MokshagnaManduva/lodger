@@ -1,0 +1,28 @@
+pack     : com.mokshagna.klien v0.4.0 — Klien
+state    : idle  [quiescent]
+clip     : idle  7 frame(s), loop=forever
+cell     : 128x128 @2x
+hit mask : 56 cells, 128x128, cell 0 has 3541 opaque px
+  idle       initialState     no timer           timers=0 link=no  x=735
+
+claim 1  window
+         borderless=true nonactivating=true opaque=false
+         level=3 ignoresMouseEvents=true canBecomeKey=false
+         activationPolicy=accessory (no Dock, no cmd-Tab)
+claim 3  timers
+         pointer monitor installed=false (only if a state reacts to the pointer)
+         live timers now=0  display link=none
+perching
+         mode=off  pack declares windowEdges=true
+         accessibility granted=true  perched=false
+
+pid      : 3405
+verify   : sudo timerfires -p 3405
+CAPTURE_RECT 607,650,256,256
+soaking 60s from state 'idle' ...
+
+CPU used : 0.0189 s over 63.0 s wall  (0.0300% of one core)
+projected: 1.08 s CPU per idle hour  (target < 7 s)
+transitions: 1, scheduler wakes: 0
+display link: starts=0 ticks=0 running=false
+window enumerations: 0  (must be 0 outside a drag)

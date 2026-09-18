@@ -10,59 +10,34 @@ The two hard rules are there, and most bugs in this project will be violations o
 
 ## Current status
 
-Design and pipeline groundwork are done; **no application code exists yet**.
+**2026-09-16 — Klien v0.4.0 polish:** working app with a complete character scenario
+set. The current pass replaces the dumpling with a small gold sun emblem held in
+the free hand, adds an occasional toss/catch, narrows leg poses and smooths hand
+transitions. Source: `Packs/klien/reference/all-scenarios-v1/`; rebuild with
+`make klien-animations`. The approved `reference/idle-v2/` remains archived.
 
-| Built | Where |
-|---|---|
-| Pack manifest schema (v1) | `Schema/pack.schema.json` |
-| Author-facing format spec | `Docs/PACK_FORMAT.md` |
-| Reference-art measurements | `Docs/reference-audit.md`, reproducible via `make audit` |
-| `packtool validate` + 17 negative tests | `Tools/packtool/`, run with `make test` |
-| `packtool palette` + `packtool pixelize` | `Tools/packtool/pixelize.py`, run with `make sketches` |
-| Locked 26-colour palette, art bible | `Packs/klien/reference/palette.gpl`, `proportions.md` |
-| Tracing sketches for all 6 cells + item | `Packs/klien/reference/sketches/` (never shipped) |
-| Klien manifest (art not yet drawn) | `Packs/klien/pack.json` |
-| `packtool anchors` (live drift trace) + `packtool build` | `Tools/packtool/`, `make build-fixture` |
-| Engine: panel, sprite layer, Director, Scheduler, pointer monitor | `Engine/Sources/LodgerEngine/` |
-| Multi-part rendering (body/socket/float/overlay) + spring solver | `Body.swift`, `Spring.swift` |
-| Motion: walking, falling, dragging, multi-display, rescue | `Motion.swift`, `Stage.swift` |
-| Render-server locomotion (zero window moves per walk) | `Walk.swift`, `Body.rig` |
-| Perching: policy, permission-free enumeration, single-window AXObserver | `Perch.swift`, `WindowFinder.swift`, `PerchTracker.swift` |
-| App shell: menu bar, pack manager, preferences, bundle assembly | `Sources/lodger/`, `Scripts/bundle.sh` |
-| All 24 declared events emitted, observers installed only on demand | `SystemEvents.swift`, `IdleWatcher.swift` |
-| 79 engine self-tests, no Xcode needed | `make engine-test` |
-| Measured energy baselines + SIGSTOP proof | `Docs/energy-protocol.md`, `render-server-proof.png` |
-| Minimum viable pack fixture | `Tests/Fixtures/test.solidsquare/` |
+Core engine, menu/pack discovery, all 24 events, render-server walking, mirroring,
+per-part hit testing, spring lag, tuning application and audio plumbing are built.
+`orientFrames` was deliberately removed. The active idle CPU target is <7 s/hour;
+measurement scope and results are recorded in `Docs/energy-protocol.md` and the
+animation source's verification record.
 
-Not built: `packtool generate` / `preview`, the hand-finished canonical sprite, discrete
-socket rotation (`orientFrames`), audio playback, a settings window (the menu bar carries
-the toggles for now), Sparkle updates, and Developer ID signing plus notarisation.
-
-**Unverified:** the `AXObserver` tracking path. This machine has not granted Accessibility,
-so `attach` -> `.attached`, window-moved re-seating, and live `perch.lost` have been built
-and reasoned about but never run. Everything around them is tested: the perchable filter,
-the coordinate flip, drop targeting against real `CGWindowList` data, and the
-`.needsPermission` degradation. Grant Accessibility and exercise the perch path before
-trusting it.
+**Current backlog:** `left.md`. Remaining work includes full turnaround
+and distinct perch art, real interaction/AXObserver verification, system energy
+measurements, settings and reliable imports, generic author tooling, licensing,
+branding, signing/notarization and updates. Klien is intentionally silent.
 
 ```bash
-make all           # every test: packtool lints + engine self-tests + pack validation
-make app           # assemble build/Lodger.app (works without Xcode)
-make run           # build and launch it
-make soak          # CPU soaks, repeated runs with the spread reported
-make sketches      # palette + tracing sketches from the raw reference
-make audit         # re-measure the raw reference art
+make test              # validator and native-art acceptance checks
+make engine-test       # engine checks (the runner reports the current total)
+make klien-animations  # regenerate active art, atlas, masks and gallery
+make app               # local ad-hoc signed bundle
 ```
 
-Characters live in `~/Library/Application Support/Lodger/Packs/`. Drop a folder in and the
-menu bar picks it up. A pack that will not load is named in the menu **with the reason** —
-`PackStore.load` verifies every referenced texture, mask and sound exists, because a
-manifest that decodes but has no art otherwise renders an invisible character and says
-nothing.
-
-**Next, in order:** Klien's art (the pipeline is waiting on it — see §7 Stage 2), then
-audio playback and a settings window, then signing and notarisation. In parallel: hand-finish the canonical Klien sprite from
-`Packs/klien/reference/sketches/r1c0.png` (§7 Stage 2).
+Characters are discovered in `~/Library/Application Support/Lodger/Packs/` and
+the bundle. Invalid folders are named in the menu with their loading error.
+The runtime loader decodes manifests and checks referenced files; full schema
+validation is currently an author-tool check, not a runtime guarantee.
 
 ---
 
@@ -186,8 +161,7 @@ Docs/
   energy-protocol.md     §6 expanded, with recorded baselines
 ```
 
-**`Engine/` must not contain any `.png`, `.wav`, or character-named identifier.** A CI grep
-enforces this. If you need a fixture for tests, generate it procedurally or put it in
+**`Engine/` must not contain any `.png`, `.wav`, or character-named identifier.** A CI grep is planned to enforce this; no such release gate exists yet. If you need a fixture for tests, generate it procedurally or put it in
 `Tests/Fixtures/` as an obviously synthetic pack (`test.solidsquare`).
 
 ---
@@ -401,7 +375,7 @@ intentional** — it is the seam that keeps packs inert.
 
 | Metric | Target | Status |
 |---|---|---|
-| CPU seconds per idle hour | **< 2 s** (~0.05%) | **MET — median ~1.2-1.4 s/hr** across configurations. Single soaks are worthless at this magnitude (see `Docs/energy-protocol.md`); always take a median. |
+| CPU seconds per idle hour | **< 7 s** (~0.19%) | **MET — median ~1.2-1.4 s/hr** on the synthetic no-behaviour fixture; **5.6-6.3 s/hr** on the real Klien idle pack (breathing clip + float attachment), see `Packs/klien/reference/idle-v2/verification.md`. Raised from the original 2 s target because a pack with actual animation and a spring-driven attachment costs more than the empty fixture the 2 s figure was measured on, and short single soaks are noisy at this magnitude anyway (see `Docs/energy-protocol.md`); always take a median. |
 | Timers in a quiescent state | **0** | **MET — scheduler live-timer count drops to 0 and stays there** |
 | Pointer hit test | cheap enough to own | **MET — 21 ns/event; 0.009 s/hr at 120 events/s** |
 | CPU while walking | as low as the platform allows | **MET — 0.10% of one core** (from 4.5%) via render-server locomotion, with **no display link at all**. Verified by `SIGSTOP`: the pet keeps walking with the process frozen. |
@@ -459,15 +433,24 @@ sudo timerfires -p $PID
 Also: Activity Monitor -> Energy tab -> View > Column > **Idle Wake Ups**. Apple documents
 this as "how many times per second a timer fired, averaged over the sample interval."
 
-`make energy-check` runs a 10-minute soak and asserts the thresholds; run it before any
-release and after any change to the scheduler, the animation path, or the input monitor. The
-in-app Diagnostics HUD (debug builds, option-click the menu-bar item) shows live state, frames
-committed/sec, live timers, and display-link status — if it shows a live timer in a quiescent
-state, that is the bug.
+`make energy-check` is a planned release gate, not an existing command. Current
+measurements use `make soak` and the Klien verification script. The menu Diagnostics
+submenu samples state, scheduler timers, display-link status and window enumerations
+when opened; there is no option-click HUD. A quiescent state must have no scheduler timer.
 
 ---
 
 ## 7. The asset pipeline: raw art -> conforming pack
+
+**Current workflow:** Klien is authored reproducibly by `animate_klien.py` from the
+approved native body, with editable body/cane/emblem layers. The emblem uses the
+owner-supplied sun reference and a five-color gold extension; runtime frames bake
+both props into the body to keep toss timing synchronized. Built-in generated pose
+studies from the earlier milestone are retained as references. PixelLab/Aseprite
+steps below describe the original authoring proposal, not required tools for the
+current pack. Generic generation/preview/scaffolding/doctor and some proposed lint
+checks remain backlog items. The original ~65-cell estimate is not a requirement.
+
 
 ### Start here: the reference art is not pixel art
 
@@ -753,7 +736,7 @@ Three constraints keep this from quietly destroying Rule 1:
 
 1. **The bundled pack loads through the identical code path as a user-installed one.**
    No `if bundled`, no privileged shortcut, no assumption that it is valid. It is discovered,
-   schema-validated and capability-gated exactly like a folder someone dropped in yesterday.
+   decoded and checked for referenced files exactly like a folder someone dropped in yesterday. Full runtime schema/capability validation remains backlog work.
    `PackStore` merges the two directories and nothing downstream knows which is which.
 2. **A user pack shadows a bundled pack with the same id.** That is how someone replaces Klien
    with their own edit of him without touching the app bundle.

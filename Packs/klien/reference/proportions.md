@@ -27,7 +27,7 @@ All values in logical pixels inside a **128 x 128** cell.
 |---|---|
 | Cell | 128 x 128 |
 | Figure height (hat top to sole) | **96** |
-| Figure width (bbox, arm extended) | 53 |
+| Figure width (bbox, arm extended) | **58** for the approved idle (original target: 53) |
 | Ground line (sole contact) | **y = 120** |
 | Hat top | y = 24 |
 | Face band (hairline to chin) | y = 52..81, height 30 |
@@ -38,6 +38,11 @@ All values in logical pixels inside a **128 x 128** cell.
 
 Source-art check: `r1c0` measures 934 px tall with a skin-region proxy of 467 px
 (`Docs/reference-audit.md`), a 9.73:1 downscale to 96 px.
+
+Idle milestone decision, 2026-09-15: retain the user-approved 58px silhouette
+(`idle-v2/art/rest.png`, x=35..92). Compressing it to 53px would change the approved
+face and costume. The 96px height, 128px cell, x=64 centre and y=120 ground boundary
+remain fixed. Motion variations inherit this canonical native sprite.
 
 ## Palette
 
@@ -97,3 +102,28 @@ Reference measurements across cells (`Docs/reference-audit.md`) show the item's 
 varying 157-189 px and its anchor drifting ~8 points of figure height. Neither is
 reproduced here: the item is authored once, and its position comes from the per-frame
 `orbit` anchor plus the `float` bind's spring, never from the art.
+
+## Active sun-emblem polish — 2026-09-16
+
+The floating dumpling is superseded in v0.4.0. `sun-emblem.tiff` is the owner's
+reference (copied unchanged from the repository root). Its flared gold silhouette,
+tapered base and central sun seal are reinterpreted as a native 12×14 glyph, with
+3px/8px edge-turn variants. `sun-emblem-palette.gpl` adds five gold colors without
+changing the 26-color body palette. No glow, resampling of the body or soft alpha.
+
+The emblem rests on the free palm: center seven pixels above the palm anchor.
+A 1.2-second standing toss raises it 20px, flips it, then catches in the same hand.
+All other poses hold it; no floating spring, bob or squash is installed. The
+editable emblem layer is composited with body/cane for exact runtime timing.
+
+Authored knee/foot x coordinates are compressed to 70% of their former distance
+from x=59; hip anchors, y contacts, upper-body proportions and idle archive remain
+unchanged. Walk foot centers are at most 20px apart. Seated/landing/held knees use
+the same narrower construction. Earlier dumpling notes above describe the archive.
+
+
+Crouch follow-up: lowered/held poses now use explicitly authored compact legs
+instead of the 70% x-scaling rule. Seated feet center at x=54 and x=65, knees at
+x=54 and x=64. Lower-leg strokes are 5px and shoes 9px; coat tails stop at y=115.
+The lowering transition closes the near foot inward gradually; seated breathing
+and sleep preserve identical soles. Walking retains its earlier authored stride.

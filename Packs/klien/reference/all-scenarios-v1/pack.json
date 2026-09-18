@@ -1,0 +1,1090 @@
+{
+  "format": 1,
+  "engineMin": "1.0.0",
+  "requires": [
+    "windowEdges"
+  ],
+  "identity": {
+    "id": "com.mokshagna.klien",
+    "name": "Klien",
+    "version": "0.4.0",
+    "author": "Mokshagna",
+    "license": "CC-BY-NC-4.0",
+    "description": "Klien: a golden sun-emblem toss, compact walking, hat tips, reactions, sitting and sleep/wake animations.",
+    "preview": "preview.png"
+  },
+  "stage": {
+    "cell": {
+      "w": 128,
+      "h": 128
+    },
+    "bodyHeight": 96,
+    "ground": {
+      "x": 64,
+      "y": 120
+    },
+    "pixelPerfect": true,
+    "scaleSteps": [
+      1,
+      2,
+      3
+    ],
+    "defaultScale": 1,
+    "defaultFrameMs": 250
+  },
+  "textures": {
+    "body": {
+      "strip": "art/body.png",
+      "preload": true
+    },
+    "cane": {
+      "strip": "art/cane.png"
+    }
+  },
+  "clips": {
+    "idle": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 400
+        },
+        {
+          "cell": 3,
+          "ms": 120
+        },
+        {
+          "cell": 0,
+          "ms": 380
+        },
+        {
+          "cell": 1,
+          "ms": 250
+        },
+        {
+          "cell": 2,
+          "ms": 300
+        },
+        {
+          "cell": 1,
+          "ms": 250
+        },
+        {
+          "cell": 0,
+          "ms": 1300
+        }
+      ]
+    },
+    "toss_emblem": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 100
+        },
+        {
+          "cell": 46,
+          "ms": 100
+        },
+        {
+          "cell": 47,
+          "ms": 100
+        },
+        {
+          "cell": 48,
+          "ms": 100
+        },
+        {
+          "cell": 49,
+          "ms": 100
+        },
+        {
+          "cell": 50,
+          "ms": 100
+        },
+        {
+          "cell": 51,
+          "ms": 100
+        },
+        {
+          "cell": 52,
+          "ms": 100
+        },
+        {
+          "cell": 53,
+          "ms": 100
+        },
+        {
+          "cell": 54,
+          "ms": 100
+        },
+        {
+          "cell": 55,
+          "ms": 100
+        },
+        {
+          "cell": 0,
+          "ms": 100
+        }
+      ],
+      "anchorJumpLimit": 10
+    },
+    "walk": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 4,
+          "ms": 120
+        },
+        {
+          "cell": 5,
+          "ms": 120
+        },
+        {
+          "cell": 6,
+          "ms": 120
+        },
+        {
+          "cell": 7,
+          "ms": 120
+        },
+        {
+          "cell": 8,
+          "ms": 120
+        },
+        {
+          "cell": 9,
+          "ms": 120
+        }
+      ]
+    },
+    "turn": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 80
+        },
+        {
+          "cell": 10,
+          "ms": 100
+        },
+        {
+          "cell": 11,
+          "ms": 100
+        },
+        {
+          "cell": 12,
+          "ms": 100
+        },
+        {
+          "cell": 0,
+          "ms": 100
+        }
+      ]
+    },
+    "watch": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 44,
+          "ms": 1200
+        },
+        {
+          "cell": 45,
+          "ms": 120
+        },
+        {
+          "cell": 44,
+          "ms": 1680
+        }
+      ]
+    },
+    "tip_hat": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 100
+        },
+        {
+          "cell": 13,
+          "ms": 80
+        },
+        {
+          "cell": 14,
+          "ms": 80
+        },
+        {
+          "cell": 15,
+          "ms": 80
+        },
+        {
+          "cell": 16,
+          "ms": 140
+        },
+        {
+          "cell": 17,
+          "ms": 160
+        },
+        {
+          "cell": 18,
+          "ms": 300
+        },
+        {
+          "cell": 19,
+          "ms": 160
+        },
+        {
+          "cell": 15,
+          "ms": 80
+        },
+        {
+          "cell": 14,
+          "ms": 80
+        },
+        {
+          "cell": 13,
+          "ms": 80
+        },
+        {
+          "cell": 0,
+          "ms": 160
+        }
+      ]
+    },
+    "startle": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 20,
+          "ms": 80
+        },
+        {
+          "cell": 21,
+          "ms": 120
+        },
+        {
+          "cell": 22,
+          "ms": 160
+        },
+        {
+          "cell": 0,
+          "ms": 140
+        }
+      ]
+    },
+    "grabbed": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 23,
+          "ms": 180
+        },
+        {
+          "cell": 24,
+          "ms": 180
+        },
+        {
+          "cell": 25,
+          "ms": 180
+        },
+        {
+          "cell": 26,
+          "ms": 180
+        }
+      ]
+    },
+    "falling": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 27,
+          "ms": 140
+        },
+        {
+          "cell": 28,
+          "ms": 140
+        },
+        {
+          "cell": 29,
+          "ms": 140
+        },
+        {
+          "cell": 28,
+          "ms": 140
+        }
+      ]
+    },
+    "land": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 30,
+          "ms": 90
+        },
+        {
+          "cell": 31,
+          "ms": 100
+        },
+        {
+          "cell": 32,
+          "ms": 120
+        },
+        {
+          "cell": 0,
+          "ms": 180
+        }
+      ]
+    },
+    "sit_down": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 100
+        },
+        {
+          "cell": 43,
+          "ms": 120
+        },
+        {
+          "cell": 42,
+          "ms": 120
+        },
+        {
+          "cell": 41,
+          "ms": 120
+        },
+        {
+          "cell": 33,
+          "ms": 200
+        }
+      ],
+      "anchorJumpLimit": 10
+    },
+    "stand_up": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 33,
+          "ms": 140
+        },
+        {
+          "cell": 41,
+          "ms": 120
+        },
+        {
+          "cell": 42,
+          "ms": 120
+        },
+        {
+          "cell": 43,
+          "ms": 120
+        },
+        {
+          "cell": 0,
+          "ms": 160
+        }
+      ],
+      "anchorJumpLimit": 10
+    },
+    "sit": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 33,
+          "ms": 1100
+        },
+        {
+          "cell": 35,
+          "ms": 120
+        },
+        {
+          "cell": 33,
+          "ms": 480
+        },
+        {
+          "cell": 34,
+          "ms": 600
+        },
+        {
+          "cell": 33,
+          "ms": 700
+        }
+      ]
+    },
+    "perch": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 39,
+          "ms": 1600
+        },
+        {
+          "cell": 40,
+          "ms": 120
+        },
+        {
+          "cell": 39,
+          "ms": 1280
+        }
+      ]
+    },
+    "sleep_in": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 33,
+          "ms": 300
+        },
+        {
+          "cell": 36,
+          "ms": 500
+        },
+        {
+          "cell": 37,
+          "ms": 600
+        }
+      ]
+    },
+    "sleep": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 37,
+          "ms": 1800
+        },
+        {
+          "cell": 38,
+          "ms": 1800
+        }
+      ]
+    },
+    "wake": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 37,
+          "ms": 200
+        },
+        {
+          "cell": 36,
+          "ms": 200
+        },
+        {
+          "cell": 33,
+          "ms": 300
+        },
+        {
+          "cell": 41,
+          "ms": 120
+        },
+        {
+          "cell": 42,
+          "ms": 120
+        },
+        {
+          "cell": 43,
+          "ms": 120
+        },
+        {
+          "cell": 0,
+          "ms": 200
+        }
+      ],
+      "anchorJumpLimit": 10
+    },
+    "blink": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 60
+        },
+        {
+          "cell": 3,
+          "ms": 120
+        },
+        {
+          "cell": 0,
+          "ms": 60
+        }
+      ]
+    },
+    "eyes_shut": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 3,
+          "ms": 1500
+        }
+      ]
+    },
+    "cane_hold": {
+      "texture": "cane",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 3000
+        }
+      ]
+    },
+    "cane_walk": {
+      "texture": "cane",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 4,
+          "ms": 120
+        },
+        {
+          "cell": 5,
+          "ms": 120
+        },
+        {
+          "cell": 6,
+          "ms": 120
+        },
+        {
+          "cell": 7,
+          "ms": 120
+        },
+        {
+          "cell": 8,
+          "ms": 120
+        },
+        {
+          "cell": 9,
+          "ms": 120
+        }
+      ]
+    }
+  },
+  "parts": [
+    {
+      "name": "body",
+      "bind": {
+        "mode": "body"
+      }
+    }
+  ],
+  "initialState": "idle",
+  "states": {
+    "idle": {
+      "clip": "idle",
+      "motion": "none",
+      "surface": "floor",
+      "duration": {
+        "minMs": 3000,
+        "maxMs": 12000,
+        "scaleBy": "liveliness"
+      },
+      "next": [
+        {
+          "state": "idle",
+          "weight": 25
+        },
+        {
+          "state": "walking",
+          "weight": 35
+        },
+        {
+          "state": "tipping_hat",
+          "weight": 10
+        },
+        {
+          "state": "sitting_down",
+          "weight": 15,
+          "when": {
+            "random": 0.5
+          }
+        },
+        {
+          "state": "toss_emblem",
+          "weight": 15
+        }
+      ],
+      "interrupts": [
+        {
+          "on": {
+            "pointer.near": 60
+          },
+          "state": "watching"
+        },
+        {
+          "on": {
+            "pointer.fast": 1400
+          },
+          "state": "startled",
+          "when": {
+            "pointerDistance": {
+              "op": "lte",
+              "px": 60
+            }
+          }
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "pointer.click",
+          "state": "tipping_hat"
+        },
+        {
+          "on": {
+            "user.idle": 300
+          },
+          "state": "sleep_preparing"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "sitting_down"
+        },
+        {
+          "on": "perch.acquired",
+          "state": "perched"
+        },
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        }
+      ]
+    },
+    "walking": {
+      "clip": "walk",
+      "motion": {
+        "type": "walk",
+        "speed": 22,
+        "direction": "random"
+      },
+      "surface": "floor",
+      "duration": {
+        "minMs": 1500,
+        "maxMs": 6000,
+        "scaleBy": "liveliness"
+      },
+      "next": [
+        {
+          "state": "idle",
+          "weight": 70
+        },
+        {
+          "state": "turning",
+          "weight": 30
+        }
+      ],
+      "interrupts": [
+        {
+          "on": {
+            "edge.reached": "left"
+          },
+          "state": "turning"
+        },
+        {
+          "on": {
+            "edge.reached": "right"
+          },
+          "state": "turning"
+        },
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        }
+      ]
+    },
+    "turning": {
+      "clip": "turn",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "walking",
+          "weight": 60
+        },
+        {
+          "state": "idle",
+          "weight": 40
+        }
+      ]
+    },
+    "perched": {
+      "clip": "perch",
+      "surface": "windowTop",
+      "duration": {
+        "minMs": 6000,
+        "maxMs": 30000,
+        "scaleBy": "liveliness"
+      },
+      "next": [
+        {
+          "state": "perched",
+          "weight": 70
+        },
+        {
+          "state": "standing_up",
+          "weight": 30,
+          "when": {
+            "perched": true
+          }
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "pointer.click",
+          "state": "standing_up"
+        },
+        {
+          "on": {
+            "user.idle": 300
+          },
+          "state": "sleeping"
+        }
+      ]
+    },
+    "watching": {
+      "clip": "watch",
+      "facing": "toPointer",
+      "duration": {
+        "minMs": 1200,
+        "maxMs": 4000,
+        "scaleBy": "liveliness"
+      },
+      "next": [
+        {
+          "state": "idle",
+          "weight": 80
+        },
+        {
+          "state": "tipping_hat",
+          "weight": 20,
+          "when": {
+            "pointerDistance": {
+              "op": "lt",
+              "px": 40
+            }
+          }
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        },
+        {
+          "on": "pointer.click",
+          "state": "tipping_hat"
+        },
+        {
+          "on": {
+            "pointer.fast": 1400
+          },
+          "state": "startled",
+          "when": {
+            "pointerDistance": {
+              "op": "lte",
+              "px": 60
+            }
+          }
+        }
+      ]
+    },
+    "startled": {
+      "clip": "startle",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "watching",
+          "weight": 100
+        }
+      ]
+    },
+    "tipping_hat": {
+      "clip": "tip_hat",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 100
+        }
+      ]
+    },
+    "held": {
+      "clip": "grabbed",
+      "motion": {
+        "type": "drag"
+      },
+      "surface": "air",
+      "interrupts": [
+        {
+          "on": "pointer.release",
+          "state": "falling"
+        }
+      ]
+    },
+    "falling": {
+      "clip": "falling",
+      "motion": {
+        "type": "fall",
+        "gravity": 900,
+        "terminal": 700
+      },
+      "surface": "air",
+      "interrupts": [
+        {
+          "on": "physics.landed",
+          "state": "landing"
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        }
+      ]
+    },
+    "landing": {
+      "clip": "land",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 100
+        }
+      ]
+    },
+    "sitting": {
+      "clip": "sit",
+      "duration": {
+        "minMs": 8000,
+        "maxMs": 40000,
+        "scaleBy": "liveliness"
+      },
+      "next": [
+        {
+          "state": "standing_up",
+          "weight": 60
+        },
+        {
+          "state": "sleeping",
+          "weight": 40,
+          "when": {
+            "any": [
+              {
+                "lowPower": true
+              },
+              {
+                "timeOfDay": {
+                  "from": "23:00",
+                  "to": "06:00"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "pointer.click",
+          "state": "standing_up"
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        }
+      ]
+    },
+    "sleeping": {
+      "clip": "sleep_in",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "asleep",
+          "weight": 100
+        }
+      ]
+    },
+    "asleep": {
+      "clip": "sleep",
+      "quiescent": true,
+      "interrupts": [
+        {
+          "on": "pointer.click",
+          "state": "waking"
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": {
+            "pointer.near": 24
+          },
+          "state": "waking"
+        },
+        {
+          "on": "system.wake",
+          "state": "waking"
+        },
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        }
+      ]
+    },
+    "waking": {
+      "clip": "wake",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 100
+        }
+      ]
+    },
+    "sitting_down": {
+      "clip": "sit_down",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "sitting",
+          "weight": 100
+        }
+      ]
+    },
+    "sleep_preparing": {
+      "clip": "sit_down",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "sleeping",
+          "weight": 100
+        }
+      ]
+    },
+    "standing_up": {
+      "clip": "stand_up",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 100
+        }
+      ]
+    },
+    "toss_emblem": {
+      "clip": "toss_emblem",
+      "motion": "none",
+      "surface": "floor",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 100
+        }
+      ],
+      "interrupts": [
+        {
+          "on": {
+            "pointer.near": 60
+          },
+          "state": "watching"
+        },
+        {
+          "on": {
+            "pointer.fast": 1400
+          },
+          "state": "startled",
+          "when": {
+            "pointerDistance": {
+              "op": "lte",
+              "px": 60
+            }
+          }
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "pointer.click",
+          "state": "tipping_hat"
+        },
+        {
+          "on": {
+            "user.idle": 300
+          },
+          "state": "sleep_preparing"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "sitting_down"
+        },
+        {
+          "on": "perch.acquired",
+          "state": "perched"
+        },
+        {
+          "on": "perch.lost",
+          "state": "falling"
+        }
+      ]
+    }
+  },
+  "tuning": {
+    "liveliness": {
+      "label": "Liveliness",
+      "min": 0.2,
+      "max": 2.0,
+      "default": 1.0
+    },
+    "sleepAfter": {
+      "label": "Sleep after (minutes)",
+      "min": 1,
+      "max": 120,
+      "default": 5
+    }
+  }
+}

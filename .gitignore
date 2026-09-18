@@ -1,11 +1,32 @@
 # build outputs
 .build/
 Engine/.build/
+build/
+*.o
+*.dSYM/
+
+# Swift / Xcode
+.swiftpm/
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+
+# Python
 __pycache__/
 *.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Node (author-tool tangents, if any get added later)
+node_modules/
+
+# OS / editor cruft
 .DS_Store
+.vscode/
+.idea/
 
 # generated packs and intermediates — reproduce with `make build-fixture` / `make sketches`
 Tests/Fixtures/build/
 Packs/klien/reference/generated/
-build/

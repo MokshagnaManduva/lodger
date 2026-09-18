@@ -38,7 +38,7 @@ harness rather than the engine.
 | `resting` (quiescent, no animation installed) | 1.30 s/hr | 0.63 s/hr | |
 | `pulsing` (4-frame discrete keyframe loop) | 0.77 s/hr | 0.59 s/hr | |
 
-**Target < 2 s CPU per idle hour: met, with room.**
+**Target < 7 s CPU per idle hour: met, with room.**
 
 The important reading is not the absolute number, it is that **the two states are
 indistinguishable**. Running a sprite animation costs our process nothing
@@ -96,7 +96,7 @@ Single-run figures in the first two rows are kept for the record but should be r
 as "somewhere in the low single digits", not as precise values.
 
 The second row is a deliberately hyperactive pack — a state change every three
-seconds, all day — and it still sits under the 2 s target. The first row is the
+seconds, all day — and it still sits under the 7 s target. The first row is the
 realistic all-day case, and on entering the quiescent state the scheduler's live
 timer count drops to **0** and stays there.
 
@@ -271,3 +271,34 @@ sudo powermetrics --samplers tasks --show-process-wakeups --show-process-energy 
 sudo powermetrics --samplers cpu_power,gpu_power -i 1000 -n 60
 footprint -p <pid>
 ```
+
+## Klien full animation set — 2026-09-16
+
+The active target is **<7 CPU seconds per idle hour**, as updated by the owner.
+The v0.3.0 animation set was measured with its actual runtime textures and masks,
+using a temporary quiescent-idle scheduling fixture to isolate animation from
+walking and autonomous state choices. Three sequential requested 60-second soaks
+reported **6.77 / 1.57 / 4.90 s/hr**, median **4.90 s/hr**. Each recorded zero scheduler
+wakes, zero display-link starts/ticks and zero window enumerations. This passes the
+updated process-CPU target; it does not establish a WindowServer or battery delta.
+
+Reproduce after `make app`:
+
+```sh
+python3 Tools/packtool/verify_klien_runtime.py --measure
+```
+
+Logs and scope limits are retained in
+`Packs/klien/reference/all-scenarios-v1/verification.md` and `measurements/`.
+The CLI report's printed threshold now matches the documented 7s target.
+
+
+## Klien sun-emblem polish — 2026-09-16 (v0.4.0)
+
+The three isolated-idle samples for the shipped gold-emblem pack were **3.75 /
+3.12 / 1.08 CPU seconds/hour**, median **3.12**, below the <7s/hour target. All
+reported zero scheduler wakes, display-link starts/ticks and window enumerations.
+The body/cane/emblem animation is now one composited atlas with no floating spring
+or bob. This result is still short-run process CPU with autonomous choices removed,
+not a measured whole-system improvement over the prior pack. Full results and raw
+logs are in `Packs/klien/reference/all-scenarios-v1/measurements-polish/`.

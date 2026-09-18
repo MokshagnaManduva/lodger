@@ -44,10 +44,13 @@ public final class PointerMonitor {
         public let cell: Int
         /// This part's offset from the body's cell, in cell pixels (y down).
         public let offset: CGPoint
-        public init(mask: HitMask, cell: Int, offset: CGPoint) {
-            self.mask = mask; self.cell = cell; self.offset = offset
+        public let mirrored: Bool
+        public init(mask: HitMask, cell: Int, offset: CGPoint, mirrored: Bool = false) {
+            self.mask = mask; self.cell = cell; self.offset = offset; self.mirrored = mirrored
         }
     }
+    /// Cell-sized interaction geometry, independent of a walk's wide host window.
+    public var interactionFrame: (() -> CGRect)?
     public var scale: CGFloat = 1
     /// Top-left of the character's cell in screen coordinates.
     ///
@@ -84,11 +87,11 @@ public final class PointerMonitor {
 
     deinit { uninstall() }
 
-    public func sample() {
+    public func sample(notify: Bool = true) {
         guard let panel else { return }
         let cursor = NSEvent.mouseLocation
         let topLeft = cellTopLeft?() ?? CGPoint(x: panel.frame.minX, y: panel.frame.maxY)
-        let reading = Self.read(cursor: cursor, frame: panel.frame,
+        let reading = Self.read(cursor: cursor, frame: interactionFrame?() ?? panel.frame,
                                 cellTopLeft: topLeft, scale: scale,
                                 targets: hitTargets?() ?? [])
         if reading.inside != isOverSilhouette {
@@ -96,7 +99,7 @@ public final class PointerMonitor {
             // The whole hit-testing strategy, in one line.
             panel.ignoresMouseEvents = !reading.inside
         }
-        onChange?(reading)
+        if notify { onChange?(reading) }
     }
 
     /// Pure, so it can be tested without a window or a run loop.
@@ -116,12 +119,30 @@ public final class PointerMonitor {
             inside = frame.contains(cursor)     // no masks: fall back to the frame
         } else {
             for t in targets {
-                let x = Int((localX - t.offset.x).rounded(.down))
+                let column = Int((localX - t.offset.x).rounded(.down))
+                let x = t.mirrored ? t.mask.cellWidth - 1 - column : column
                 let y = Int((localY - t.offset.y).rounded(.down))
                 if t.mask.opaque(cell: t.cell, x: x, y: y) { inside = true; break }
             }
         }
         let side: Guard.Side = cursor.x < frame.midX ? .left : .right
         return Reading(local: local, distance: distance, inside: inside, side: side)
+    }
+}
+
+
+/// Event-driven velocity estimator. Accumulate high-frequency mouse events until
+/// the interval is meaningful; resetting on every sub-4ms event loses fast mice.
+public struct PointerVelocity {
+    private var point: CGPoint?
+    private var time: TimeInterval = 0
+    public init() {}
+    public mutating func sample(at next: CGPoint, time now: TimeInterval) -> Double? {
+        guard let previous = point else { point = next; time = now; return nil }
+        let dt = now - time
+        guard dt > 0, dt <= 0.25 else { point = next; time = now; return nil }
+        guard dt >= 0.004 else { return nil }
+        point = next; time = now
+        return hypot(next.x - previous.x, next.y - previous.y) / dt
     }
 }

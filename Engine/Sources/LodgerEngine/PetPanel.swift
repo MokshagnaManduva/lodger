@@ -30,6 +30,7 @@ public final class PetPanel: NSPanel {
         level = .floating
         isMovableByWindowBackground = false
         ignoresMouseEvents = true                 // click-through by contract
+        acceptsMouseMovedEvents = true            // local monitor must see silhouette exits
         collectionBehavior = [.canJoinAllSpaces, .stationary,
                               .fullScreenAuxiliary, .ignoresCycle]
         hidesOnDeactivate = false
