@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import LodgerEngine
 
@@ -145,4 +146,60 @@ func runHostControlChecks() throws {
     check(calm.enter("a", reason: "t").wake == .after(0.3), "pace never stretches a clip-driven duration")
     calm.pace = 0
     check(calm.enter("idle", reason: "t").wake == .after(1.0), "a non-positive pace is ignored")
+}
+
+/// Appearance: colour maps applied once at atlas load.
+func runAppearanceChecks() throws {
+    section("appearance — colour maps, applied once, alpha untouched")
+    let appearance = #"""
+    [{"id":"coat","label":"Coat","default":"plain","options":[
+        {"id":"plain","label":"Plain"},
+        {"id":"red","label":"Red","recolor":{"#102030":"#aa0000","#405060":"#cc2222"}}]},
+     {"id":"gem","label":"Gem","default":"blue","options":[
+        {"id":"blue","label":"Blue"},
+        {"id":"green","label":"Green","recolor":{"#0000FF":"#00ff00"}}]}]
+    """#
+    func pack(_ appearance: String, format: Int = 2) throws -> Pack {
+        let json = controlPackJSON(format: format, tuning: "{}", states: controlStates
+            .replacingOccurrences(of: #","weightBy":"roam""#, with: "").replacingOccurrences(of: #","weightBy":"rest""#, with: "")
+            .replacingOccurrences(of: #"{"on":"pointer.click","state":"a","when":{"flag":{"name":"curious","value":true}}},"#, with: "")
+            .replacingOccurrences(of: #"{"on":{"user.idle":{"knob":"wait"}},"state":"asleep"},"#, with: ""))
+            .replacingOccurrences(of: #""tuning":{},"#, with: #""tuning":{},"appearance":\#(appearance),"#)
+        return try JSONDecoder().decode(Pack.self, from: Data(json.utf8))
+    }
+    let p = try pack(appearance)
+    check(p.appearance.map(\.id) == ["coat", "gem"] && p.appearance[0].options.map(\.id) == ["plain", "red"],
+          "choices and options keep the author's order")
+    check(p.defaultAppearance == ["coat": "plain", "gem": "blue"], "defaults are the art as drawn")
+    check(p.recolorTable(selection: [:]).isEmpty, "the default look has an empty colour map")
+    check(p.resolvedAppearance(["coat": "tartan", "hat": "tall"]) == ["coat": "plain", "gem": "blue"],
+          "unknown saved choices and options fall back to defaults")
+    let table = p.recolorTable(selection: ["coat": "red", "gem": "green"])
+    check(table == [0x102030: 0xAA0000, 0x405060: 0xCC2222, 0x0000FF: 0x00FF00], "choices compose into one map, case-insensitively", "\(table)")
+    check(Recolor.parse("#0a0B0c") == 0x0A0B0C && Recolor.parse("0a0b0c") == nil && Recolor.parse("#0a0b0") == nil
+          && Recolor.parse("#0a0b0g") == nil, "only #rrggbb parses")
+
+    // Pixel-exact: opaque matches change, everything else is untouched.
+    let source: [UInt8] = [0x10, 0x20, 0x30, 255,   0x10, 0x20, 0x31, 255,
+                           0, 0, 0xFF, 255,         0, 0, 0, 0]
+    let space = CGColorSpace(name: CGColorSpace.sRGB)!
+    let info = CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
+    func image(_ bytes: [UInt8]) -> CGImage {
+        var copy = bytes
+        return copy.withUnsafeMutableBytes { CGContext(data: $0.baseAddress, width: 2, height: 2, bitsPerComponent: 8, bytesPerRow: 8,
+                                                        space: space, bitmapInfo: info)!.makeImage()! }
+    }
+    func bytes(_ image: CGImage) -> [UInt8] {
+        var out = [UInt8](repeating: 0, count: 16)
+        out.withUnsafeMutableBytes {
+            let c = CGContext(data: $0.baseAddress, width: 2, height: 2, bitsPerComponent: 8, bytesPerRow: 8, space: space, bitmapInfo: info)!
+            c.draw(image, in: CGRect(x: 0, y: 0, width: 2, height: 2))
+        }
+        return out
+    }
+    let original = image(source)
+    let recoloured = Recolor.apply(original, table: table)
+    check(recoloured.map(bytes) == [0xAA, 0, 0, 255,   0x10, 0x20, 0x31, 255,   0, 0xFF, 0, 255,   0, 0, 0, 0],
+          "matching opaque pixels are replaced; near misses and transparent pixels are not", "\(recoloured.map(bytes) ?? [])")
+    check(Recolor.apply(original, table: [:]) === original, "an empty map returns the very same image, at no cost")
 }

@@ -66,6 +66,10 @@ public final class Pet {
         }
     }
     private var started = false
+    /// The colour map for the look the host chose, fixed for this pet's lifetime.
+    private let recolor: Recolor.Table
+    /// Choice id -> option id, after falling back to the pack's defaults.
+    public let appearance: [String: String]
     /// Host options, for any pack. None of these adds a timer.
     /// Window opacity, 0.05...1.
     public var opacity: Double = 1 {
@@ -105,6 +109,7 @@ public final class Pet {
     public var onStateChange: ((Director.Plan, Scheduler) -> Void)?
 
     public init(loaded: PackStore.Loaded, scale: Int? = nil,
+                appearance: [String: String] = [:],
                 seed: UInt64 = 0x9E3779B97F4A7C15) {
         self.loaded = loaded
         let stage = loaded.pack.stage
@@ -113,6 +118,8 @@ public final class Pet {
                               scale: self.displayScale,
                               margin: Body.attachmentMargin(for: loaded.pack))
         self.director = Director(pack: loaded.pack, seed: seed)
+        self.appearance = loaded.pack.resolvedAppearance(appearance)
+        self.recolor = loaded.pack.recolorTable(selection: appearance)
         // The pack's own defaults, so a host that sets nothing gets the authored
         // behaviour. (Property observers do not run during init.)
         self.tuning = loaded.pack.defaultTuning
@@ -717,7 +724,9 @@ public final class Pet {
         if let a = atlases[named] { return a }
         guard let tex = loaded.pack.textures[named],
               let url = try? PackFiles.file(tex.file, in: loaded.root),
-              let img = SpriteLayer.atlas(at: url)
+              let original = SpriteLayer.atlas(at: url),
+              // The chosen look, applied once here and never again per frame.
+              let img = Recolor.apply(original, table: recolor)
         else { return nil }
         atlases[named] = img
         return img

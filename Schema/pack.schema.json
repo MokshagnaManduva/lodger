@@ -314,6 +314,39 @@
           }
         ]
       }
+    },
+
+    "appearance": {
+      "type": "array",
+      "description": "Looks the user can choose between, in display order. Each option is a colour map applied once when an atlas is loaded; alpha is never changed, so masks, anchors and timing stay valid. Format 2 only.",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "default", "options"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,31}$" },
+          "label": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "default": { "type": "string", "description": "The id of the option that is the art as shipped." },
+          "options": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "label"],
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,31}$" },
+                "label": { "type": "string", "minLength": 1, "maxLength": 64 },
+                "recolor": {
+                  "type": "object",
+                  "description": "Exact opaque source colour to replacement, both as #rrggbb.",
+                  "additionalProperties": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
 

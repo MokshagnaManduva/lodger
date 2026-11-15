@@ -102,6 +102,35 @@ func runPackValidationChecks() throws {
         ("format 1 rejects controls.changed", false, controls(format: 1, tuning: ["s": slider], interrupts: [["on": "controls.changed", "state": "resting"]])),
         ("format 1 rejects knob thresholds", false, controls(format: 1, tuning: ["s": slider], interrupts: [["on": ["user.idle": ["knob": "s"]], "state": "resting"]]))
     ]
+    // Appearance: colour maps must be well formed and unambiguous.
+    func look(_ choices: [[String: Any]], format: Int = 2) -> [String: Any] {
+        var m = manifest; m["format"] = format; m["appearance"] = choices
+        return m
+    }
+    func choice(_ id: String, _ options: [[String: Any]], default d: String = "a") -> [String: Any] {
+        ["id": id, "label": id, "default": d, "options": options]
+    }
+    let plain: [String: Any] = ["id": "a", "label": "A"]
+    func tinted(_ id: String, _ map: [String: String]) -> [String: Any] { ["id": id, "label": id, "recolor": map] }
+    let appearanceCases: [(String, Bool, [String: Any])] = [
+        ("accept appearance choices", true, look([choice("coat", [plain, tinted("b", ["#102030": "#AA0000"])]), choice("gem", [plain, tinted("b", ["#000001": "#00ff00"])])])),
+        ("accept one source colour reused within a choice", true, look([choice("coat", [plain, tinted("b", ["#102030": "#aa0000"]), tinted("c", ["#102030": "#00aa00"])])])),
+        ("reject appearance in format 1", false, look([choice("coat", [plain])], format: 1)),
+        ("reject a default naming no option", false, look([choice("coat", [plain], default: "z")])),
+        ("reject duplicate choice ids", false, look([choice("coat", [plain]), choice("coat", [plain])])),
+        ("reject duplicate option ids", false, look([choice("coat", [plain, plain])])),
+        ("reject a malformed colour", false, look([choice("coat", [plain, tinted("b", ["#12345": "#aa0000"])])])),
+        ("reject a malformed replacement", false, look([choice("coat", [plain, tinted("b", ["#123456": "red"])])])),
+        ("reject one colour claimed by two choices", false, look([choice("coat", [plain, tinted("b", ["#102030": "#aa0000"])]), choice("gem", [plain, tinted("b", ["#102030": "#00ff00"])])])),
+        ("reject no options", false, look([choice("coat", [])])),
+        ("reject too many choices", false, look((0..<9).map { choice("c\($0)", [plain]) }))
+    ]
+    for (name, valid, document) in appearanceCases {
+        try write(document, invalid)
+        var reason = ""
+        do { _ = try loader.load(root: invalid) } catch { reason = String(describing: error) }
+        check(reason.isEmpty == valid, name, reason)
+    }
     for (name, valid, document) in controlCases {
         try write(document, invalid)
         var reason = ""

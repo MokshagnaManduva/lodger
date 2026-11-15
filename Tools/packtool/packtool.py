@@ -372,6 +372,38 @@ def check_controls(pack: dict, rep: Report) -> None:
         rep.error("format", "typed tuning controls, weightBy, knob thresholds and controls.changed require format 2")
 
 
+def check_appearance(pack: dict, rep: Report) -> None:
+    """Appearance options are colour maps; mirror PackValidation.validateAppearance."""
+    choices = pack.get("appearance", [])
+    if not choices:
+        return
+    if pack.get("format", 1) < 2:
+        rep.error("format", "appearance requires format 2")
+    if len(choices) > 8:
+        rep.error("appearance", "too many appearance choices (maximum 8)")
+    if len({c["id"] for c in choices}) != len(choices):
+        rep.error("appearance", "choice ids must be unique")
+    owner = {}
+    for choice in choices:
+        where = f"appearance/{choice['id']}"
+        options = choice["options"]
+        if len(options) > 16:
+            rep.error(where, "1 to 16 options are allowed")
+        ids = [o["id"] for o in options]
+        if len(set(ids)) != len(ids):
+            rep.error(where, "option ids must be unique")
+        if choice["default"] not in ids:
+            rep.error(where, "default names no option")
+        for option in options:
+            recolor = option.get("recolor", {})
+            if len(recolor) > 64:
+                rep.error(f"{where}/{option['id']}", "at most 64 colours")
+            for source in recolor:
+                key = source.lower()
+                if owner.setdefault(key, choice["id"]) != choice["id"]:
+                    rep.error("appearance", f"colour {key} is recoloured by both {owner[key]} and {choice['id']}")
+
+
 # --------------------------------------------------------------------------- cmds
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -396,6 +428,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         check_anchors(pack, rep, jump_limit=args.anchor_jump)
         check_reachability(pack, rep)
         check_controls(pack, rep)
+        check_appearance(pack, rep)
     return rep.emit(pack.get("identity", {}).get("id", "pack"))
 
 

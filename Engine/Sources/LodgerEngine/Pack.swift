@@ -18,6 +18,8 @@ public struct Pack: Decodable, Sendable {
     public let hitMasks: [String: String]
     public let sounds: [String: Sound]
     public let tuning: [String: Knob]
+    /// Looks the user can choose between, in the author's order. See Recolor.swift.
+    public let appearance: [AppearanceChoice]
 
     public struct Identity: Decodable, Sendable {
         public let id: String, name: String, version: String
@@ -429,7 +431,7 @@ public struct Pack: Decodable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case format, engineMin, requires, identity, stage, textures, clips
-        case parts, initialState, states, hitMasks, sounds, tuning
+        case parts, initialState, states, hitMasks, sounds, tuning, appearance
     }
     public init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -446,5 +448,6 @@ public struct Pack: Decodable, Sendable {
         hitMasks = try c.decodeIfPresent([String: String].self, forKey: .hitMasks) ?? [:]
         sounds = try c.decodeIfPresent([String: Sound].self, forKey: .sounds) ?? [:]
         tuning = try c.decodeIfPresent([String: Knob].self, forKey: .tuning) ?? [:]
+        appearance = try c.decodeIfPresent([AppearanceChoice].self, forKey: .appearance) ?? []
     }
 }

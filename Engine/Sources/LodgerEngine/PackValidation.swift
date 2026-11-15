@@ -55,6 +55,7 @@ enum PackValidation {
             try require(knob.min <= knob.defaultValue && knob.defaultValue <= knob.max, "tuning.\(name): require min <= default <= max")
         }
         try validateControls(p, manifest: manifest)
+        try validateAppearance(p)
         for (name, clip) in p.clips {
             guard let texture = p.textures[clip.texture] else { throw PackStore.Failure.invalid("clip \(name): unknown texture \(clip.texture)") }
             // Bounds below are checked before multiplying any dimensions.
@@ -138,6 +139,35 @@ enum PackValidation {
         }
         if let preview = (manifest["identity"] as? [String: Any])?["preview"] as? String {
             _ = try decodeImage(preview, root: root)
+        }
+    }
+
+    /// Appearance options are colour maps. They must be unambiguous: one choice
+    /// per source colour, so the result never depends on the order of choices.
+    private static func validateAppearance(_ p: Pack) throws {
+        func require(_ ok: Bool, _ message: String) throws {
+            if !ok { throw PackStore.Failure.invalid(message) }
+        }
+        guard !p.appearance.isEmpty else { return }
+        try require(p.format >= 2, "appearance requires format 2")
+        try require(p.appearance.count <= 8, "too many appearance choices (maximum 8)")
+        try require(Set(p.appearance.map(\.id)).count == p.appearance.count, "appearance choice ids must be unique")
+        var owner: [UInt32: String] = [:]
+        for choice in p.appearance {
+            try require((1...16).contains(choice.options.count), "appearance.\(choice.id): 1 to 16 options are allowed")
+            try require(Set(choice.options.map(\.id)).count == choice.options.count, "appearance.\(choice.id): option ids must be unique")
+            try require(choice.options.contains { $0.id == choice.defaultOption }, "appearance.\(choice.id): default names no option")
+            for option in choice.options {
+                try require(option.recolor.count <= 64, "appearance.\(choice.id).\(option.id): at most 64 colours")
+                for (from, to) in option.recolor {
+                    guard let source = Recolor.parse(from), Recolor.parse(to) != nil else {
+                        throw PackStore.Failure.invalid("appearance.\(choice.id).\(option.id): colours must be #rrggbb")
+                    }
+                    try require(owner[source] == nil || owner[source] == choice.id,
+                                "appearance: colour \(from.lowercased()) is recoloured by both \(owner[source] ?? "") and \(choice.id)")
+                    owner[source] = choice.id
+                }
+            }
         }
     }
 
