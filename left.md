@@ -60,6 +60,13 @@ Settings has an Appearance tab with a live preview. Results after this step:
 **377/377 engine checks** with both packs and **89/89 app checks**; `make looks`
 writes `build/looks-klien.png` and `build/looks-norn.png`.
 
+**Hosted CI observed passing (same branch).** The workflow had never completed: the
+`macos-14` runner was retired, and a separately installed Swift 6.0 then hung in
+`swift build`. It now uses the runner's own toolchain with a 25-minute timeout, and a
+run on `norn-deployment` passed every step, including 377 engine checks with both
+characters and both Director suites. One idle-watcher check that depended on machine
+speed was made robust. `make app-test` and `make release-check` are not in CI yet.
+
 Still open from this work:
 
 - **Owner art approval of the new looks.** Klien's colourways tint hat, hair, suit and
