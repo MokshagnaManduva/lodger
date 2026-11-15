@@ -1,13 +1,32 @@
 # Norn · desktop alchemist
 
-Norn now has a **working local runtime pack (v0.3.0)** alongside her original six motion
-studies. Open [runtime.html](runtime.html) to inspect the exact runtime frames and
-timings. The original [gallary.html](gallary.html) remains the concept sketchbook;
-its spelling is retained for existing links. Both pages work directly from disk.
+Norn is a **bundled Lodger character (v0.4.0)**, shipped in the app next to Klien and
+licensed CC BY-NC 4.0. Open [runtime.html](runtime.html) to inspect the exact runtime
+frames and timings. The original [gallary.html](gallary.html) remains the concept
+sketchbook; its spelling is retained for existing links. Both pages work directly from disk.
 
 Norn is a curious, slightly distracted alchemist accompanied by a floating root.
 Her movement language is careful footwork, expressive hands, and prop-driven
 mishaps. Her identity reference and all original sheets remain unchanged.
+
+## Settings controls (0.4.0)
+
+| Control | Kind | Effect |
+|---|---|---|
+| Wanders on her own | toggle, **off** | Off: she rests until you interact. On: she walks, reads for a while, gets up and repeats |
+| Wander pace | slider 50–200% | How soon she moves on while wandering |
+| Notices the cursor | toggle, on | The curious look when the cursor touches her |
+| Greets on click | toggle, on | The wave; double-click still sends her walking |
+| Naps in Low Power Mode | toggle, on | Sleeping while Low Power Mode is on |
+
+Wandering is off by default so that `idle` and `reading` stay quiescent: no state
+timer, as measured. Switching it on routes her into `idle_restless` and
+`reading_restless`, timed twins of those states, which cost one coalesced wake per
+20–60 s idle spell and per 45–120 s reading spell (divided by the pace). The switch
+takes effect at once through `controls.changed`: she looks at her flask or closes
+her book and carries on in the new mode. She now arrives with a brief look at her
+flask (`initialState` is `inspecting`) so that arrival routes to the right idle.
+The manifest source is `reference/runtime-v1/pack.source.json`.
 
 ## Run and build
 
@@ -24,13 +43,14 @@ make app                  # if the local Lodger bundle does not yet exist
 For the normal menu/settings flow, start Lodger from the repository root and select
 Norn from its discovered development packs, or use **Add Character…** and choose
 `build/Norn.pack`. The export excludes generated source sheets, JavaScript and
-preview HTML. This milestone does not add Norn to the public app bundle.
+preview HTML. `make app` bundles her runtime files with Klien's.
 
 ## Desktop behavior
 
 | Input / event | Response |
 | --- | --- |
-| Quiet desktop | Slow blink and smile; quiescent idle |
+| Launch | Inspect the flask once, then idle |
+| Quiet desktop | Slow blink and smile; quiescent idle (unless wandering is on) |
 | Pointer enters her silhouette | Curious look, inspect the flask, return to idle |
 | Click while standing | Wave, inspect, recover |
 | Double-click while standing | Walk a bounded segment, settle down, read |

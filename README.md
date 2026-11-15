@@ -8,7 +8,8 @@ packs; the reusable engine does not contain character art or character-specific 
 The working tree contains a development build, with these implemented features:
 
 - cursor-aware reactions, click-versus-drag handling, falling, walking, and multi-display recovery;
-- native Settings with character previews, size/reset, sound/volume, personality controls and removal to Trash;
+- native Settings with character previews, size/reset, sound/volume, each character's own behaviour sliders and toggles, and removal to Trash;
+- two bundled characters, Klien and Norn, loaded through the same path as installed packs;
 - staged pack installation with schema/asset/path validation, ID-based replacement and tested rollback;
 - pack validation, an incomplete authoring scaffold, and static texture previews;
 - render-server animation for idle/walking, with no autonomous timer/physics display link in quiescent states;
@@ -45,9 +46,11 @@ make release-check    # local release gate
 
 ## Use the app
 
-Open `build/Lodger.app`. Lodger appears in the menu bar and starts the bundled `klien` pack.
+Open `build/Lodger.app`. Lodger appears in the menu bar and starts Klien; Norn is bundled
+too and can be chosen from the menu or Settings.
 Use **Settings…** to select/preview a character, change its size, reset character defaults,
-set sound/volume, or adjust personality knobs used by its state durations. Installed packs
+set sound/volume, or adjust the behaviour controls that character declares (for example how
+often Klien wanders, or whether Norn walks about on her own). Installed packs
 can be moved to Trash; bundled/development source packs are protected. Resize and active
 replacement preserve position within display bounds. Actual desktop acceptance remains open.
 

@@ -30,6 +30,32 @@ and its output is not immediately valid or runnable. `preview` is a static atlas
 
 ## Verification evidence
 
+### Norn bundled; pack-declared behaviour controls — 2026-11-15
+
+Pack format 2 adds typed `tuning` controls (sliders and toggles), `weightBy`,
+slider-valued event thresholds and `controls.changed`. Klien 0.5.0 has nine controls
+and Norn 0.4.0 five; both are bundled in `Lodger.app` by one rule, with Klien as the
+first-run default. The owner confirmed Norn's licence as CC BY-NC 4.0.
+See [the design](Docs/superpowers/specs/2026-11-15-norn-deployment-behaviour-controls-design.md).
+
+Recorded results on branch `norn-deployment`: **349/349 engine checks** with both
+packs (347 generic), **55/55 app checks**, **92 Norn Director checks**, Klien Director
+and art checks, `make test`, `make separation`, `make release-test` and
+`make release-check` passed. The built bundle was launched from outside the repository
+and discovered both bundled packs; a zero-pack bundle launched to the empty state.
+
+Still open from this work:
+
+- Live desktop acceptance of the new sliders and checkboxes in Settings. The automated
+  checks construct the controls and drive the controller, not real input.
+- Energy measurement of Norn with wandering **on**, and of Klien at non-default slider
+  values. Defaults are unchanged in cost by construction, not by a new measurement.
+- With Klien's cursor watching switched off, the pointer monitor stays installed because
+  clicks and grabs still need it.
+- Sub-project 2 (Settings redesign, app-level controls) and sub-project 3 (appearance
+  variants: palette swaps plus prop options) are agreed but not started.
+- `site/` and `.github/workflows/site.yml` remain uncommitted local work.
+
 ### Settings/import correctness — 2026-09-30
 
 Added preview/metadata, removal to Trash, reset, volume and referenced personality
@@ -72,7 +98,7 @@ The September 25 polish supersedes the earlier walk/greeting/seated-transition g
 Still open: arbitrary-interrupt/prop continuity polish, the high-five/page/sneeze concepts,
 full desktop interaction and energy acceptance, and character provenance/distribution
 license confirmation.
-Norn has not been added to the public bundle.
+Norn was not bundled at that milestone; she is bundled as of 2026-11-15 (see above).
 
 ### Pack validation and import milestone — 2026-09-22
 

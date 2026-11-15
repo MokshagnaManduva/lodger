@@ -10,7 +10,20 @@ The two hard rules are there, and most bugs in this project will be violations o
 
 ## Current status
 
-**2026-09-30 — development build; release incomplete.** Klien holds a small gold
+**2026-11-15 — development build; release incomplete.** Two characters are bundled:
+Klien (0.5.0) and Norn (0.4.0, CC BY-NC 4.0 confirmed by the owner). Pack format 2 adds
+pack-declared Settings controls: sliders (`scaleBy`, `weightBy`, event thresholds via
+`{"knob": name}`) and toggles (read by the `flag` guard), plus the `controls.changed`
+event. Format 1 packs still load. Klien has nine controls, Norn five; Norn's wandering is
+off by default so her resting states stay quiescent. Design and plan:
+`Docs/superpowers/specs/2026-11-15-norn-deployment-behaviour-controls-design.md`.
+Two follow-on sub-projects are agreed but not started: (2) Settings redesign plus
+app-level controls, (3) appearance variants (palette swaps plus prop options).
+Recorded November 15: 349 engine checks with both packs (347 generic), 55 app checks,
+92 Norn and all Klien Director checks, pack/art, separation and release checks passed.
+Live desktop acceptance of the new controls has not been done.
+
+**Earlier status, 2026-09-30.** Klien holds a small gold
 sun emblem in his free hand and occasionally tosses it. The current art has compact
 leg poses and revised hand transitions. Source: `Packs/klien/reference/all-scenarios-v1/`; rebuild with
 `make klien-animations`. The approved `reference/idle-v2/` remains archived.
@@ -45,6 +58,9 @@ was performed. Computer-use access to the isolated acceptance app was rejected.
 make test              # validator and native-art acceptance checks
 make engine-test       # engine checks (the runner reports the current total)
 make app-test          # isolated Settings/import/controller checks
+make klien-test        # Klien art and Director checks, including his controls
+make norn-test         # Norn art and Director checks, including her controls
+make release-check     # builds the app and verifies the bundled packs
 make klien-animations  # regenerate active art, atlas, masks and gallery
 make app               # local ad-hoc signed bundle
 ```
@@ -173,8 +189,9 @@ Docs/
 ```
 
 **Keep character assets out of `Engine/` and character logic out of the reusable engine.**
-`make separation` checks selected asset extensions and the reference-character name in the
-library. The macOS CI workflow invokes it; broader detection and a hosted run remain open.
+`make separation` checks for asset files under `Engine/Sources` and for every reference
+pack's name in engine and app source (it uses grep and find, so it cannot pass by failing
+to run). The macOS CI workflow invokes it; broader detection and a hosted run remain open.
 If you need a fixture for tests, generate it procedurally or put it in
 `Tests/Fixtures/` as an obviously synthetic pack (`test.solidsquare`).
 
@@ -249,11 +266,19 @@ Events: `clip.ended`, `state.timeout`, `pointer.enter`, `pointer.exit`, `pointer
 `pointer.doubleClick`, `pointer.grab`, `pointer.release`, `pointer.near(px)`,
 `pointer.idle(sec)`, `pointer.fast(pxPerSec)`, `edge.reached(edge)`, `physics.landed`,
 `physics.settled`, `user.idle(sec)`, `system.wake`, `system.willSleep`, `display.changed`,
-`space.changed`, `power.lowPowerMode(bool)`, `power.onBattery(bool)`, `app.occluded(bool)`.
+`space.changed`, `power.lowPowerMode(bool)`, `power.onBattery(bool)`, `app.occluded(bool)`,
+`controls.changed` (format 2: the user just flipped a toggle; sent once, on that action only).
+The four numeric thresholds may name a slider with `{"knob": name}` instead of a literal.
 
 Guards: `random(p)`, `stateAge(op, sec)`, `pointerDistance(op, px)`, `pointerSide(left|right)`,
 `onEdge(floor|wallLeft|wallRight|ceiling)`, `facing(left|right)`, `flag(name, bool)`,
-`timeOfDay(from, to)`, `lowPower(bool)`, plus `all` / `any` / `not`.
+`timeOfDay(from, to)`, `lowPower(bool)`, plus `all` / `any` / `not`. In format 2 a `flag`
+must name a toggle the pack declares in `tuning`; the host supplies its value.
+
+**Controls stay inert.** A pack declares sliders and toggles and references them by name
+(`scaleBy`, `weightBy`, `{"knob": ...}`, `flag`). The engine multiplies, divides or
+compares; it never learns a control's meaning and never evaluates one on a timer. Values
+are read only when a state is entered, a timeout fires or an event arrives.
 
 **Adding to these lists is an engine change with a format-version bump. That is correct and
 intentional** — it is the seam that keeps packs inert.
@@ -677,10 +702,16 @@ scaffold needs required metadata, art, clips, parts and states before validation
 
 ## 8a. The bundled default pack
 
-Klien ships inside the app bundle so that Lodger is never empty on first run:
+Klien and Norn ship inside the app bundle so that Lodger is never empty on first run.
+`BUNDLED_PACKS` (Makefile / `Scripts/bundle.sh`) lists them; `Scripts/bundle-pack.py`
+copies each by one rule (manifest, the files it references, `LICENSE`, `CREDITS.md`) and
+refuses a pack whose licence is unsettled. The first listed pack becomes the Info.plist
+`LodgerDefaultPack`, which is how the app picks a first-run character without a pack ID
+in source.
 
 ```
 Lodger.app/Contents/Resources/Packs/klien/     read-only
+Lodger.app/Contents/Resources/Packs/Norn/      read-only
 ~/Library/Application Support/Lodger/Packs/    user-installed, writable
 ```
 

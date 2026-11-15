@@ -1,4 +1,8 @@
-# Character pack format v1
+# Character pack format v2
+
+Format 2 adds typed Settings controls (§8), `weightBy`, slider-valued event thresholds
+and the `controls.changed` event. Format 1 packs remain valid and behave as before; a
+pack that uses any of the additions must declare `"format": 2`.
 
 Normative schema: [`Schema/pack.schema.json`](../Schema/pack.schema.json)
 Worked example: [`Packs/klien/pack.json`](../Packs/klien/pack.json)
@@ -44,7 +48,7 @@ say "wake me at 60 Hz". Scheduling belongs to the engine.
 
 ```json
 {
-  "format": 1,
+  "format": 2,
   "engineMin": "1.0.0",
   "requires": ["audio"],
   "identity": {
@@ -279,6 +283,31 @@ value — a higher knob means a livelier pet — and **never learns what the kno
 That is how a pack ships a "Liveliness" slider without the word appearing anywhere in the
 engine.
 
+### Scaling how often something happens
+
+```json
+"next": [
+  { "state": "idle",    "weight": 25 },
+  { "state": "walking", "weight": 35, "weightBy": "wander" }
+]
+```
+
+`weightBy` names a slider. The transition's weight is multiplied by the slider's value, so
+`0` removes that option and `2` makes it twice as likely relative to the others. If every
+eligible option has been scaled to zero, the authored weights apply: settings can never
+strand a character in a state with nowhere to go. Leave at least one option unscaled if
+"all off" should mean something specific.
+
+### Letting the user set a threshold
+
+```json
+{ "on": { "user.idle": { "knob": "sleepAfter" } }, "state": "sleep_preparing" }
+```
+
+`pointer.near`, `pointer.idle`, `pointer.fast` and `user.idle` accept `{"knob": name}` in
+place of a number. The slider must have a positive minimum. When the user moves it, the
+engine re-arms the affected watcher once; nothing is re-read on a tick.
+
 ### `quiescent` — the one field that matters most for battery
 
 ```json
@@ -307,6 +336,7 @@ quiescent state.** A pet with none is a pet that never stops costing power.
 `clip.ended` · `state.timeout` · `pointer.enter` · `pointer.exit` · `pointer.click` ·
 `pointer.doubleClick` · `pointer.grab` · `pointer.release` · `physics.landed` ·
 `physics.settled` · `system.wake` · `system.willSleep` · `display.changed` · `space.changed` ·
+`controls.changed` (a toggle was just switched in Settings; format 2) ·
 `{"pointer.near": px}` · `{"pointer.idle": sec}` ·
 `{"pointer.fast": pxPerSec}` · `{"user.idle": sec}` ·
 `{"edge.reached": "left"|"right"|"top"|"bottom"}` · `{"power.lowPowerMode": bool}` ·
@@ -340,19 +370,67 @@ it keeps its handedness and stays on the same visual side.
 ## 8. `sounds` and `tuning`
 
 ```json
-"sounds": { "step": { "file": "audio/step.wav", "volume": 0.15, "maxConcurrent": 1 } },
-"tuning": { "liveliness": { "label": "Liveliness", "min": 0.2, "max": 2.0, "default": 1.0 } }
+"sounds": { "step": { "file": "audio/step.wav", "volume": 0.15, "maxConcurrent": 1 } }
 ```
 
 Sounds are triggered per frame (`"sound": "step"` on a frame) or per state. Audio ships **off
 by default**; the engine respects system mute and Do Not Disturb regardless.
 
-`tuning` declares scalar knobs. Settings shows generic sliders for knobs referenced by a
-state duration’s `scaleBy`; unused declarations are not shown as working controls. Values
-are clamped to declared bounds and saved per character. Changes affect subsequent duration
-calculations, not a deadline already scheduled. The engine needs no character-specific
-knowledge of the knob names. Battery-based tuning adjustment remains verification/backlog
-work rather than a promise of the current Settings controls.
+### `tuning` — the controls your character shows in Settings
+
+```json
+"tuning": {
+  "liveliness": { "label": "Liveliness", "min": 0.2, "max": 2.0, "default": 1.0,
+                  "unit": "percent", "group": "Activity",
+                  "description": "How quickly he moves from one activity to the next." },
+  "sleepAfter": { "label": "Sleep after", "min": 60, "max": 3600, "default": 300,
+                  "unit": "seconds", "group": "Rest" },
+  "startles":   { "type": "toggle", "label": "Startles", "default": true, "group": "Pointer" }
+}
+```
+
+There are two kinds of control. Neither the engine nor Settings knows what any of them
+means; you give them meaning by where you reference them.
+
+| Kind | Declared with | Referenced from |
+|---|---|---|
+| Slider (`"type": "slider"`, the default) | `min`, `max`, numeric `default` | `duration.scaleBy`, `next[].weightBy`, an event threshold `{"knob": name}` |
+| Toggle (`"type": "toggle"`) | boolean `default`; no `min`/`max`/`unit` | the guard `{"flag": {"name": ..., "value": true|false}}` |
+
+Optional display fields: `group` (a heading; controls are grouped and sorted by it),
+`description` (a tooltip) and, for sliders, `unit` — `"seconds"` shows `5 min`,
+`"percent"` shows `100%`, anything else shows the plain number.
+
+Rules the loader and `packtool validate` both enforce:
+
+- every reference names a declared control of the right kind;
+- a slider's default lies within its range; `scaleBy` and threshold sliders have a positive
+  minimum, `weightBy` sliders a non-negative one;
+- in format 2, a `flag` guard must name a declared toggle (format 1 keeps the old
+  behaviour, where an unknown flag simply reads false);
+- typed entries, display fields, `weightBy`, `{"knob": ...}` and `controls.changed` require
+  `"format": 2`.
+
+Settings shows only controls that some state actually references; `packtool validate`
+warns about a declared control nothing uses. Values are clamped, saved per character and
+applied live: a slider affects the next duration, weight or threshold evaluation (not a
+deadline already scheduled), and a toggle is read the next time one of its guards is
+evaluated. The character is not restarted.
+
+Because guards are only evaluated when an event or timeout already occurs, a toggle alone
+cannot wake a quiescent state. If a switch should take effect immediately, listen for it:
+
+```json
+{ "on": "controls.changed", "state": "inspecting",
+  "when": { "flag": { "name": "wanders", "value": true } } }
+```
+
+`controls.changed` is sent once when the user flips any toggle, never for slider
+movement and never on a timer.
+
+**Keep the default cheap.** A control that turns on timed behaviour should default to off
+if the character is otherwise quiescent, and route into a separate non-quiescent state
+rather than making the resting state timed. `Packs/Norn` does this for wandering.
 
 ## 9. Checklist before publishing
 

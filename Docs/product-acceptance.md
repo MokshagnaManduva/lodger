@@ -25,6 +25,24 @@ Reset applies to the selected character's size and personality values. Sound and
 volume are global preferences and are not reset by this action. Restarting an active
 character for resize/reset/replacement restarts its action at its initial state.
 
+## Behaviour controls — 2026-11-15
+
+Settings now shows, per character, a checkbox for each toggle and a slider with a
+formatted readout for each slider the pack declares and uses, under the pack's group
+headings. Changes apply to the running character without restarting it and are saved
+per character; Reset restores them with size. Klien exposes nine controls and Norn five.
+
+The 55 app checks cover defaults on first activation, live application to the same
+running pet, persistence across controllers and switching, reset, rejection of a value
+of the wrong kind, the `controls.changed` round trip, the rendered control set and the
+configured first-run character. They do not exercise real mouse input on the controls;
+add these to the next desktop session:
+
+- Drag each Klien slider to 0% and 200% and watch a few minutes of behaviour.
+- Set Klien's "Sleep after" to 1 min and confirm he sleeps after a minute idle.
+- Switch Norn's "Wanders on her own" on and off; she should react at once both ways.
+- Confirm tooltips, group headings, readouts and scrolling in light and dark mode.
+
 ## Recorded automated evidence
 
 The September 30 run passed **30/30 app checks**, **306/306 generic engine checks**,
