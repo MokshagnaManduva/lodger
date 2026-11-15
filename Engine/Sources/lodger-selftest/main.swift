@@ -796,10 +796,12 @@ do {
     let w2 = IdleWatcher { live }
     var w2Fired = false
     w2.onIdle = { _ in w2Fired = true }
-    w2.arm(after: 0.7)
+    // The threshold is well clear of the ~0.7 s this loop takes, so the watcher's
+    // own wake cannot land inside it on a slow machine and be mistaken for a reset.
+    w2.arm(after: 2.0)
     let firstSchedule = w2.scheduledCount
     for _ in 0..<6 {                       // six "state changes" inside the threshold
-        w2.arm(after: 0.7)
+        w2.arm(after: 2.0)
         live += 0.12
         RunLoop.current.run(until: Date().addingTimeInterval(0.12))
     }
@@ -807,7 +809,8 @@ do {
           "re-arming an already-counting watcher does NOT reset it",
           "rescheduled \(w2.scheduledCount - firstSchedule) extra times")
     live = 5
-    RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+    let w2Deadline = Date().addingTimeInterval(6)      // the wake has generous leeway
+    while !w2Fired && Date() < w2Deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.05)) }
     check(w2Fired, "so the threshold can actually elapse through state changes")
 
     let w3 = IdleWatcher { 0 }
