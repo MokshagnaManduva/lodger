@@ -14,6 +14,7 @@ import numpy as np
 from PIL import Image
 
 from build import encode_masks
+import looks
 
 ROOT = Path(__file__).resolve().parents[2]
 PACK = ROOT / "Packs/Norn"
@@ -97,6 +98,15 @@ def main():
                                  name, palette=palette, shared_body=body)
         count += added
     manifest = json.loads((SOURCE / "pack.source.json").read_text())
+    # Selectable looks. Her flask's purples are a hue family of their own, so the
+    # potion can change colour without touching hair, apron or the root. (Her
+    # irises share two of those purples and shift slightly with it.)
+    used = looks.atlas_colors(PACK / t["file"] for t in manifest["textures"].values())
+    potion = looks.hue_family(used, 0.70, 0.87)
+    manifest["appearance"] = [looks.choice("potion", "Potion", "Violet", [
+        ("emerald", "Emerald", looks.recolor(potion, lambda c: looks.rotate(c, -151))),
+        ("amber", "Amber", looks.recolor(potion, lambda c: looks.rotate(c, -241))),
+        ("azure", "Azure", looks.recolor(potion, lambda c: looks.rotate(c, -79)))])]
     write_json(PACK / "pack.json", manifest)
     descriptions = json.loads((SOURCE / "clips.json").read_text())
     studies = []

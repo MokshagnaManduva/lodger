@@ -15,6 +15,8 @@ import shutil
 import tempfile
 from PIL import Image, ImageDraw
 from build import build
+import looks
+from packtool import check_appearance
 from packtool import Report, check_schema, check_references, check_idle_policy, check_anchors, check_reachability, check_controls
 
 REPO=Path(__file__).resolve().parents[2]
@@ -325,7 +327,28 @@ def manifest(clips,index):
         'duration':'clip','next':[{'state':'idle','weight':100}],
         'interrupts':copy.deepcopy(states['idle']['interrupts'])}
     controls(m)
+    appearance(m)
     return m
+
+
+def appearance(m):
+    """Selectable looks, as colour maps over the locked palettes.
+
+    The hat, hair, suit and cape share one dark ramp, so a colourway tints all of
+    them together; pure black outlines and the eyes are left alone. The emblem has
+    its own five-colour ramp, so its metal changes independently.
+    """
+    darks=[c for c in P if max(c[:3])<=0x45 and c[:3]!=(0,0,0)]
+    def way(hue,sat,gain): return looks.recolor(darks,lambda c: looks.tint(c,hue,sat,0.02,gain))
+    def metal(hue,sat): return looks.recolor(GOLD,lambda c: looks.tint(c,hue,sat))
+    m['appearance']=[
+        looks.choice('colourway','Colourway','Classic black',[
+            ('midnight','Midnight blue',way(0.62,0.42,1.25)),
+            ('burgundy','Burgundy',way(0.97,0.50,1.25)),
+            ('forest','Forest green',way(0.40,0.38,1.20))]),
+        looks.choice('emblem','Sun emblem','Gold',[
+            ('silver','Silver',metal(0.58,0.08)),
+            ('rose','Rose gold',metal(0.03,0.45))])]
 
 
 def controls(m):
@@ -439,7 +462,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='klien-scenarios-') as tmp:
         rep=Report();built=build(OUT,Path(tmp),rep,clean=False)
         if check_schema(built,rep):
-            check_references(built,Path(tmp),rep);check_idle_policy(built,rep);check_anchors(built,rep);check_reachability(built,rep);check_controls(built,rep)
+            check_references(built,Path(tmp),rep);check_idle_policy(built,rep);check_anchors(built,rep);check_reachability(built,rep);check_controls(built,rep);check_appearance(built,rep)
         if rep.emit('Klien scenarios'): raise SystemExit(1)
         if args.install:
             # The cane remains editable in source, but its animation is already

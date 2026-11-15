@@ -1121,5 +1121,84 @@
       "group": "Pointer",
       "description": "Jumps when the cursor rushes past nearby."
     }
-  }
+  },
+  "appearance": [
+    {
+      "id": "colourway",
+      "label": "Colourway",
+      "default": "default",
+      "options": [
+        {
+          "id": "default",
+          "label": "Classic black"
+        },
+        {
+          "id": "midnight",
+          "label": "Midnight blue",
+          "recolor": {
+            "#0b0b0c": "#0b101c",
+            "#1d1a22": "#19233c",
+            "#2c2a2d": "#223054",
+            "#373434": "#2a3b66",
+            "#3f3d40": "#304476"
+          }
+        },
+        {
+          "id": "burgundy",
+          "label": "Burgundy",
+          "recolor": {
+            "#0b0b0c": "#1d0a0d",
+            "#1d1a22": "#40151d",
+            "#2c2a2d": "#591e28",
+            "#373434": "#6c2431",
+            "#3f3d40": "#7d2a39"
+          }
+        },
+        {
+          "id": "forest",
+          "label": "Forest green",
+          "recolor": {
+            "#0b0b0c": "#0c1a11",
+            "#1d1a22": "#193926",
+            "#2c2a2d": "#244f35",
+            "#373434": "#2b6040",
+            "#3f3d40": "#326f4a"
+          }
+        }
+      ]
+    },
+    {
+      "id": "emblem",
+      "label": "Sun emblem",
+      "default": "default",
+      "options": [
+        {
+          "id": "default",
+          "label": "Gold"
+        },
+        {
+          "id": "silver",
+          "label": "Silver",
+          "recolor": {
+            "#5c3b17": "#353a3e",
+            "#9f6c23": "#596169",
+            "#dba639": "#818a93",
+            "#fad367": "#aab1b7",
+            "#ffeeac": "#d2d6d9"
+          }
+        },
+        {
+          "id": "rose",
+          "label": "Rose gold",
+          "recolor": {
+            "#5c3b17": "#532920",
+            "#9f6c23": "#8d4535",
+            "#dba639": "#bf6855",
+            "#fad367": "#d49a8d",
+            "#ffeeac": "#e8cac3"
+          }
+        }
+      ]
+    }
+  ]
 }

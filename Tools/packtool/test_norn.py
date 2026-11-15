@@ -124,7 +124,11 @@ class NornAcceptance(unittest.TestCase):
 
     def test_preview_matches_runtime_and_sources(self):
         np.testing.assert_array_equal(np.asarray(Image.open(PACK / "preview.png")), self.cells[0])
-        self.assertEqual(self.pack, json.loads((PACK / 'reference/runtime-v1/pack.source.json').read_text()))
+        # The looks are derived from the compiled palette at build time; everything
+        # else in the runtime manifest is the authored source, unchanged.
+        authored = {k: v for k, v in self.pack.items() if k != 'appearance'}
+        self.assertEqual(authored, json.loads((PACK / 'reference/runtime-v1/pack.source.json').read_text()))
+        self.assertEqual([c['id'] for c in self.pack['appearance']], ['potion'])
         preview = json.loads((PACK / 'runtime.js').read_text().split('window.NORN_DRAFTS = ', 1)[1].rstrip(';\n'))
         for study in preview:
             clip = self.pack['clips'][study['id']]

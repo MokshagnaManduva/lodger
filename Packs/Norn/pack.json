@@ -1267,5 +1267,69 @@
       "group": "Rest",
       "description": "Falls asleep while Low Power Mode is on."
     }
-  }
+  },
+  "appearance": [
+    {
+      "id": "potion",
+      "label": "Potion",
+      "default": "default",
+      "options": [
+        {
+          "id": "default",
+          "label": "Violet"
+        },
+        {
+          "id": "emerald",
+          "label": "Emerald",
+          "recolor": {
+            "#341f4c": "#214c1f",
+            "#4e2a61": "#2a6132",
+            "#681d96": "#1d9629",
+            "#73579a": "#5e9a57",
+            "#8a60b1": "#60b160",
+            "#8d26b4": "#26b444",
+            "#9a64ce": "#65ce64",
+            "#a62dca": "#2dca55",
+            "#b193df": "#9cdf93",
+            "#c9a9e8": "#aae8a9",
+            "#d158e2": "#58e28a"
+          }
+        },
+        {
+          "id": "amber",
+          "label": "Amber",
+          "recolor": {
+            "#341f4c": "#4c331f",
+            "#4e2a61": "#614d2a",
+            "#681d96": "#96661d",
+            "#73579a": "#9a7257",
+            "#8a60b1": "#b18960",
+            "#8d26b4": "#b48b26",
+            "#9a64ce": "#ce9864",
+            "#a62dca": "#caa32d",
+            "#b193df": "#dfb093",
+            "#c9a9e8": "#e8c8a9",
+            "#d158e2": "#e2cf58"
+          }
+        },
+        {
+          "id": "azure",
+          "label": "Azure",
+          "recolor": {
+            "#341f4c": "#1f454c",
+            "#4e2a61": "#2a4e61",
+            "#681d96": "#1d7196",
+            "#73579a": "#57939a",
+            "#8a60b1": "#60a1b1",
+            "#8d26b4": "#267ab4",
+            "#9a64ce": "#64bace",
+            "#a62dca": "#2d83ca",
+            "#b193df": "#93d9df",
+            "#c9a9e8": "#a9dce8",
+            "#d158e2": "#5895e2"
+          }
+        }
+      ]
+    }
+  ]
 }

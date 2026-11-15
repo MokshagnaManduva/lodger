@@ -77,5 +77,33 @@ class Controls(unittest.TestCase):
         self.assertEqual(errors(2, BOTH, [{"on": "controls.changed", "state": "resting", "when": flag("t")}]), [])
 
 
+class ReferenceLooks(unittest.TestCase):
+    """The bundled characters' appearance options must act on colours that exist."""
+
+    def test_recolor_sources_exist_in_the_art(self):
+        import looks
+        for pack_dir in sorted((ROOT / "Packs").glob("*/pack.json")):
+            pack = json.loads(pack_dir.read_text())
+            choices = pack.get("appearance", [])
+            self.assertTrue(choices, f"{pack_dir.parent.name} offers no looks")
+            used = {looks.hex_color(c) for c in
+                    looks.atlas_colors(pack_dir.parent / t["file"] for t in pack["textures"].values())}
+            rep = packtool.Report()
+            packtool.check_appearance(pack, rep)
+            self.assertEqual(rep.errors, [])
+            for choice in choices:
+                default = next(o for o in choice["options"] if o["id"] == choice["default"])
+                self.assertFalse(default.get("recolor"), "the default look must be the art as drawn")
+                for option in choice["options"]:
+                    if option is default:
+                        continue
+                    sources = set(option["recolor"])
+                    self.assertTrue(sources & used, f"{choice['id']}/{option['id']} changes nothing")
+                    self.assertGreaterEqual(len(sources & used), len(sources) // 2,
+                                            f"{choice['id']}/{option['id']} names colours the art does not use")
+                    for source, target in option["recolor"].items():
+                        self.assertNotEqual(source, target)
+
+
 if __name__ == "__main__":
     unittest.main()

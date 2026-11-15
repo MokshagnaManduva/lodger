@@ -51,44 +51,6 @@ public enum Recolor {
 }
 
 extension Pack {
-    /// One thing the user can choose about the character's look.
-    public struct AppearanceChoice: Decodable, Sendable {
-        public struct Option: Decodable, Sendable {
-            public let id: String
-            public let label: String
-            /// `#rrggbb` source -> `#rrggbb` replacement. Empty means "as drawn".
-            public let recolor: [String: String]
-            enum CodingKeys: String, CodingKey { case id, label, recolor }
-            public init(from d: Decoder) throws {
-                let c = try d.container(keyedBy: CodingKeys.self)
-                id = try c.decode(String.self, forKey: .id)
-                label = try c.decode(String.self, forKey: .label)
-                recolor = try c.decodeIfPresent([String: String].self, forKey: .recolor) ?? [:]
-            }
-        }
-        public let id: String
-        public let label: String
-        public let defaultOption: String
-        public let options: [Option]
-        enum CodingKeys: String, CodingKey { case id, label, options, defaultOption = "default" }
-    }
-
-    /// The pack's own look: every choice at its default.
-    public var defaultAppearance: [String: String] {
-        Dictionary(appearance.map { ($0.id, $0.defaultOption) }) { first, _ in first }
-    }
-
-    /// `selection` (choice id -> option id) with unknown or missing entries
-    /// replaced by the pack's defaults, so a stale saved value can never fail.
-    public func resolvedAppearance(_ selection: [String: String]) -> [String: String] {
-        var out: [String: String] = [:]
-        for choice in appearance {
-            let wanted = selection[choice.id]
-            out[choice.id] = choice.options.contains { $0.id == wanted } ? wanted : choice.defaultOption
-        }
-        return out
-    }
-
     /// The merged colour map for a selection.
     public func recolorTable(selection: [String: String]) -> Recolor.Table {
         let resolved = resolvedAppearance(selection)
