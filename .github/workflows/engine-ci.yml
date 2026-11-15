@@ -11,10 +11,17 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch supersedes the run in progress.
+concurrency:
+  group: engine-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     # macos-14 hosted runners were retired; the deployment target is still macOS 14.
     runs-on: macos-latest
+    # The whole job takes a few minutes; never let a hang burn macOS minutes.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,10 +29,11 @@ jobs:
           python-version: "3.12"
       - name: Install validation dependencies
         run: python3 -m pip install -r Tools/packtool/requirements.txt -r Scripts/requirements-release.txt
-      - name: Select Swift toolchain
-        uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: "6.0"
+      # The runner's own Xcode toolchain. A separately installed Swift 6.0 hung in
+      # "swift build" on the current image, and the project builds locally with
+      # the system toolchain.
+      - name: Report Swift toolchain
+        run: swift --version
       - name: Pack and art checks
         run: make test
       - name: Engine self-tests, including both bundled characters
