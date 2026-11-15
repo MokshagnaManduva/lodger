@@ -13,7 +13,8 @@ permissions:
 
 jobs:
   check:
-    runs-on: macos-14
+    # macos-14 hosted runners were retired; the deployment target is still macOS 14.
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,8 +28,10 @@ jobs:
           swift-version: "6.0"
       - name: Pack and art checks
         run: make test
-      - name: Engine self-tests
-        run: make engine-test
+      - name: Engine self-tests, including both bundled characters
+        run: LODGER_TEST_PACKS=Packs/klien:Packs/Norn make engine-test
+      - name: Character behaviour checks
+        run: make klien-test norn-test
       - name: Engine/pack separation
         run: make separation
       - name: Release and update regression checks
