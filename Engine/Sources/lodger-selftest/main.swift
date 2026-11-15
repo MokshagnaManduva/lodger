@@ -977,6 +977,9 @@ if CommandLine.arguments.contains("--bench") {
 do { try runStationaryPointerChecks() }
 catch { check(false, "stationary pointer test setup", String(describing: error)) }
 
+do { try runHostControlChecks() }
+catch { check(false, "host control test setup", String(describing: error)) }
+
 do { try runControlChecks() }
 catch { check(false, "control test setup", String(describing: error)) }
 

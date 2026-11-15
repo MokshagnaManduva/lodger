@@ -66,6 +66,22 @@ public final class Pet {
         }
     }
     private var started = false
+    /// Host options, for any pack. None of these adds a timer.
+    /// Window opacity, 0.05...1.
+    public var opacity: Double = 1 {
+        didSet { panel.alphaValue = CGFloat(min(1, max(0.05, opacity))) }
+    }
+    /// When false, the character never sets off walking by itself.
+    public var allowsAutonomousWalking: Bool {
+        get { director.allowsAutonomousWalking }
+        set { director.allowsAutonomousWalking = newValue }
+    }
+    /// Pace to apply to timed states while on battery, or nil to ignore the power
+    /// source. Watching it uses IOKit's change notification - nothing is polled -
+    /// and the observer exists only while this is set or the pack asks for it.
+    public var batteryPace: Double? {
+        didSet { if started, oldValue != batteryPace { installSystemEvents() } }
+    }
     /// Measurement only: `LODGER_ABLATE=window` skips the window move,
     /// `=springs` skips float displacement, `=both` skips both. Used to attribute
     /// locomotion cost rather than guess at it.
@@ -192,23 +208,7 @@ public final class Pet {
         audio.load(pack: loaded.pack, root: loaded.root)
         wants = loaded.pack.requestedEvents(tuning: tuning)
         started = true
-        var w: SystemEvents.Wants = []
-        if wants["system.wake"] != nil || wants["system.willSleep"] != nil { w.insert(.sleepWake) }
-        if wants["power.lowPowerMode"] != nil || wants["power.onBattery"] != nil { w.insert(.power) }
-        if wants["display.changed"] != nil { w.insert(.displays) }
-        if wants["space.changed"] != nil { w.insert(.space) }
-        // Occlusion always earns its place: it lets the engine stop animating behind
-        // another window whether or not the pack asked to hear about it.
-        w.insert(.occlusion)
-        systemEvents.onEvent = { [weak self] name, value in
-            guard let self else { return }
-            self.send(name, value: value)
-        }
-        systemEvents.onOcclusionChanged = { [weak self] hidden in
-            self?.body?.setPaused(hidden)
-            self?.pointer.sample(notify: false)
-        }
-        systemEvents.install(w, window: panel)
+        installSystemEvents()
 
         userIdle.onIdle = { [weak self] secs in self?.send("user.idle", value: secs) }
         pointerIdle.onIdle = { [weak self] secs in self?.send("pointer.idle", value: secs) }
@@ -234,6 +234,34 @@ public final class Pet {
         // Install after layers, masks and callbacks exist; never fall back to a
         // rectangular hit target during startup.
         if packUsesPointer { pointer.install() }
+    }
+
+    /// Observers only for what the pack, or a host option, asks for.
+    private func installSystemEvents() {
+        var w: SystemEvents.Wants = []
+        if wants["system.wake"] != nil || wants["system.willSleep"] != nil { w.insert(.sleepWake) }
+        if wants["power.lowPowerMode"] != nil || wants["power.onBattery"] != nil { w.insert(.power) }
+        if wants["display.changed"] != nil { w.insert(.displays) }
+        if wants["space.changed"] != nil { w.insert(.space) }
+        // Occlusion always earns its place: it lets the engine stop animating behind
+        // another window whether or not the pack asked to hear about it.
+        w.insert(.occlusion)
+        if batteryPace != nil { w.insert(.power) }
+        systemEvents.onEvent = { [weak self] name, value in
+            guard let self else { return }
+            if name == "power.onBattery" { self.applyPace(onBattery: value == 1) }
+            self.send(name, value: value)
+        }
+        systemEvents.onOcclusionChanged = { [weak self] hidden in
+            self?.body?.setPaused(hidden)
+            self?.pointer.sample(notify: false)
+        }
+        systemEvents.install(w, window: panel)
+        applyPace(onBattery: batteryPace != nil && SystemEvents.onBattery())
+    }
+
+    private func applyPace(onBattery: Bool) {
+        director.pace = onBattery ? (batteryPace ?? 1) : 1
     }
 
     public func stop() {

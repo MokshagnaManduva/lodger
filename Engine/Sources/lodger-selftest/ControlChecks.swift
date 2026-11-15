@@ -105,3 +105,44 @@ func runControlChecks() throws {
           "requested events report the tuned threshold")
     check(pack.requestedEvents["user.idle"] == .some(300), "the untuned view uses the pack default")
 }
+
+/// Host-level options that apply to any character: no autonomous walking, and a
+/// global pace for timed states.
+func runHostControlChecks() throws {
+    section("host controls — stay in place and pace, for any pack")
+    let states = #"""
+    {"idle":{"clip":"loop","duration":{"minMs":1000,"maxMs":1000},
+       "next":[{"state":"stroll","weight":5},{"state":"a","weight":1}],
+       "interrupts":[{"on":"pointer.doubleClick","state":"stroll"}]},
+     "restless":{"clip":"loop","duration":{"minMs":2000,"maxMs":2000},"next":[{"state":"stroll","weight":1}],
+       "interrupts":[{"on":"pointer.click","state":"idle"}]},
+     "stroll":{"clip":"loop","motion":{"type":"walk","speed":20},"duration":{"minMs":500,"maxMs":500},
+       "next":[{"state":"idle","weight":1}]},
+     "a":{"clip":"once","duration":"clip","next":[{"state":"idle","weight":1}]}}
+    """#
+    let pack = try JSONDecoder().decode(Pack.self, from: Data(controlPackJSON(tuning: "{}", states: states).utf8))
+    let ctx = Guard.Context()
+    func picks(_ d: Director, from state: String) -> [String: Int] {
+        var out: [String: Int] = [:]
+        for _ in 0..<200 { _ = d.enter(state, reason: "t"); if let p = d.timeout(ctx) { out[p.state, default: 0] += 1 } }
+        return out
+    }
+    let free = Director(pack: pack, seed: 3)
+    check((picks(free, from: "idle")["stroll"] ?? 0) > 120, "by default a timeout may choose a walking state")
+    let still = Director(pack: pack, seed: 3); still.allowsAutonomousWalking = false
+    check(picks(still, from: "idle") == ["a": 200], "staying in place never chooses a walking state on a timeout")
+    let stuck = picks(still, from: "restless")
+    check(stuck == ["restless": 200], "with only walking available the current state is re-entered, not abandoned", "\(stuck)")
+    _ = still.enter("restless", reason: "t")
+    if case .after(let s)? = still.timeout(ctx)?.wake { check(s == 2.0, "and it keeps its own timed wake rather than spinning") }
+    else { check(false, "re-entered state must schedule its wake") }
+    _ = still.enter("idle", reason: "t")
+    check(still.deliver(event: "pointer.doubleClick", ctx)?.state == "stroll", "an interrupt-driven walk is still allowed")
+    check(still.timeout(ctx)?.state == "idle", "and a walk in progress still ends normally")
+
+    let calm = Director(pack: pack, seed: 3); calm.pace = 0.5
+    check(calm.enter("idle", reason: "t").wake == .after(2.0), "pace divides a timed duration")
+    check(calm.enter("a", reason: "t").wake == .after(0.3), "pace never stretches a clip-driven duration")
+    calm.pace = 0
+    check(calm.enter("idle", reason: "t").wake == .after(1.0), "a non-positive pace is ignored")
+}

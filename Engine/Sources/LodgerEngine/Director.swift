@@ -43,6 +43,13 @@ public final class Director {
     /// guard. Like the sliders, they are only ever consulted when a timeout or an
     /// event is already being evaluated, so changing one costs nothing until then.
     public var flags: [String: Bool] = [:]
+    /// Host option, for any pack: when false, a timeout never chooses a state whose
+    /// motion is a walk. Interrupts are unaffected, so a walk the user asks for
+    /// still happens. The engine knows "walk" as a motion type, not as a state name.
+    public var allowsAutonomousWalking = true
+    /// Host option, for any pack: timed (non-clip) durations are divided by this.
+    /// Below 1 the character changes activity less often.
+    public var pace: Double = 1
     private var rng: SplitMix64
 
     public init(pack: Pack, seed: UInt64 = 0x9E3779B97F4A7C15) {
@@ -85,6 +92,7 @@ public final class Director {
                 if let knob = d.scaleBy, let value = tuning[knob], value > 0 {
                     ms /= value        // a higher knob means a livelier pet
                 }
+                if pace > 0 { ms /= pace }
                 wake = .after(max(0.016, ms / 1000))
             }
         } else if let clip, clip.loop == .none, !clip.frames.isEmpty {
@@ -106,8 +114,16 @@ public final class Director {
     public func timeout(_ ctx: Guard.Context) -> Plan? {
         guard let st = pack.states[current] else { return nil }
         let context = evaluationContext(ctx)
-        let eligible = st.next.filter { t in
+        var eligible = st.next.filter { t in
             t.weight > 0 && (t.when?.evaluate(context, random: { self.rng.nextUnit() }) ?? true)
+        }
+        if !allowsAutonomousWalking, !eligible.isEmpty {
+            eligible.removeAll { t in
+                if case .walk? = pack.states[t.state]?.motion { return true } else { return false }
+            }
+            // Nothing but walking was on offer: stay, and ask again after this
+            // state's own duration, rather than walking against the user's wish.
+            if eligible.isEmpty { return enter(current, reason: "staying in place") }
         }
         // Sliders scale weights. If the user has scaled every option to nothing,
         // fall back to the authored weights: settings must not be able to strand
