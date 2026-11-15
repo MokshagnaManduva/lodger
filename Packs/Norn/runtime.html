@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Norn · Runtime field notes</title>
+  <link rel="stylesheet" href="gallery.css">
+  <style>
+    .runtime .stage canvas{width:256px;height:256px}
+    .runtime-portrait{display:block;width:256px;height:256px;image-rendering:pixelated;margin:auto;max-width:100%}
+    .launch{font-size:12px;line-height:1.8;overflow-wrap:anywhere}
+    .launch code{font-size:11px}
+    .card{scroll-margin-top:24px}
+  </style>
+  <script defer src="runtime.js"></script>
+  <script defer src="gallery.js"></script>
+</head>
+<body class="runtime">
+  <header class="masthead"><a href="runtime.html" class="wordmark">NORN<span> / FIELD NOTES</span></a><span class="edition">RUNTIME STUDY · 003</span></header>
+  <main>
+    <section class="intro" aria-labelledby="title">
+      <div class="intro-copy"><p class="eyebrow">FROM SKETCHBOOK TO DESKTOP</p><h1 id="title">Small steps.<br>Real little rituals.</h1><p class="lede">Norn keeps an eye on her potion, her book, and the world beyond the page. Her leafy assistant is never far away.</p><div class="tags"><span>58 registered cells</span><span>12 runtime clips</span><span>128 × 128 native cells</span><span>Local development pack</span></div><p class="launch">Animation polish: <a href="#clip-tiptoe">alternating footsteps</a> · <a href="#clip-greet">flask transfer</a> · <a href="#clip-settle">sitting down</a> · <a href="#clip-wake">standing up</a>.</p></div>
+      <aside class="specimen"><img class="runtime-portrait" src="preview.png" width="256" height="256" alt="Norn with her flask, spellbook and leafy root companion"><div class="specimen-label"><span>SPECIMEN 02 / NORN</span><a href="gallary.html">Original studies ↗</a></div></aside>
+    </section>
+    <section class="direction" aria-label="Desktop interactions"><p><span>01 / SAY HELLO</span>Hover to catch her attention. Click for a wave.</p><p><span>02 / TAKE A WALK</span>Double-click for careful, flask-steady footsteps.</p><p><span>03 / HANDLE WITH CARE</span>Drag to pick her up. Release to fall and recover.</p></section>
+    <section class="studies" aria-labelledby="studies-title">
+      <div class="section-heading"><div><p class="eyebrow">THE RUNTIME ATLAS</p><h2 id="studies-title">Every little movement</h2></div><p>Exact pack frames and timings.<br>Finite actions replay here for inspection.</p></div>
+      <div class="toolbar" aria-label="Playback controls"><button id="toggle-all" class="primary" type="button">Pause all</button><label>Tempo <select id="speed"><option value="0.5">0.5× · inspect</option><option value="1" selected>1× · intended</option><option value="1.5">1.5× · quick</option></select></label><label>Stage <select id="background"><option value="paper">Paper</option><option value="dark">Ink</option><option value="grid">Transparency grid</option></select></label><span id="load-status" role="status">Loading clips…</span></div>
+      <div id="gallery" class="gallery"></div>
+      <noscript><p>The <a href="atlas/body.png">runtime atlas</a> can be inspected without JavaScript.</p></noscript>
+    </section>
+    <section class="notes"><div><p class="eyebrow">TRY HER ON THE DESKTOP</p><h2>An alchemist in progress.</h2><p class="launch">From the repository root:<br><code>make norn-animations</code><br><code>./build/Lodger.app/Contents/MacOS/Lodger --pack Packs/Norn</code></p></div><p>This is a working local pack, with transparent silhouettes, hit masks and a complete interaction graph. Idle, reading and sleep are quiescent in the native app. The browser player is only an art preview. Dedicated sit/stand and flask-transfer poses now connect her actions. The root and props remain baked into the body artwork; abrupt interrupted actions can still change poses. Original character rights and distribution licensing remain unconfirmed. <a href="README.md">Read the art and implementation notes ↗</a></p></section>
+  </main>
+  <footer><span>NORN / RUNTIME FIELD NOTES · SEPTEMBER 2026</span><a href="pack.json">Runtime manifest ↗</a><a href="reference/polish-v3/README.md">Art prompt ↗</a></footer>
+</body>
+</html>

@@ -14,7 +14,7 @@ import AppKit
 ///
 /// A global monitor sees events aimed at other apps; it goes deaf once the cursor
 /// is over our own window, so a local monitor covers the exit.
-public final class PointerMonitor {
+public final class PointerMonitor: NSObject {
 
     public struct Reading: Sendable {
         /// Cursor position in the pet's cell coordinates, origin top-left.
@@ -28,6 +28,26 @@ public final class PointerMonitor {
     private var globalMonitor: Any?
     private var localMonitor: Any?
     private weak var panel: NSWindow?
+    private let animationScheduler = Scheduler()
+    private var routingLink: CADisplayLink?
+    private lazy var linkTarget = RoutingLinkTarget(owner: self)
+    private var generation = 0
+    private var capturedPress = false
+
+    public enum AnimationUpdate: Equatable {
+        case none
+        case after(TimeInterval)
+        case continuous
+    }
+    /// Recomputed on pointer movement, geometry/state changes and scheduled
+    /// animation boundaries. Never notifies pointer behavior for a routing wake.
+    public var animationUpdate: ((CGPoint) -> AnimationUpdate)?
+    public var cursorLocation: () -> CGPoint = { NSEvent.mouseLocation }
+    public private(set) var animationRefreshCount = 0
+    public var hasAnimationTimer: Bool { animationScheduler.liveTimers != 0 }
+    public var hasRoutingDisplayLink: Bool { routingLink != nil }
+    public var hasCapturedPress: Bool { capturedPress }
+
 
     public private(set) var installed = false
     public private(set) var isOverSilhouette = false
@@ -59,18 +79,22 @@ public final class PointerMonitor {
     /// not move. Evaluated once per mouse-move event, never on a tick.
     public var cellTopLeft: (() -> CGPoint)?
 
-    public init(panel: NSWindow) { self.panel = panel }
+    public init(panel: NSWindow) { self.panel = panel; super.init() }
 
     /// Install only when some reachable state actually cares about the pointer.
     /// A pack with no pointer interrupts should cost nothing here.
-    public func install() {
+    /// Hosts/tests forwarding events through `handle` can disable OS observation.
+    public func install(observeSystemEvents: Bool = true) {
         guard !installed else { return }
-        let mask: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged]
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] _ in
-            self?.sample()
-        }
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] e in
-            self?.sample(); return e
+        if observeSystemEvents {
+            let mask: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged, .leftMouseDown, .leftMouseUp]
+            globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: mask) { [weak self] e in
+                self?.handle(e, deliveredToPanel: false)
+            }
+            localMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] e in
+                self?.handle(e, deliveredToPanel: e.window === self?.panel)
+                return e
+            }
         }
         installed = true
         sample()
@@ -81,6 +105,8 @@ public final class PointerMonitor {
         if let l = localMonitor { NSEvent.removeMonitor(l) }
         globalMonitor = nil; localMonitor = nil
         installed = false
+        capturedPress = false
+        cancelAnimationUpdates()
         panel?.ignoresMouseEvents = true
         isOverSilhouette = false
     }
@@ -89,17 +115,81 @@ public final class PointerMonitor {
 
     public func sample(notify: Bool = true) {
         guard let panel else { return }
-        let cursor = NSEvent.mouseLocation
+        let cursor = cursorLocation()
         let topLeft = cellTopLeft?() ?? CGPoint(x: panel.frame.minX, y: panel.frame.maxY)
         let reading = Self.read(cursor: cursor, frame: interactionFrame?() ?? panel.frame,
                                 cellTopLeft: topLeft, scale: scale,
                                 targets: hitTargets?() ?? [])
         if reading.inside != isOverSilhouette {
             isOverSilhouette = reading.inside
-            // The whole hit-testing strategy, in one line.
-            panel.ignoresMouseEvents = !reading.inside
         }
+        // Once a press belongs to the pet, keep its drag/up even if a frame
+        // disappears underneath it. Never capture a press sent to another app.
+        panel.ignoresMouseEvents = !(capturedPress || reading.inside)
         if notify { onChange?(reading) }
+        rearmAnimationUpdates()
+    }
+
+    /// Public for deterministic event-routing tests; installation uses the exact
+    /// same path. Refreshing after an already-targeted press cannot retarget it.
+    public func handle(_ event: NSEvent, deliveredToPanel: Bool) {
+        if event.type == .leftMouseDown { capturedPress = deliveredToPanel }
+        if event.type == .leftMouseUp { capturedPress = false }
+        sample(notify: event.type == .mouseMoved || event.type == .leftMouseDragged)
+    }
+
+    private func cancelAnimationUpdates() {
+        generation += 1
+        animationScheduler.cancel()
+        routingLink?.invalidate()
+        routingLink = nil
+    }
+
+    private func rearmAnimationUpdates() {
+        generation += 1
+        animationScheduler.cancel()
+        let cursor = cursorLocation()
+        let update: AnimationUpdate
+        if installed, !capturedPress, let panel, panel.frame.contains(cursor) {
+            update = animationUpdate?(cursor) ?? .none
+        } else { update = .none }
+        if update != .continuous {
+            routingLink?.invalidate()
+            routingLink = nil
+        }
+        switch update {
+        case .none: break
+        case .after(let delay):
+            let token = generation
+            // A small boundary offset avoids floating-point rearming on the old
+            // frame. This is an authored deadline, not a periodic sprite poll.
+            animationScheduler.apply(.after(max(0.0005, delay + 0.0005)), leeway: 0.001) { [weak self] in
+                guard let self, self.installed, self.generation == token else { return }
+                self.refreshAnimationRouting()
+            }
+        case .continuous:
+            guard routingLink == nil, let view = panel?.contentView else { return }
+            // Core Animation offers no pre-targeting input callback for a moving
+            // silhouette. Sample presentation geometry only during this local
+            // hover; otherwise clicks can go to the previous target. Never run
+            // this for ordinary frame animation or with the cursor off the pet.
+            let link = view.displayLink(target: linkTarget, selector: #selector(RoutingLinkTarget.tick))
+            link.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
+            link.add(to: .main, forMode: .common)
+            routingLink = link
+        }
+    }
+
+    fileprivate func refreshAnimationRouting() {
+        guard installed else { return }
+        animationRefreshCount += 1
+        sample(notify: false)
+    }
+
+    private final class RoutingLinkTarget: NSObject {
+        weak var owner: PointerMonitor?
+        init(owner: PointerMonitor) { self.owner = owner }
+        @objc func tick(_ sender: CADisplayLink) { owner?.refreshAnimationRouting() }
     }
 
     /// Pure, so it can be tested without a window or a run loop.

@@ -5,7 +5,7 @@ and caught while standing idle and held during other actions. Use a 12×14 nativ
 glyph, 20px arc and 1.2s action. Narrow walking and other leg poses, review shoulder
 connections and transition seams, regenerate both direction previews, validate,
 build the app and repeat isolated idle measurements. Update the project backlog.
-Full turnaround, dangling perch and sound are deferred. See README/verification
+Full turnaround and sound are deferred. See README/verification
 for delivered behavior and evidence. The original plan below is historical.
 
 # Klien: all declared animation scenarios
@@ -15,7 +15,7 @@ Approved direction: retain idle-v2 identity, 128px cells, 96px standing figure,
 Energy target: <7 CPU seconds per idle hour; zero timers in quiescent states.
 
 1. Use the saved full state blueprint as the scenario inventory: idle, walking,
-   turning, perched, watching, startled, tipping_hat, held, falling, landing,
+   turning, watching, startled, tipping_hat, held, falling, landing,
    sitting, sleeping, asleep, waking. Keep sound out of this artwork milestone.
 2. Generate pose studies from the approved character using built-in imagegen.
    Author native frames from the approved sprite with local limb/pose edits,

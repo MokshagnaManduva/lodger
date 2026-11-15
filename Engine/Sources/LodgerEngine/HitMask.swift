@@ -14,12 +14,13 @@ public struct HitMask: Sendable {
     public var count: Int { cells.count }
 
     public enum Failure: Error, CustomStringConvertible {
-        case badMagic, badVersion(Int), truncated
+        case badMagic, badVersion(Int), truncated, invalid
         public var description: String {
             switch self {
             case .badMagic: return "not a mask file (bad magic)"
             case .badVersion(let v): return "unsupported mask version \(v)"
             case .truncated: return "mask data truncated"
+            case .invalid: return "invalid or oversized mask data"
             }
         }
     }
@@ -35,6 +36,7 @@ public struct HitMask: Sendable {
             while true {
                 guard i < data.endIndex else { throw Failure.truncated }
                 let b = data[i]; i += 1
+                guard shift <= 56 else { throw Failure.invalid }
                 n |= Int(b & 0x7F) << shift
                 if b & 0x80 == 0 { return n }
                 shift += 7
@@ -43,21 +45,28 @@ public struct HitMask: Sendable {
         cellWidth = try varint()
         cellHeight = try varint()
         let n = try varint()
+        guard (1...1024).contains(cellWidth), (1...1024).contains(cellHeight),
+              (1...4096).contains(n) else { throw Failure.invalid }
         let area = cellWidth * cellHeight
+        guard area <= 32 * 1024 * 1024 / n else { throw Failure.invalid }
 
         var out: [[Bool]] = []
         out.reserveCapacity(n)
         for _ in 0..<n {
             var flat = [Bool](); flat.reserveCapacity(area)
             var value = false
-            for _ in 0..<(try varint()) {
+            let runs = try varint()
+            guard runs > 0, runs <= area + 1, runs <= data.endIndex - i else { throw Failure.invalid }
+            for _ in 0..<runs {
                 let run = try varint()
+                guard run <= area - flat.count else { throw Failure.invalid }
                 flat.append(contentsOf: repeatElement(value, count: run))
                 value.toggle()
             }
             guard flat.count == area else { throw Failure.truncated }
             out.append(flat)
         }
+        guard i == data.endIndex else { throw Failure.invalid }
         cells = out
     }
 

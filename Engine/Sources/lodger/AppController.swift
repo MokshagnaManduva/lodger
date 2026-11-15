@@ -12,6 +12,9 @@ final class AppController {
     private(set) var failures: [(url: URL, reason: String)] = []
 
     let store: PackStore
+    let installationDirectory: URL
+    var onChange: (() -> Void)?
+    private let trash: (URL) throws -> Void
 
     /// Where a user drops a character. A real, openable directory - not a sandbox
     /// container - which is the whole reason Lodger is distributed with a Developer
@@ -29,48 +32,28 @@ final class AppController {
         Bundle.main.resourceURL?.appendingPathComponent("Packs", isDirectory: true)
     }
 
-    init(extraSearchPaths: [URL] = []) {
-        try? FileManager.default.createDirectory(at: Self.packsDirectory,
+    init(extraSearchPaths: [URL] = [], installationDirectory: URL = AppController.packsDirectory,
+         trash: @escaping (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }) {
+        self.trash = trash
+        self.installationDirectory = installationDirectory
+        try? FileManager.default.createDirectory(at: installationDirectory,
                                                  withIntermediateDirectories: true)
         // Order matters: later paths shadow earlier ones, so a user pack replaces a
         // bundled pack with the same id.
         var paths: [URL] = []
         if let b = Self.bundledPacksDirectory { paths.append(b) }
         paths.append(contentsOf: extraSearchPaths)
-        paths.append(Self.packsDirectory)
+        paths.append(installationDirectory)
         store = PackStore(searchPaths: paths)
     }
 
     // MARK: packs
 
     func reload() {
-        packs = store.discover()
-        failures = collectFailures()
-    }
-
-    /// Directories that look like packs but would not load, so the UI can say why
-    /// instead of silently ignoring them.
-    private func collectFailures() -> [(url: URL, reason: String)] {
-        var out: [(URL, String)] = []
-        let good = Set(packs.map(\.root.standardizedFileURL.path))
-        for dir in store.searchPaths {
-            let entries = (try? FileManager.default.contentsOfDirectory(
-                at: dir, includingPropertiesForKeys: nil)) ?? []
-            for entry in entries where entry.hasDirectoryPath {
-                guard !good.contains(entry.standardizedFileURL.path) else { continue }
-                guard FileManager.default.fileExists(
-                    atPath: entry.appendingPathComponent("pack.json").path) else { continue }
-                do {
-                    _ = try store.load(root: entry)
-                } catch {
-                    out.append((entry, Self.describe(error)))
-                }
-            }
-        }
-        // The same pack can sit in more than one search path - a bundled copy and a
-        // working-tree copy, say - and reporting one problem twice is just noise.
-        var seen = Set<String>()
-        return out.filter { seen.insert("\($0.0.lastPathComponent)|\($0.1)").inserted }
+        let scan = store.scan()
+        packs = scan.packs
+        failures = scan.failures
+        onChange?()
     }
 
     private static func describe(_ error: Error) -> String {
@@ -96,26 +79,100 @@ final class AppController {
     // MARK: the running character
 
     func activate(id: String?) {
+        let previousFeet = pet?.feet
         pet?.stop()
         pet = nil
         let chosen = packs.first { $0.pack.identity.id == id } ?? packs.first
-        guard let chosen else { return }
+        guard let chosen else { Preferences.packID = nil; onChange?(); return }
         Preferences.packID = chosen.pack.identity.id
 
-        let p = Pet(loaded: chosen)
+        let allowedScales = chosen.pack.stage.scaleSteps
+        let savedScale = Preferences.scale(for: chosen.pack.identity.id,
+                                           defaultValue: chosen.pack.stage.defaultScale)
+        let scale = allowedScales.contains(savedScale) ? savedScale : chosen.pack.stage.defaultScale
+        let p = Pet(loaded: chosen, scale: scale)
         p.tuning = Preferences.resolvedTuning(for: chosen.pack)
         p.audio.enabled = Preferences.audioEnabled && chosen.pack.requires.contains("audio")
         p.audio.volume = Preferences.volume
-        p.perchMode = Preferences.perchMode
+        if let previousFeet { p.place(at: previousFeet) }
         p.start()
         p.panel.orderFrontRegardless()
         pet = p
-    }
-
-    func setPerchMode(_ on: Bool) {
-        Preferences.perchMode = on
-        pet?.setPerchMode(on)
+        onChange?()
     }
 
     var activeID: String? { pet?.loaded.pack.identity.id }
+
+    func scales(for id: String) -> [Int] {
+        packs.first { $0.pack.identity.id == id }?.pack.stage.scaleSteps ?? []
+    }
+
+    func scale(for id: String) -> Int {
+        guard let pack = packs.first(where: { $0.pack.identity.id == id }) else { return 1 }
+        let value = Preferences.scale(for: id, defaultValue: pack.pack.stage.defaultScale)
+        return pack.pack.stage.scaleSteps.contains(value) ? value : pack.pack.stage.defaultScale
+    }
+
+    func setScale(_ scale: Int, for id: String) {
+        guard scales(for: id).contains(scale) else { return }
+        Preferences.setScale(scale, for: id)
+        if activeID == id { activate(id: id) }
+    }
+
+    func reset(id: String) {
+        Preferences.reset(packID: id)
+        if activeID == id { activate(id: id) } else { onChange?() }
+    }
+
+    func setTuning(_ value: Double, name: String, for id: String) {
+        guard value.isFinite, let pack = packs.first(where: { $0.pack.identity.id == id }),
+              let knob = pack.pack.tuning[name] else { return }
+        var values = Preferences.tuning(for: id)
+        values[name] = min(knob.max, max(knob.min, value))
+        Preferences.setTuning(values, for: id)
+        if activeID == id { pet?.tuning = Preferences.resolvedTuning(for: pack.pack) }
+    }
+
+    func removablePack(for id: String) -> URL? {
+        guard let loaded = packs.first(where: { $0.pack.identity.id == id }),
+              loaded.root.deletingLastPathComponent().standardizedFileURL.resolvingSymlinksInPath().path
+                == installationDirectory.standardizedFileURL.resolvingSymlinksInPath().path else { return nil }
+        return loaded.root
+    }
+
+    /// Trash is reversible; bundled and development source packs cannot be removed.
+    func remove(id: String) throws {
+        guard let root = removablePack(for: id) else {
+            throw PackStore.Failure.invalid("Only user-installed characters can be removed.")
+        }
+        try trash(root)
+        let wasActive = activeID == id
+        reload()
+        if wasActive { activate(id: id) }
+    }
+
+    /// Validate into a staging directory before replacing an installed pack.
+    /// A failed copy or decode leaves the existing installation untouched.
+    @discardableResult
+    func installPacks(from sources: [URL]) -> [String] {
+        var errors: [String] = []
+        let selectedID = activeID
+        let installer = PackInstaller(directory: installationDirectory)
+        var installedIDs = Set<String>()
+        var seen = Set<String>()
+        for source in sources {
+            do {
+                let loaded = try store.load(root: source)
+                guard seen.insert(loaded.pack.identity.id).inserted else {
+                    throw PackStore.Failure.invalid("duplicate ID in this import batch: \(loaded.pack.identity.id)")
+                }
+                let result = try installer.install(from: source)
+                installedIDs.insert(result.installed.pack.identity.id)
+                errors += result.warnings
+            } catch { errors.append("\(source.lastPathComponent): \(Self.describe(error))") }
+        }
+        reload()
+        if selectedID == nil || installedIDs.contains(selectedID ?? "") { activate(id: selectedID) }
+        return errors
+    }
 }

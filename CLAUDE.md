@@ -10,34 +10,50 @@ The two hard rules are there, and most bugs in this project will be violations o
 
 ## Current status
 
-**2026-09-16 — Klien v0.4.0 polish:** working app with a complete character scenario
-set. The current pass replaces the dumpling with a small gold sun emblem held in
-the free hand, adds an occasional toss/catch, narrows leg poses and smooths hand
-transitions. Source: `Packs/klien/reference/all-scenarios-v1/`; rebuild with
+**2026-09-30 — development build; release incomplete.** Klien holds a small gold
+sun emblem in his free hand and occasionally tosses it. The current art has compact
+leg poses and revised hand transitions. Source: `Packs/klien/reference/all-scenarios-v1/`; rebuild with
 `make klien-animations`. The approved `reference/idle-v2/` remains archived.
 
-Core engine, menu/pack discovery, all 24 events, render-server walking, mirroring,
-per-part hit testing, spring lag, tuning application and audio plumbing are built.
+Core engine, menu/pack discovery, basic settings, staged imports, persisted size controls,
+render-server walking, mirroring, per-part hit testing, spring lag, tuning application and
+audio plumbing are built.
 `orientFrames` was deliberately removed. The active idle CPU target is <7 s/hour;
 measurement scope and results are recorded in `Docs/energy-protocol.md` and the
 animation source's verification record.
 
-**Current backlog:** `left.md`. Remaining work includes full turnaround
-and distinct perch art, real interaction/AXObserver verification, system energy
-measurements, settings and reliable imports, generic author tooling, licensing,
-branding, signing/notarization and updates. Klien is intentionally silent.
+**Current backlog:** `left.md`. Remaining work includes full turnaround and system interaction
+verification, quieter energy measurements, final branding/licensing, signing/notarization and
+updates. Klien is intentionally silent. Window perching was removed from the current runtime
+and is documented only as a future idea.
+
+Settings now has preview/metadata, removal to Trash, size/personality reset, volume and
+referenced personality controls. Resize/switch/replacement preserves screen position;
+failed/unrelated imports retain the running pet. Live controls/import/Trash and pointer
+acceptance remain open; see `Docs/product-acceptance.md`. Imports enforce runtime
+schema/assets and path containment (see
+`Docs/pack-installation.md` for limits and recovery); generic `generate`
+produces an incomplete scaffold and `preview` is static. Manual update checks only open a URL.
+Hosted CI, production signing/notarization, automatic updates, and energy certification are open.
+Recorded September 30: 30 app checks, 306 generic engine checks and pack/art checks passed.
+A final scroll-origin adjustment followed that app run; rerun and rebuild before acceptance.
+September 22 historically passed 308 engine checks including both packs and 19 release checks.
+Quiet battery energy samples were deferred by the owner September 30; no new certification
+was performed. Computer-use access to the isolated acceptance app was rejected.
 
 ```bash
 make test              # validator and native-art acceptance checks
 make engine-test       # engine checks (the runner reports the current total)
+make app-test          # isolated Settings/import/controller checks
 make klien-animations  # regenerate active art, atlas, masks and gallery
 make app               # local ad-hoc signed bundle
 ```
 
 Characters are discovered in `~/Library/Application Support/Lodger/Packs/` and
 the bundle. Invalid folders are named in the menu with their loading error.
-The runtime loader decodes manifests and checks referenced files; full schema
-validation is currently an author-tool check, not a runtime guarantee.
+The runtime loader enforces the embedded schema, semantic references, decoded assets and
+contained paths. Imports replace by ID and preserve/report backups on restoration failure.
+See `Docs/pack-installation.md` for limits and crash-recovery boundaries.
 
 ---
 
@@ -76,7 +92,7 @@ inside it.
 ```
 +------------------------------------------------------------+
 | App shell (AppKit, LSUIElement, .accessory activation)      |
-|   - menu-bar item, settings & pack manager (SwiftUI)        |
+|   - menu-bar item, native settings & pack manager            |
 +------------------------------------------------------------+
 | PetEngine                                                   |
 |   PackLoader     manifest -> validated in-memory model      |
@@ -87,7 +103,6 @@ inside it.
 |   Motion         locomotion + spring physics, display-link  |
 |                  driven, only while not at rest             |
 |   Input          global mouse monitor + alpha hit mask      |
-|   Perch          single-window AXObserver (opt-in mode)     |
 |   Power          occlusion, sleep, low-power, battery       |
 +------------------------------------------------------------+
 | Character packs (data only - see Docs/PACK_FORMAT.md)       |
@@ -95,8 +110,8 @@ inside it.
 ```
 
 **Stack: Swift + AppKit + Core Animation. Deployment target macOS 14.0.**
-No SpriteKit, no Metal, no web view. SwiftUI is permitted **only** in the settings and
-pack-manager windows.
+No SpriteKit, no Metal, no web view. The settings and pack-management UI uses native AppKit
+controls so the Command Line Tools build remains independent of SwiftUI macro availability.
 
 ### Why — keep this reasoning, it is the whole design
 
@@ -115,41 +130,37 @@ pack-manager windows.
   predicates per frame could burn the battery, which contradicts Rule 2 as directly as it
   contradicts security.
 - **We own hit-testing; we do not rely on the window server.** See §4.
-- **No TCC prompts in the default configuration.** See §4 and §4a.
-- **Distributed as a Developer ID-signed, notarized direct download — not Mac App Store.**
+- **No TCC prompts in the default configuration.** See §4.
+- **Target distribution is a Developer ID-signed, notarized direct download — not Mac App Store.**
   Not sandboxed. This is what makes "installing a character means dropping in a folder"
   literally true: `~/Library/Application Support/Lodger/Packs/` is a real, openable,
   shareable directory. A sandboxed build would relocate packs into an opaque container and
   turn install into a security-scoped-bookmark import flow, undercutting Rule 1's whole
-  point. Updates ship via Sparkle. Route all pack I/O through one `PackStore` protocol
-  anyway, so an App Store target stays possible without a rewrite.
+  point. Sparkle was the proposed automatic-update system; it is not integrated. The current
+  updater reads an HTTPS feed and opens a browser download. Centralize pack I/O in `PackStore`
+  so an App Store target stays possible without a rewrite. The current repository build
+  is only ad-hoc signed; see `Docs/release.md` for the credentialed distribution path.
 
 ### Scope decisions already made
 
 - **One pet, all displays.** Draggable between displays, correct per-display backing scale,
   handles hot-plug and reconfiguration. Multi-display is cheap now and painful to retrofit
-  (it touches window management, coordinate conversion and perch code). Multi-pet is the
+  (it touches window management and coordinate conversion). Multi-pet is the
   reverse — easy to add later, and it would multiply the energy budget before we have
   proven it once.
-- **Audio: plumbing in, silent by default.** The `sounds` section and per-frame `sound`
-  triggers stay in the format so pack authors can rely on them; playback ships with volume
-  at zero behind an opt-in toggle, respecting system mute and Do Not Disturb.
+- **Audio: plumbing in, silent by default.** Playback is disabled until opted in; the saved
+  volume defaults to 0.4. Klien has no sound assets. Volume UI is implemented. Audible playback and system mute/Do Not Disturb
+  behavior still need verification before they become release promises.
 
 ---
 
 ## 3. Repository layout
 
 ```
-Engine/            Swift package - no character data, no asset files
-  Pack/            manifest decoding, schema validation, capability gating
-  Render/          CALayer tree, atlas -> contentsRect keyframes
-  Director/        state machine, guard evaluation, weighted selection
-  Motion/          locomotion, spring solver, edge resolution
-  Input/           global + local monitors, alpha mask hit test
-  Perch/           single-window AXObserver, perchable filter
-  Power/           occlusion / sleep / low-power / battery observers
-  Diagnostics/     debug HUD, counters, energy assertions
-App/               AppKit shell, menu bar, SwiftUI settings
+Engine/            Swift package
+  Sources/LodgerEngine/   generic model, renderer, Director, motion, input, system events
+  Sources/lodger/         AppKit shell, settings, preferences, manual update check
+  Sources/lodger-selftest/ native test runner
 Packs/klien/       the reference pack (data only)
   reference/       source art + art bible - never shipped
   atlas/  audio/   built assets
@@ -161,7 +172,10 @@ Docs/
   energy-protocol.md     §6 expanded, with recorded baselines
 ```
 
-**`Engine/` must not contain any `.png`, `.wav`, or character-named identifier.** A CI grep is planned to enforce this; no such release gate exists yet. If you need a fixture for tests, generate it procedurally or put it in
+**Keep character assets out of `Engine/` and character logic out of the reusable engine.**
+`make separation` checks selected asset extensions and the reference-character name in the
+library. The macOS CI workflow invokes it; broader detection and a hosted run remain open.
+If you need a fixture for tests, generate it procedurally or put it in
 `Tests/Fixtures/` as an obviously synthetic pack (`test.solidsquare`).
 
 ---
@@ -205,76 +219,8 @@ key events if accessibility is enabled or if the application is trusted for acce
 The gate is on **key** events. Mouse-move monitoring needs no permission. Input Monitoring
 and Accessibility apply to `CGEventTap` and `IOHIDDeviceOpen`.
 
-**Never add `CGEventTap` or `IOHIDDeviceOpen`.** Those are the TCC-gated APIs and we do not
-need them. The AX API *is* used, but only under §4a and only after an explicit grant.
-
-## 4a. Perching (window mode)
-
-Two modes, behind one user toggle in Settings.
-
-**Off (default) — screen edges only.** The AX API is never initialised. Zero TCC prompts.
-This is the shipping default and a deliberate product position.
-
-**On — window perching.** The pet may sit on the top edge of **exactly one window at a
-time**, its *perch target*. The user chooses it by **dragging the pet onto a window**.
-Requires a pack to declare `requires: ["windowEdges"]` *and* the user to grant Accessibility.
-
-### The permission split is better than it looks
-
-**Window geometry needs no permission at all.** `CGWindowList` reports bounds, owner pid
-and layer freely; only window *titles* require Screen Recording, and perching never reads
-them. Measured here: 28 windows enumerated, all with real geometry, with Accessibility
-denied.
-
-Only *tracking* a window needs Accessibility. So the drop hit-test works before anything
-is granted, which means **the permission can be requested at the moment the user drops the
-pet on a window** — with that window aimed at — rather than at first launch for no visible
-reason. `PerchTracker.requestPermission()` exists for exactly that moment and must not be
-called earlier.
-
-Without the grant, `attach` returns `.needsPermission`, the pet falls, and
-`perch.acquired` never fires. A pack that knows nothing about perching is unaffected
-either way.
-
-### One window at a time is a performance requirement, not a preference
-
-Tracking *all* windows is poll-shaped — there is no system-wide "any window moved"
-notification, so you end up sampling `CGWindowListCopyWindowInfo` on a timer forever, which
-Rule 2 forbids outright.
-
-Tracking **one** window is event-driven. Register an `AXObserver` on that single
-`AXUIElement` for `kAXWindowMovedNotification`, `kAXWindowResizedNotification`,
-`kAXWindowMiniaturizedNotification`, `kAXUIElementDestroyedNotification`. While the anchored
-window sits still, our cost is zero.
-
-**Window *enumeration* happens exactly once: at drag-drop, to hit-test what is under the
-cursor.** A one-shot cost inside a user interaction. If you ever find yourself enumerating
-windows outside a drag, you have reintroduced the poll — that is the bug.
-
-`WindowFinder.enumerations` counts them, and the diagnostics line prints it. A soak should
-report **0**. That number existing is the point: the invariant is observable rather than
-merely asserted.
-
-### Perchable-window filter (engine policy, never pack policy)
-
-Never perchable: windows below `minPerchSize`; `AXSubrole != AXStandardWindow` (floating
-palettes, sheets, popovers, HUDs); the menu bar; the Dock; full-screen windows; other pets;
-our own windows.
-
-### Falling back to the floor
-
-The **screen floor** is the pet's home surface: the top of the Dock when the Dock is visible
-on the bottom edge, otherwise the bottom of the screen's `visibleFrame`.
-
-`perch.lost` fires when the perch becomes invalid for **any** reason — window destroyed,
-minimised, hidden, quit, moved off-screen, moved to another Space, resized below
-`minPerchSize`, **entering full screen**, display reconfiguration, or the pet ending up
-outside every screen's `visibleFrame`. The pet then plays its fall-and-land states down to
-the floor. One event, one handler, every case. Do not add per-case handling.
-
-The same recovery runs at launch and after wake: if the restored position is not inside any
-current screen's `visibleFrame`, the pet falls to the floor of the main display. **The pet
-must never end up unreachable.**
+**Never add `CGEventTap` or `IOHIDDeviceOpen`.** Those APIs are unnecessary for the
+current interaction model and would introduce avoidable permission prompts.
 
 ---
 
@@ -286,8 +232,8 @@ interrupts, transitions), sounds, personality knobs it wants exposed in Settings
 metadata and licence.
 
 **The engine owns:** the *vocabulary*. Screen and display geometry, Spaces, backing scale,
-window management, perch target selection, the scheduler, the RNG, physics integration, hit
-testing, persistence, permissions, and **all decisions about when to be idle**.
+the scheduler, the RNG, physics integration, hit testing, persistence, and **all decisions
+about when to be idle**.
 
 The critical asymmetry: **a pack states durations, never rates.** It can say "hold this frame
 for 250 ms". It cannot say "wake me at 60 Hz". Scheduling is the engine's, because Rule 2 is
@@ -303,18 +249,11 @@ Events: `clip.ended`, `state.timeout`, `pointer.enter`, `pointer.exit`, `pointer
 `pointer.doubleClick`, `pointer.grab`, `pointer.release`, `pointer.near(px)`,
 `pointer.idle(sec)`, `pointer.fast(pxPerSec)`, `edge.reached(edge)`, `physics.landed`,
 `physics.settled`, `user.idle(sec)`, `system.wake`, `system.willSleep`, `display.changed`,
-`space.changed`, `power.lowPowerMode(bool)`, `power.onBattery(bool)`, `app.occluded(bool)`,
-`perch.acquired`, `perch.lost`.
+`space.changed`, `power.lowPowerMode(bool)`, `power.onBattery(bool)`, `app.occluded(bool)`.
 
 Guards: `random(p)`, `stateAge(op, sec)`, `pointerDistance(op, px)`, `pointerSide(left|right)`,
-`onEdge(floor|windowTop|wallLeft|wallRight|ceiling)`, `facing(left|right)`, `flag(name, bool)`,
-`timeOfDay(from, to)`, `lowPower(bool)`, `perched(bool)`, plus `all` / `any` / `not`.
-
-Note the shape of the perch vocabulary: a pack says *"when I lose my perch, play these
-states"*. It never says *which* window to perch on, never enumerates windows, and never sees
-window metadata. Target selection and the perchable filter are engine policy (§4a), so a pack
-can never be the reason we start polling — and a pack authored with no knowledge of window
-perching still behaves correctly, because `perch.lost` simply never fires for it.
+`onEdge(floor|wallLeft|wallRight|ceiling)`, `facing(left|right)`, `flag(name, bool)`,
+`timeOfDay(from, to)`, `lowPower(bool)`, plus `all` / `any` / `not`.
 
 **Adding to these lists is an engine change with a format-version bump. That is correct and
 intentional** — it is the seam that keeps packs inert.
@@ -325,8 +264,11 @@ intentional** — it is the seam that keeps packs inert.
 
 ### Engine rules that make the numbers achievable
 
-1. **A quiescent state installs no timer, no display link, and no run-loop source.** Zero.
-   The character is a static or render-server-animated layer, and the process sleeps.
+1. **A quiescent state installs no autonomous timer or physics display link.**
+   Sprite animation remains in the render server. Input-routing exception (2026-09-22):
+   a cursor over a changing silhouette requires frame-boundary deadlines, or a temporary
+   display link for continuous walking/bobbing. These stop outside the panel or when paused;
+   stable body/overlay pixels schedule no deadline. Measure hover cost separately from idle.
 2. All sprite animation is `CAKeyframeAnimation` on `contentsRect`,
    `calculationMode = .discrete`, committed once.
 3. A display link exists **only** during locomotion or unsettled physics, and is invalidated
@@ -344,8 +286,9 @@ intentional** — it is the seam that keeps packs inert.
    `ProcessInfo.isLowPowerModeEnabled` (`NSProcessInfoPowerStateDidChange`) -> collapse to
    static poses, and on-battery -> scale the pack's `liveliness` knob down.
 7. Atlases load lazily per page and evict after a configurable unused interval.
-8. Nothing polls. If you are about to write a timer that checks whether something changed,
-   find the notification instead. **The one exception is `IdleWatcher`**, because macOS
+8. Avoid polling: use a notification or a known deadline. The narrow continuous-hover
+   exception in rule 1 exists because input is already targeted when AppKit monitors see it.
+   **`IdleWatcher` is another exception**, because macOS
    has no "the user went idle" notification. It does not sample: it asks how long the
    system has already been idle, sleeps for exactly the remainder, and re-asks on waking.
    With a 300-second threshold that is at most one wake every five minutes while the
@@ -448,8 +391,10 @@ owner-supplied sun reference and a five-color gold extension; runtime frames bak
 both props into the body to keep toss timing synchronized. Built-in generated pose
 studies from the earlier milestone are retained as references. PixelLab/Aseprite
 steps below describe the original authoring proposal, not required tools for the
-current pack. Generic generation/preview/scaffolding/doctor and some proposed lint
-checks remain backlog items. The original ~65-cell estimate is not a requirement.
+current pack. Generic `generate` now creates an incomplete directory/manifest scaffold;
+`preview` renders static texture sheets. Neither implements the original motion-generation
+or animated-preview proposal. Doctor and some proposed lint checks remain backlog items.
+The original ~65-cell estimate is not a requirement.
 
 
 ### Start here: the reference art is not pixel art
@@ -625,9 +570,8 @@ four reasons, and the picker turned out to be better on the merits:
 4. It avoids known Aseprite export bugs — empty slice and tag metadata in tileset exports,
    slices emitted for non-tagged frames.
 
-If you do own Aseprite and prefer its slices, `packtool build` accepts an
-`--aseprite-json` export as an alternative anchor source. The picker remains the documented
-path because it is the one every pack author can use.
+Aseprite slice import was proposed but is not implemented as an `--aseprite-json` option.
+The current build reads PNG strips/atlases and per-texture JSON anchor files.
 
 ### Stage 5 — `packtool build`
 
@@ -635,17 +579,23 @@ path because it is the one every pack author can use.
 packtool build Packs/klien --out Packs/klien.pack
 ```
 
-1. Ingest each Aseprite JSON + PNG.
-2. **Re-register every frame** onto the declared ground anchor so the figure does not jitter;
-   assert the ground line is stable to the pixel.
+1. Read the source manifest and PNG strips or existing grid atlases.
+2. Report ground-line drift. The build does not automatically reposition artwork;
+   intentional bobbing/jumping must remain authored.
 3. Pack into **uniform-cell grid atlases** — no rotation, no trim. Uniform cells are a hard
    requirement: `contentsRect` animation assumes every frame occupies an identically sized
    sub-rect.
-4. Lift `anchor:*` slice pivots into per-frame anchor tables.
+4. Inject per-frame anchors from authored `anchors/*.json` files.
 5. Generate 1-bit alpha hit masks per frame (RLE).
 6. Emit `pack.json`; validate against `Schema/pack.schema.json`.
 
-### Stage 6 — `packtool lint` (runs inside build; failures are errors)
+### Stage 6 — proposed lint coverage and current limits
+
+There is no standalone `lint` subcommand. Build/validate currently check references, schema
+when jsonschema is installed, state reachability, capability requirements, quiescent policy,
+anchor continuity, attachment margins and relevant atlas/asset constraints. Some findings
+are warnings (including drift, margins and unreachable states). The list below is the original
+broader target; generic palette/grid/proportion enforcement is not fully implemented.
 
 - palette conformance — every pixel is in the declared palette
 - off-grid pixels — art must sit on the native grid
@@ -665,17 +615,17 @@ packtool build Packs/klien --out Packs/klien.pack
 - **quiescent-state discipline** — a `quiescent: true` state may not declare `next`,
   `duration`, or motion, and its clip must loop or be a single frame. This is Rule 2
   made mechanical, and it is the check most worth keeping honest.
-- capability gating — `windowTop` implies `windowEdges`, sounds imply `audio`
+- capability gating — sounds imply `audio`
 - cell overflow (art touching the cell edge)
 - atlas byte budget
 
-### Stage 7 — `packtool preview` / `doctor`
+### Stage 7 — `packtool preview`
 
-`preview` renders an animated contact sheet per clip plus an **anchor-trace overlay** (the
-anchor path drawn over the frames) so drift is visible without launching the app. `doctor` runs
-the same checks against an installed pack and prints why it was rejected.
+`preview` renders a generic texture contact sheet so an author can inspect every frame without
+launching the app. Animated clip sheets, anchor overlays, and an installed-pack `doctor` remain
+future extensions; they are not promised by the current CLI.
 
-### What a complete Klien pack requires
+### Historical initial art estimate
 
 ~65 unique cells: ~51 body (idle/sit, walk+turn, cursor reaction, grabbed/fall/land, sleep,
 tip-hat), 7 cane, 4 dumpling, 3 face. At a 128x128 cell, 1x only, that is roughly one 1024x1024
@@ -690,15 +640,17 @@ what makes the socket attachment path real and lets the cane swing during the wa
 ## 8. Adding a character pack
 
 **As a user:** drop the folder in `~/Library/Application Support/Lodger/Packs/`, or use the
-menu-bar item > *Add Character...*. Packs are watched; a valid one appears in the picker
-immediately. An invalid one shows the exact validation error — never a silent failure. Nothing
-is compiled, nothing is restarted.
+menu-bar item > *Add Character...*. Discovery refreshes when the menu opens and after imports;
+there is no continuous directory watcher. Loader failures are listed in the menu.
+Imports stage a copy before replacement and attempt backup restoration on move failure.
+Runtime schema/assets, contained paths, ID replacement and rollback are implemented.
+Actual import dialogs and crash recovery remain separate acceptance/implementation work.
 
 **As an author:**
 
 ```
 Packs/mycharacter/
-  pack.json              # the only required file
+  pack.json              # required, together with every referenced asset
   atlas/
     body.png             # uniform-cell grid, 1x, nearest-neighbour
     prop.png
@@ -713,15 +665,15 @@ Packs/mycharacter/
 python3 Tools/packtool/packtool.py validate Packs/mycharacter
 python3 Tools/packtool/packtool.py validate Packs/mycharacter --no-assets  # before art exists
 
-# planned
-packtool new mycharacter          # scaffold from a template
-packtool build Packs/mycharacter  # build + lint
-packtool preview Packs/mycharacter --clip walk --anchors
-packtool doctor "$HOME/Library/Application Support/Lodger/Packs/mycharacter"
+# scaffold, inspect, validate, and build
+python3 Tools/packtool/packtool.py generate Packs/mycharacter --id mycharacter
+python3 Tools/packtool/packtool.py preview Packs/mycharacter
+python3 Tools/packtool/packtool.py build Packs/mycharacter
 ```
 
-The full normative format is `Docs/PACK_FORMAT.md`. The minimum viable pack is one texture, one
-clip, and one state. Everything else has a default.
+The normative schema is `Schema/pack.schema.json`; `Docs/PACK_FORMAT.md` explains it.
+Use `Tests/Fixtures/test.solidsquare` as a minimal working example. The current `generate`
+scaffold needs required metadata, art, clips, parts and states before validation or use.
 
 ## 8a. The bundled default pack
 
@@ -736,7 +688,7 @@ Three constraints keep this from quietly destroying Rule 1:
 
 1. **The bundled pack loads through the identical code path as a user-installed one.**
    No `if bundled`, no privileged shortcut, no assumption that it is valid. It is discovered,
-   decoded and checked for referenced files exactly like a folder someone dropped in yesterday. Full runtime schema/capability validation remains backlog work.
+   decoded and checked for referenced files exactly like a folder someone dropped in yesterday. Runtime schema/capability/asset validation is enforced.
    `PackStore` merges the two directories and nothing downstream knows which is which.
 2. **A user pack shadows a bundled pack with the same id.** That is how someone replaces Klien
    with their own edit of him without touching the app bundle.
@@ -747,8 +699,8 @@ Three constraints keep this from quietly destroying Rule 1:
 A test asserts (1) by loading the bundled pack through `PackStore` and diffing the resulting
 model against the same pack loaded from a temporary directory. They must be identical.
 
-Because the app bundle now carries character art, the bundled pack's licence becomes the
-app's problem too — keep `Packs/klien/LICENSE` accurate and mirrored in the app's about box.
+Because the app bundle now carries character art, the bundled pack's license becomes the
+app's problem too — keep the pack's declared license and credits accurate in release materials.
 
 ---
 

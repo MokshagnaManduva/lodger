@@ -203,10 +203,6 @@
         {
           "on": "pointer.grab",
           "state": "held"
-        },
-        {
-          "on": "perch.acquired",
-          "state": "perched"
         }
       ]
     },
@@ -249,10 +245,6 @@
         {
           "on": "pointer.grab",
           "state": "held"
-        },
-        {
-          "on": "perch.acquired",
-          "state": "perched"
         }
       ]
     },
@@ -285,10 +277,6 @@
         {
           "on": "pointer.grab",
           "state": "held"
-        },
-        {
-          "on": "perch.acquired",
-          "state": "perched"
         }
       ]
     },
@@ -309,39 +297,8 @@
         {
           "on": "pointer.grab",
           "state": "held"
-        },
-        {
-          "on": "perch.acquired",
-          "state": "perched"
-        }
-      ]
-    },
-    "perched": {
-      "clip": "wave",
-      "surface": "windowTop",
-      "duration": {
-        "minMs": 4000,
-        "maxMs": 9000
-      },
-      "next": [
-        {
-          "state": "perched",
-          "weight": 1
-        }
-      ],
-      "interrupts": [
-        {
-          "on": "perch.lost",
-          "state": "falling"
-        },
-        {
-          "on": "pointer.grab",
-          "state": "held"
         }
       ]
     }
-  },
-  "requires": [
-    "windowEdges"
-  ]
+  }
 }

@@ -4,6 +4,11 @@ Normative schema: [`Schema/pack.schema.json`](../Schema/pack.schema.json)
 Worked example: [`Packs/klien/pack.json`](../Packs/klien/pack.json)
 Minimum viable pack: [`Tests/Fixtures/test.solidsquare/pack.json`](../Tests/Fixtures/test.solidsquare/pack.json)
 
+This describes the authoring contract. The runtime also enforces the schema, semantic
+references, asset decoding and contained paths. See [runtime validation and installation](pack-installation.md)
+for supported capabilities, resource limits, replacement policy and recovery guarantees.
+Install `Tools/packtool/requirements.txt` for schema validation in the author CLI.
+
 ```bash
 python3 Tools/packtool/packtool.py validate Packs/mycharacter
 python3 Tools/packtool/packtool.py validate Packs/mycharacter --no-assets   # before art exists
@@ -17,7 +22,7 @@ A folder containing `pack.json` and the files it references.
 
 ```
 mycharacter/
-  pack.json        # the only required file
+  pack.json        # required, together with every referenced asset
   atlas/*.png      # uniform-cell grid atlases, 1x, nearest-neighbour
   audio/*.wav
   preview.png
@@ -41,7 +46,7 @@ say "wake me at 60 Hz". Scheduling belongs to the engine.
 {
   "format": 1,
   "engineMin": "1.0.0",
-  "requires": ["audio", "windowEdges"],
+  "requires": ["audio"],
   "identity": {
     "id": "com.example.mycharacter",
     "name": "My Character",
@@ -61,7 +66,6 @@ id replaces it. `requires` declares capabilities the engine must grant:
 |---|---|
 | `audio` | the pack declares sounds. Required if `sounds` is non-empty. |
 | `multiDisplay` | the pack assumes more than one screen may exist |
-| `windowEdges` | the pack uses `surface: "windowTop"`. Additionally requires the user to enable window perching and grant Accessibility. A pack that declares this still runs with the capability denied — it simply never receives `perch.acquired`. |
 
 ## 3. `stage` — the coordinate contract
 
@@ -262,7 +266,7 @@ time. `initialState` is explicit so that no state name is special to the engine.
 
 `motion` is `"none"`, or `{"type":"walk", "speed":…, "direction":…}`,
 `{"type":"fall", "gravity":…, "terminal":…}`, or `{"type":"drag"}`. `surface` is
-`floor` | `windowTop` | `ceiling` | `wallLeft` | `wallRight` | `air`.
+`floor` | `ceiling` | `wallLeft` | `wallRight` | `air`.
 
 ### Scaling a duration by one of your own knobs
 
@@ -285,8 +289,11 @@ engine.
 }
 ```
 
-Marks a state the engine can leave completely alone: no timer, no display link, no run-loop
-source. It installs one looping Core Animation and the process sleeps until an interrupt.
+Marks a state with no autonomous state timer or physics display link. Sprite animation
+stays in Core Animation. Input routing is an engine-owned exception: while a cursor overlaps
+a changing silhouette, a boundary deadline or temporary continuous-motion hover tracker
+keeps clicks targeted correctly. Stable pixels and cursors outside the panel add no routing
+wake. See [interaction verification](interaction-plan.md) and [energy scope](energy-protocol.md).
 
 `packtool validate` enforces the conditions that make this true, and will reject a quiescent
 state that declares `next`, `duration`, or motion, or whose clip is multi-frame and
@@ -300,7 +307,7 @@ quiescent state.** A pet with none is a pet that never stops costing power.
 `clip.ended` · `state.timeout` · `pointer.enter` · `pointer.exit` · `pointer.click` ·
 `pointer.doubleClick` · `pointer.grab` · `pointer.release` · `physics.landed` ·
 `physics.settled` · `system.wake` · `system.willSleep` · `display.changed` · `space.changed` ·
-`perch.acquired` · `perch.lost` · `{"pointer.near": px}` · `{"pointer.idle": sec}` ·
+`{"pointer.near": px}` · `{"pointer.idle": sec}` ·
 `{"pointer.fast": pxPerSec}` · `{"user.idle": sec}` ·
 `{"edge.reached": "left"|"right"|"top"|"bottom"}` · `{"power.lowPowerMode": bool}` ·
 `{"power.onBattery": bool}` · `{"app.occluded": bool}`
@@ -309,7 +316,7 @@ quiescent state.** A pet with none is a pet that never stops costing power.
 
 `{"random": p}` · `{"stateAge": {"op":…,"sec":…}}` · `{"pointerDistance": {"op":…,"px":…}}` ·
 `{"pointerSide": "left"|"right"}` · `{"onEdge": …}` · `{"facing": "left"|"right"}` ·
-`{"perched": bool}` · `{"lowPower": bool}` · `{"flag": {"name":…,"value":…}}` ·
+`{"lowPower": bool}` · `{"flag": {"name":…,"value":…}}` ·
 `{"timeOfDay": {"from":"23:00","to":"06:00"}}` · `{"all": [...]}` · `{"any": [...]}` ·
 `{"not": {...}}`
 
@@ -318,12 +325,6 @@ Comparison operators are `lt` `lte` `gt` `gte` `eq`.
 There is deliberately no way to write an arbitrary expression. If you need a verb that does not
 exist, it is an engine change and a format-version bump — that seam is what keeps packs inert.
 
-### A note on perching
-
-A pack says *"when I lose my perch, play these states"*. It never says which window to perch on,
-never enumerates windows, and never sees window metadata — that is engine policy. A pack
-written with no knowledge of perching still behaves correctly: `perch.lost` simply never fires
-for it.
 
 ## 7a. Facing
 
@@ -346,8 +347,12 @@ it keeps its handedness and stays on the same visual side.
 Sounds are triggered per frame (`"sound": "step"` on a frame) or per state. Audio ships **off
 by default**; the engine respects system mute and Do Not Disturb regardless.
 
-`tuning` declares scalar knobs the engine surfaces in Settings with a generic control, so it
-needs no knowledge of what they mean. `liveliness` is conventionally scaled down on battery.
+`tuning` declares scalar knobs. Settings shows generic sliders for knobs referenced by a
+state duration’s `scaleBy`; unused declarations are not shown as working controls. Values
+are clamped to declared bounds and saved per character. Changes affect subsequent duration
+calculations, not a deadline already scheduled. The engine needs no character-specific
+knowledge of the knob names. Battery-based tuning adjustment remains verification/backlog
+work rather than a promise of the current Settings controls.
 
 ## 9. Checklist before publishing
 

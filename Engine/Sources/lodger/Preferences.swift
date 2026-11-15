@@ -7,11 +7,12 @@ import LodgerEngine
 /// know where they came from. That keeps `Engine/` free of anything host-specific
 /// and keeps it testable without a defaults domain.
 struct Preferences {
-    private static let d = UserDefaults.standard
+    static var defaults = UserDefaults.standard
+    private static var d: UserDefaults { defaults }
 
     private enum Key {
         static let packID = "pack.id"
-        static let perchMode = "perch.enabled"
+        static let scales = "pack.scales"
         static let audio = "audio.enabled"
         static let volume = "audio.volume"
         static let tuning = "tuning"
@@ -22,10 +23,15 @@ struct Preferences {
         set { d.set(newValue, forKey: Key.packID) }
     }
 
-    /// Off by default: the app must ship asking for nothing. See CLAUDE.md 4a.
-    static var perchMode: Bool {
-        get { d.bool(forKey: Key.perchMode) }
-        set { d.set(newValue, forKey: Key.perchMode) }
+    static func scale(for packID: String, defaultValue: Int) -> Int {
+        let saved = (d.dictionary(forKey: Key.scales)?[packID] as? NSNumber)?.intValue
+        return saved ?? defaultValue
+    }
+
+    static func setScale(_ scale: Int, for packID: String) {
+        var all = d.dictionary(forKey: Key.scales) ?? [:]
+        all[packID] = scale
+        d.set(all, forKey: Key.scales)
     }
 
     /// Also off by default. An always-running background app that makes noise
@@ -36,8 +42,11 @@ struct Preferences {
     }
 
     static var volume: Double {
-        get { d.object(forKey: Key.volume) as? Double ?? 0.4 }
-        set { d.set(newValue, forKey: Key.volume) }
+        get {
+            let value = d.object(forKey: Key.volume) as? Double ?? 0.4
+            return value.isFinite ? min(1, max(0, value)) : 0.4
+        }
+        set { if newValue.isFinite { d.set(min(1, max(0, newValue)), forKey: Key.volume) } }
     }
 
     /// Per-pack values for the knobs a pack declares in `tuning`. Keyed by pack id
@@ -52,12 +61,21 @@ struct Preferences {
         d.set(all, forKey: Key.tuning)
     }
 
+    static func reset(packID: String) {
+        for key in [Key.scales, Key.tuning] {
+            var all = d.dictionary(forKey: key) ?? [:]
+            all.removeValue(forKey: packID)
+            d.set(all, forKey: key)
+        }
+    }
+
     /// Resolve a pack's tuning knobs: stored value, else the pack's own default.
     static func resolvedTuning(for pack: Pack) -> [String: Double] {
         let stored = tuning(for: pack.identity.id)
         var out: [String: Double] = [:]
         for (name, knob) in pack.tuning {
-            out[name] = stored[name] ?? knob.defaultValue
+            let value = stored[name] ?? knob.defaultValue
+            out[name] = value.isFinite ? min(knob.max, max(knob.min, value)) : knob.defaultValue
         }
         return out
     }

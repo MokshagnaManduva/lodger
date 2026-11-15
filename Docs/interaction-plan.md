@@ -4,6 +4,19 @@ Agreed order, 2026-09-16. Work through each group, fix observed defects, record
 repeatable checks and distinguish automated evidence from real desktop testing.
 Do not mark a group complete solely because its animation gallery looks correct.
 
+Current review (2026-09-30): 30 app checks cover Settings/import controller behavior,
+but native controls, actual import/Trash dialogs, full process relaunch and cross-application
+pointer delivery remain open. See [product acceptance](product-acceptance.md). Computer-use
+access to the isolated acceptance app was rejected; no new desktop sign-off was recorded.
+Follow the current
+[status checklist](../left.md) for product work alongside the groups below.
+
+The stationary-cursor implementation was corrected on 2026-09-22. Discrete silhouette
+changes schedule a routing-only deadline; continuously moving geometry uses a temporary
+hover display link. Neither runs with the cursor outside the panel, and stable body/overlay
+pixels schedule no frame wake. Shared Core Animation time handles pause/resume and
+ping-pong clips. Controlled OS-level click-through/focus acceptance remains open.
+
 | Order | Group | Acceptance | Status |
 |---|---|---|---|
 | 1 | Pointer and clicks | Correct opaque/transparent targeting in both directions; approach/watch/click/fast reactions; no stolen focus | Code corrections implemented and automated checks pass; real desktop routing/focus sign-off remains open |
@@ -11,15 +24,12 @@ Do not mark a group complete solely because its animation gallery looks correct.
 | 3 | Release, fall and land | Release from multiple heights; smooth descent; correct floor; one landing; natural recovery | Fixed and desktop-verified 2026-09-18 (60 Hz falling-only display link); display-link-stops/cost measurement still open, see below |
 | 4 | Walking and interruption | Both directions, edges, turn/resume; mid-step grab keeps visible position | Pending |
 | 5 | Pose transitions and emblem | Sit/stand/hat tip/toss transitions; interrupted actions leave valid held-emblem poses | Art and Director checks exist; full interaction review pending |
-| 6 | Perch acquisition | Drop onto an eligible window; permission/off/invalid-target fallbacks | Pending |
-| 7 | Perch tracking and loss | Follow move/resize; recover on close/minimize/hide/quit/fullscreen/Space changes | Pending |
-| 8 | Displays and recovery | Mixed scales, cross-display dragging, display removal/rearrangement; pet always reachable | Pending |
-| 9 | Idle and system events | Inactivity, sleep/wake, low power, occlusion; no unwanted timers/link | Pending |
+| 6 | Displays and recovery | Mixed scales, cross-display dragging, display removal/rearrangement; pet always reachable | Pending |
+| 7 | Idle and system events | Inactivity, sleep/wake, low power, occlusion; no unwanted timers/link | Pending |
 
 After these groups stabilize, run the normal-behavior and whole-system energy
-milestone from [the consolidated backlog](../left.md). Full turnaround/dangling-perch artwork stays a
-separate art task. Record newly reported defects in the earliest group whose
-prerequisites allow a reliable fix.
+milestone from [the consolidated backlog](../left.md). Record newly reported defects in the
+earliest group whose prerequisites allow a reliable fix.
 
 ## Group 1 — findings and implemented corrections
 
@@ -42,10 +52,34 @@ prerequisites allow a reliable fix.
   now fire on release only if no drag occurred; double-click count is preserved.
   The nonactivating view accepts first mouse without requesting key/main status.
 
+### Stationary-cursor correction — 2026-09-22
+
+- Routing refreshes have no pointer-behavior callback: they do not reset idle time,
+  synthesize velocity or recursively trigger enter/exit/near reactions.
+- Frame deadlines skip unchanged opacity and stop at the end of finite clips. Socket
+  anchors follow the body's clock even when their sprite clip has a different duration.
+- Continuous hover tracking covers render-server walking and floating attachment motion;
+  existing physics ticks also refresh routing when the window moves under a still cursor.
+- Walking hit geometry uses the current presentation position, not the destination.
+- A local left press retains capture through drag/up. A press already targeted to another
+  app is never captured or replayed. No event tap, event reposting or new permission is used.
+- Stop, pause, cursor exit and static geometry cancel the relevant routing work. Weak display
+  link ownership prevents the temporary hover tracker from retaining an abandoned pet.
+
+The local suite passed **308/308 checks** including both working packs; the ad-hoc app
+bundle rebuilt successfully and pack/art/separation checks passed. The automated suite
+covers fixed-cursor opacity changes with actual scheduled callbacks and
+`NSPanel.ignoresMouseEvents`, unequal durations, finite/loop/ping-pong timing, unchanged
+pixels, drag ownership, pause/resume, exit and cancellation. It does not simulate hardware
+click delivery across applications. Hover deadlines are subject to normal main-queue and
+compositor latency; checking mouse-down after dispatch cannot retroactively correct a click.
+
 ### Evidence and remaining desktop checks
 
-`make engine-test` passes **220/220 checks**; `make test` passes all validator
-and art checks. The release app was rebuilt with the Group 1 runtime fixes.
+The original Group 1 engine run passed **205/205 checks**; the later September 22
+routing run passed **308/308** including both packs. September 30 recorded **306/306**
+generic checks and passing pack/art checks. These are dated results, not desktop sign-off.
+The release app was rebuilt with the original Group 1 runtime fixes.
 Engine tests cover asymmetric masks at 1x/2x/3x, mirror bounds/current atlas cells,
 part mirroring, cell-relative proximity, high-frequency velocity and pauses,
 click-versus-drag lifecycle, and non-key panel configuration. Klien Director
@@ -66,9 +100,11 @@ Still required, using actual desktop pointer actions:
 2. Click solid body/emblem pixels: a hat tip; underlying app receives no click;
    its existing keyboard focus remains usable. Repeat after facing flips.
 3. Click transparent corners and gaps: the underlying control receives the click.
-4. Repeat as the pose changes with the cursor stationary. Routing is refreshed on
-   mouse moves/state/facing changes, not every animation frame; validate this
-   boundary explicitly and fix any stale-target defect without adding idle polling.
+4. Repeat as the pose changes with the cursor stationary: test transparent-to-opaque
+   and opaque-to-transparent boundaries, socket/float attachments and both walk directions.
+   Verify the underlying app receives transparent clicks and a pet-owned drag retains its
+   release as the silhouette moves away. Frame-boundary routing and scoped hover tracking
+   are implemented; this step verifies actual WindowServer delivery and focus.
 5. Sweep quickly nearby: startle. Sweep far away: no startle. Verify entering and
    leaving the silhouette continues to work after repeated clicks.
 
@@ -102,7 +138,7 @@ duration. Sprite pose timing is untouched - `apply`/`visibleCell` still hold
 each art frame for its authored duration. Every other display-link case
 (spring-only settling) keeps the original clip-paced cadence, since that path
 was not implicated and walking does not use this display link in the first
-place. 220/220 engine checks pass; owner confirmed the descent feels smooth on
+place. 205/205 engine checks pass; owner confirmed the descent feels smooth on
 the desktop after rebuilding.
 
 Still open, not yet separately verified:
@@ -111,4 +147,4 @@ Still open, not yet separately verified:
   render-server walking (expected from the existing `syncDisplayLink`/`stopLink`
   logic, but not independently re-measured after this change).
 - Measure active-fall CPU cost at the new 60 Hz cadence.
-- Mixed-display falling behaviour stays deferred to Group 8.
+- Mixed-display falling behaviour belongs to Group 6.

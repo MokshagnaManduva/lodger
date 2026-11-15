@@ -7,8 +7,8 @@ Subcommands (see CLAUDE.md section 7):
     palette     (stage 1) extract and lock a palette from the raw reference
     anchors     (stage 4) author per-frame anchors against a live drift trace
     pixelize    (stage 2) turn a raw reference cell into a tracing sketch
-    generate    (stage 3) scripted PixelLab skeleton runs        [not yet implemented]
-    preview     (stage 7) contact sheets with anchor traces      [not yet implemented]
+    generate    (stage 3) scripted authoring scaffold from a pack manifest
+    preview     (stage 7) generic contact sheet for pack textures
 
 `validate` is the piece everything else leans on: it enforces the rules the JSON
 Schema cannot express, above all the ones that protect Rule 2 (idle cost) and the
@@ -518,6 +518,78 @@ def cmd_build(args: argparse.Namespace) -> int:
     return rep.emit(manifest.get("identity", {}).get("id", "pack"))
 
 
+def cmd_generate(args: argparse.Namespace) -> int:
+    """Create the neutral source directories an authoring pack needs."""
+    root = Path(args.out).resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    for name in ("art", "anchors", "audio", "reference"):
+        (root / name).mkdir(exist_ok=True)
+    manifest = root / "pack.json"
+    if not manifest.exists():
+        manifest.write_text(json.dumps({
+            "identity": {"id": args.id, "name": args.name, "version": "0.1.0"},
+            "stage": {"cell": {"w": 128, "h": 128},
+                      "ground": {"y": 120}, "defaultScale": 2,
+                      "scaleSteps": [1, 2, 3]},
+            "textures": {}, "clips": {}, "parts": [], "states": {}
+        }, indent=2) + "\n")
+        print(f"wrote {manifest}")
+    else:
+        print(f"kept existing {manifest}")
+    print(f"created authoring directories under {root}")
+    return 0
+
+
+def cmd_preview(args: argparse.Namespace) -> int:
+    from PIL import Image, ImageDraw
+
+    root = Path(args.pack).resolve()
+    manifest_path = root / "pack.json" if root.is_dir() else root
+    root = manifest_path.parent
+    if not manifest_path.exists():
+        print(f"no pack.json at {manifest_path}")
+        return 2
+    pack = json.loads(manifest_path.read_text())
+    stage = pack.get("stage", {})
+    cell = stage.get("cell", {})
+    cw, ch = int(cell.get("w", 128)), int(cell.get("h", 128))
+    thumb = max(16, args.cell)
+    tiles = []
+    for name, tex in pack.get("textures", {}).items():
+        path = tex.get("file") or tex.get("strip")
+        if not path:
+            continue
+        image_path = root / path
+        if not image_path.exists():
+            continue
+        image = Image.open(image_path).convert("RGBA")
+        cols = int(tex.get("columns", max(1, image.width // cw)))
+        rows = int(tex.get("rows", max(1, image.height // ch)))
+        for index in range(cols * rows):
+            x, y = (index % cols) * cw, (index // cols) * ch
+            if x >= image.width or y >= image.height:
+                continue
+            frame = image.crop((x, y, min(x + cw, image.width), min(y + ch, image.height)))
+            frame.thumbnail((thumb, thumb), Image.Resampling.NEAREST)
+            tile = Image.new("RGBA", (thumb, thumb + 20), (32, 32, 36, 255))
+            tile.alpha_composite(frame, ((thumb - frame.width) // 2, 0))
+            ImageDraw.Draw(tile).text((4, thumb + 3), f"{name}:{index}", fill="white")
+            tiles.append(tile)
+    if not tiles:
+        print("no texture frames found")
+        return 1
+    columns = max(1, args.columns)
+    rows = (len(tiles) + columns - 1) // columns
+    sheet = Image.new("RGBA", (columns * thumb, rows * (thumb + 20)), (18, 18, 20, 255))
+    for i, tile in enumerate(tiles):
+        sheet.alpha_composite(tile, ((i % columns) * thumb, (i // columns) * (thumb + 20)))
+    out = Path(args.out).resolve() if args.out else root / "preview-generated.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(out)
+    print(f"wrote {out} ({len(tiles)} frames)")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="packtool", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -580,6 +652,19 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--out", help="output directory (default: <pack>.pack)")
     b.add_argument("--anchor-jump", type=float, default=8.0)
     b.set_defaults(func=cmd_build)
+
+    g = sub.add_parser("generate", help="create a neutral authoring-pack scaffold")
+    g.add_argument("out", help="directory to create")
+    g.add_argument("--id", default="new.pack")
+    g.add_argument("--name", default="New Character")
+    g.set_defaults(func=cmd_generate)
+
+    pr = sub.add_parser("preview", help="render a generic texture contact sheet")
+    pr.add_argument("pack", help="pack directory or path to pack.json")
+    pr.add_argument("--out", help="PNG output path (default: pack/preview-generated.png)")
+    pr.add_argument("--cell", type=int, default=128, help="thumbnail size in px")
+    pr.add_argument("--columns", type=int, default=8)
+    pr.set_defaults(func=cmd_preview)
 
     args = ap.parse_args(argv)
     return args.func(args)

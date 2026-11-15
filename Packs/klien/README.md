@@ -20,8 +20,8 @@ make app
 Choose Klien from the character menu. A user-installed pack with the same ID
 shadows the bundled pack. Restart after rebuilding to reload bundled assets.
 
-56 authored poses, 19 body clips and 18 states cover the original scenarios,
-posture transitions, and the new toss. Default scale is 1× (half the former display width and height). Both walking directions
+The authoring source has 56 poses and 19 body clips. The active runtime manifest has
+18 clips and 17 states after perching removal. Default scale is 1×. Both walking directions
 are in the gallery; the engine mirrors the complete rig for rightward movement.
 
 Body, cane and emblem remain separate editable source layers. Runtime uses one
@@ -32,8 +32,9 @@ Audio remains off and no sound assets are included.
 `reference/idle-v2/` preserves the older approved idle/dumpling artwork;
 `make klien-idle` rebuilds that archive only. To deliberately restore the archived
 idle-only pack, use `python3 Tools/packtool/build_klien_idle.py --install`.
-`make klien-animations` restores the current complete pack.
+`make klien-animations` restores the current development pack.
 
-Full turnaround and a distinct dangling-leg perch are deferred. Accessibility
-perch tracking still requires real interaction verification. Energy measurements
-are process CPU only; the project backlog is in `Docs/whats-left.md`.
+Full runtime turnaround is unfinished. The new turnaround reference is concept artwork,
+not a replacement for the runtime pivot. Perch concepts belong to future work; no active
+perching behavior exists. Energy certification and live interaction acceptance remain open.
+See [current status](../../left.md) and [energy evidence](../../Docs/energy-protocol.md).

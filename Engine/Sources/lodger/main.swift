@@ -20,10 +20,9 @@ setvbuf(stdout, nil, _IOLBF, 0)
 struct Options {
     var packPath: String?
     var soakSeconds: Double?
+    var warmupSeconds: Double = 0
     var state: String?
     var headless = false
-    var perch = false
-    var requestAX = false
 }
 
 func parse() -> Options {
@@ -33,10 +32,9 @@ func parse() -> Options {
         switch a {
         case "--pack":  o.packPath = it.next()
         case "--soak":  o.soakSeconds = it.next().flatMap(Double.init)
+        case "--warmup": o.warmupSeconds = it.next().flatMap(Double.init) ?? 0
         case "--state": o.state = it.next()
         case "--headless": o.headless = true
-        case "--perch": o.perch = true
-        case "--ax":    o.requestAX = true
         case "-h", "--help":
             print("""
             lodger - walking skeleton
@@ -44,9 +42,8 @@ func parse() -> Options {
               --pack <dir>    pack to load (default: Tests/Fixtures/test.blinker)
               --state <name>  start in this state instead of initialState
               --soak <sec>    run for N seconds, then report CPU used
+              --warmup <sec>  settle before starting the soak measurement
               --headless      load and report, render nothing, exit
-              --perch         enable window perching (needs Accessibility)
-              --ax            request Accessibility and report, then exit
             """)
             exit(0)
         default: break
@@ -65,25 +62,6 @@ func cpuSeconds() -> Double {
 
 let opts = parse()
 let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-
-if opts.requestAX {
-    // Requested from the signed bundle on purpose: a TCC grant attaches to the
-    // binary that asked, so asking from a throwaway test executable would not help
-    // the app. In normal use this is called at the moment the user drops the pet on
-    // a window, never at launch.
-    print("already trusted : \(PerchTracker.hasPermission)")
-    if !PerchTracker.hasPermission {
-        print("requesting… a system dialog should appear; approve it in System Settings")
-        _ = PerchTracker.requestPermission()
-        for i in 1...60 {
-            if PerchTracker.hasPermission { break }
-            Thread.sleep(forTimeInterval: 1)
-            if i % 10 == 0 { print("  still waiting (\(i)s)…") }
-        }
-    }
-    print("trusted now     : \(PerchTracker.hasPermission)")
-    exit(PerchTracker.hasPermission ? 0 : 1)
-}
 
 // Normal operation, unless a measurement flag asked for something else.
 if opts.packPath == nil, opts.soakSeconds == nil, !opts.headless, opts.state == nil {
@@ -130,7 +108,6 @@ let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 
 let pet = Pet(loaded: loaded)
-pet.perchMode = opts.perch
 var transitions = 0
 pet.onStateChange = { plan, sched in
     transitions += 1
@@ -145,6 +122,9 @@ pet.onStateChange = { plan, sched in
                  pet.hasDisplayLink ? "YES" : "no ",
                  pos))
 }
+// Director.start() uses its current state. Previously --state only changed the
+// printed metadata, so every rendered soak silently measured initialState.
+if opts.state != nil { _ = pet.director.enter(stateName, reason: "--state") }
 pet.start()
 
 pet.panel.orderFrontRegardless()
@@ -159,10 +139,6 @@ claim 1  window
 claim 3  timers
          pointer monitor installed=\(pet.pointer.installed) (only if a state reacts to the pointer)
          live timers now=\(pet.scheduler.liveTimers)  display link=\(pet.hasDisplayLink ? "RUNNING" : "none")
-perching
-         mode=\(pet.perchMode ? "on" : "off")  pack declares windowEdges=\(pet.packSupportsPerching)
-         accessibility granted=\(PerchTracker.hasPermission)  perched=\(pet.isPerched)
-
 pid      : \(ProcessInfo.processInfo.processIdentifier)
 verify   : sudo timerfires -p \(ProcessInfo.processInfo.processIdentifier)
 """)
@@ -175,31 +151,77 @@ if let screen = NSScreen.main {
 }
 
 if let soak = opts.soakSeconds {
-    let start = cpuSeconds(), wall = Date()
-    print("soaking \(Int(soak))s from state '\(stateName)' ...")
-    // One deferred wake for the whole soak. NOT RunLoop.run(until:), which polls
-    // and would put the harness's own overhead into the number we are measuring.
-    DispatchQueue.global().asyncAfter(deadline: .now() + soak) {
-        let used = cpuSeconds() - start
-        let elapsed = Date().timeIntervalSince(wall)
-        print(String(format: "\nCPU used : %.4f s over %.1f s wall  (%.4f%% of one core)",
-                     used, elapsed, used / elapsed * 100))
-        print(String(format: "projected: %.2f s CPU per idle hour  (target < 7 s)",
-                     used / elapsed * 3600))
-        print("transitions: \(transitions), scheduler wakes: \(pet.scheduler.scheduledCount)")
-        print("display link: starts=\(pet.linkStarts) ticks=\(pet.springTicks) running=\(pet.hasDisplayLink)")
-        print("window enumerations: \(WindowFinder.enumerations)  (must be 0 outside a drag)")
-        if !pet.profile.isEmpty {
-            let total = pet.profile.values.reduce(0, +)
-            print("tick profile (wall seconds inside each phase):")
-            for (k, v) in pet.profile.sorted(by: { $0.value > $1.value }) {
-                print(String(format: "  %-16s %8.4f s  %5.1f%% of measured  %7.1f us/tick",
-                             (k as NSString).utf8String!, v, v / total * 100,
-                             v / Double(max(1, pet.springTicks)) * 1e6))
-            }
-        }
-        exit(0)
+    guard soak.isFinite, soak > 0, opts.warmupSeconds.isFinite, opts.warmupSeconds >= 0 else {
+        fputs("soak must be positive and warmup nonnegative (finite seconds)\n", stderr)
+        exit(2)
     }
+    func beginMeasurement() {
+        let start = cpuSeconds(), wall = ProcessInfo.processInfo.systemUptime
+        let startTransitions = transitions
+        let startScheduled = pet.scheduler.scheduledCount
+        let startLinks = pet.linkStarts, startTicks = pet.springTicks
+        let startRouting = pet.pointer.animationRefreshCount
+        let startState = pet.director.current
+        let inputIdleStart = IdleWatcher.systemInput()
+        let visibleStart = pet.panel.occlusionState.contains(.visible)
+        let startUserIdle = pet.userIdle.scheduledCount, startPointerIdle = pet.pointerIdle.scheduledCount
+        print("soaking \(Int(soak))s from state '\(stateName)' ...")
+        // One deferred wake for the whole soak. NOT RunLoop.run(until:), which polls
+        // and would put the harness's own overhead into the number we are measuring.
+        // Read engine counters on the main thread; no polling or sampling timer.
+        DispatchQueue.main.asyncAfter(deadline: .now() + soak) {
+            let used = cpuSeconds() - start
+            let elapsed = ProcessInfo.processInfo.systemUptime - wall
+            print(String(format: "\nCPU used : %.4f s over %.1f s wall  (%.4f%% of one core)",
+                         used, elapsed, used / elapsed * 100))
+            print(String(format: "projected: %.2f s CPU per idle hour  (target < 7 s)",
+                         used / elapsed * 3600))
+            print("transitions: \(transitions), scheduler wakes: \(pet.scheduler.scheduledCount)")
+            print("display link: starts=\(pet.linkStarts) ticks=\(pet.springTicks) running=\(pet.hasDisplayLink)")
+            var usage = rusage()
+            getrusage(RUSAGE_SELF, &usage)
+            let energy: [String: Any] = [
+                "schema": 1, "requested_seconds": soak, "warmup_seconds": opts.warmupSeconds,
+                "elapsed_seconds": elapsed, "cpu_seconds": used,
+                "cpu_seconds_per_hour": used / elapsed * 3600,
+                "requested_state": stateName, "start_state": startState, "end_state": pet.director.current,
+                "transitions": transitions - startTransitions,
+                "state_deadlines_scheduled": pet.scheduler.scheduledCount - startScheduled,
+                "live_state_timers": pet.scheduler.liveTimers,
+                "display_link_starts": pet.linkStarts - startLinks,
+                "display_link_ticks": pet.springTicks - startTicks,
+                "display_link_running": pet.hasDisplayLink,
+                "routing_refreshes": pet.pointer.animationRefreshCount - startRouting,
+                "routing_timer": pet.pointer.hasAnimationTimer,
+                "routing_display_link": pet.pointer.hasRoutingDisplayLink,
+                "user_idle_deadlines": pet.userIdle.scheduledCount - startUserIdle,
+                "pointer_idle_deadlines": pet.pointerIdle.scheduledCount - startPointerIdle,
+                "user_idle_armed": pet.userIdle.isArmed, "pointer_idle_armed": pet.pointerIdle.isArmed,
+                "pointer_monitor": pet.pointer.installed,
+                "peak_rss_bytes": usage.ru_maxrss,
+                "input_idle_seconds_start": inputIdleStart,
+                "input_idle_seconds_end": IdleWatcher.systemInput(),
+                "visible_start": visibleStart, "visible_end": pet.panel.occlusionState.contains(.visible),
+                "low_power_mode": ProcessInfo.processInfo.isLowPowerModeEnabled,
+            ]
+            if let json = try? JSONSerialization.data(withJSONObject: energy, options: [.sortedKeys]),
+               let line = String(data: json, encoding: .utf8) { print("ENERGY_JSON \(line)") }
+            if !pet.profile.isEmpty {
+                let total = pet.profile.values.reduce(0, +)
+                print("tick profile (wall seconds inside each phase):")
+                for (k, v) in pet.profile.sorted(by: { $0.value > $1.value }) {
+                    print(String(format: "  %-16s %8.4f s  %5.1f%% of measured  %7.1f us/tick",
+                                 (k as NSString).utf8String!, v, v / total * 100,
+                                 v / Double(max(1, pet.springTicks)) * 1e6))
+                }
+            }
+            exit(0)
+        }
+    }
+    if opts.warmupSeconds > 0 {
+        print("warmup: \(opts.warmupSeconds)s (excluded from CPU interval)")
+        DispatchQueue.main.asyncAfter(deadline: .now() + opts.warmupSeconds, execute: beginMeasurement)
+    } else { beginMeasurement() }
 }
 
 app.run()

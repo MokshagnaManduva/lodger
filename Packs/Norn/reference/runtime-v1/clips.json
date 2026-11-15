@@ -1,0 +1,62 @@
+{
+  "idle": {
+    "title": "A quiet experiment",
+    "category": "Idle",
+    "description": "A patient blink and a small smile. Quiescent: playback runs in Core Animation with no state timer."
+  },
+  "inspect": {
+    "title": "Hold it to the light",
+    "category": "Alchemy",
+    "description": "She checks the flask, smiles at the result, then returns to neutral."
+  },
+  "tiptoe": {
+    "title": "Precious cargo",
+    "category": "Walking",
+    "description": "Four selected contact and passing poses alternate the raised boot, while her flask stays upright. Bounded motion is supplied by the engine."
+  },
+  "watch": {
+    "title": "Something interesting",
+    "category": "Attention",
+    "description": "A curious glance toward the pointer, followed by a neutral recovery."
+  },
+  "greet": {
+    "title": "Hello, field researcher",
+    "category": "Click",
+    "description": "Lower the flask into its belt loop, free her palm for a wave, then retrieve it through the same transfer poses."
+  },
+  "settle": {
+    "title": "Just one more chapter",
+    "category": "Rest transition",
+    "description": "Bend the knees, lower the flask to the floor, then settle with the book on her lap. Dedicated sitting poses replace the landing crouch."
+  },
+  "read": {
+    "title": "The book can wait",
+    "category": "Rest",
+    "description": "Read and blink using the exact seated endpoint of the sit-down sequence; quiescent in the native app."
+  },
+  "sleep": {
+    "title": "A well-earned pause",
+    "category": "Sleep",
+    "description": "Six sleeping poses: a slow inhale, a soft exhale and a deeper nod over her book. Her feet stay planted; the root\u2019s leaves settle with her."
+  },
+  "wake": {
+    "title": "Back to the experiment",
+    "category": "Wake transition",
+    "description": "Gather her feet, retrieve the flask from the floor and straighten her knees. Reverses the sitting poses into the canonical neutral stance."
+  },
+  "held": {
+    "title": "Mind the glass",
+    "category": "Grab",
+    "description": "Six airborne poses: knees tuck and boots swing gently while she hugs the flask and book. A quick blink gives way to a cautious smile."
+  },
+  "fall": {
+    "title": "Feet first",
+    "category": "Release",
+    "description": "Six feet-first poses: boots adjust for landing while hair, apron and leaves catch the air. Floor contact interrupts the loop immediately."
+  },
+  "land": {
+    "title": "Everything intact",
+    "category": "Landing",
+    "description": "Compress, exhale, and recover to standing before returning to idle."
+  }
+}

@@ -11,7 +11,10 @@ final class MenuBar: NSObject, NSMenuDelegate {
 
     private let item: NSStatusItem
     private let app: AppController
+    private let updates = UpdateChecker()
     private var onQuit: () -> Void
+    private var settings: SettingsWindowController?
+    private var isTracking = false
 
     init(app: AppController, onQuit: @escaping () -> Void) {
         self.app = app
@@ -34,6 +37,9 @@ final class MenuBar: NSObject, NSMenuDelegate {
     // MARK: building on demand
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        // AppKit may request another update while the menu is tracking. Replacing
+        // its items then invalidates the objects used for hover and selection.
+        guard !isTracking else { return }
         app.reload()
         menu.removeAllItems()
 
@@ -75,17 +81,9 @@ final class MenuBar: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         add(menu, "Add Character…", #selector(addCharacter))
         add(menu, "Reveal Characters Folder", #selector(revealFolder))
-
-        menu.addItem(.separator())
-        let perch = add(menu, "Perch on Windows", #selector(togglePerch))
-        perch.state = Preferences.perchMode ? .on : .off
-        if let pet = app.pet, !pet.packSupportsPerching {
-            perch.isEnabled = false
-            perch.toolTip = "This character does not declare the windowEdges capability."
-        } else if !PerchTracker.hasPermission {
-            perch.toolTip = "Needs Accessibility. You will be asked when you drop the "
-                          + "character on a window."
-        }
+        add(menu, "Settings…", #selector(showSettings))
+        add(menu, "About Lodger", #selector(showAbout))
+        add(menu, "Check for Updates…", #selector(checkForUpdates))
 
         let audio = add(menu, "Sound", #selector(toggleAudio))
         audio.state = Preferences.audioEnabled ? .on : .off
@@ -96,6 +94,10 @@ final class MenuBar: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         add(menu, "Quit Lodger", #selector(quit)).keyEquivalent = "q"
     }
+
+    func menuWillOpen(_ menu: NSMenu) { isTracking = true }
+
+    func menuDidClose(_ menu: NSMenu) { isTracking = false }
 
     @discardableResult
     private func add(_ menu: NSMenu, _ title: String, _ action: Selector) -> NSMenuItem {
@@ -116,13 +118,11 @@ final class MenuBar: NSObject, NSMenuDelegate {
             lines.append("state: \(pet.director.current)")
             lines.append("live timers: \(pet.scheduler.liveTimers)")
             lines.append("display link: \(pet.hasDisplayLink ? "running" : "none")")
-            lines.append("walking: \(pet.isWalking)   perched: \(pet.isPerched)")
+            lines.append("walking: \(pet.isWalking)")
             lines.append("pointer monitor: \(pet.pointer.installed ? "installed" : "off")")
         } else {
             lines.append("no character running")
         }
-        lines.append("window enumerations: \(WindowFinder.enumerations)")
-        lines.append("accessibility: \(PerchTracker.hasPermission ? "granted" : "not granted")")
         lines.append("low power mode: \(cpu.isLowPowerModeEnabled)")
         for l in lines {
             let mi = NSMenuItem(title: l, action: nil, keyEquivalent: "")
@@ -140,36 +140,37 @@ final class MenuBar: NSObject, NSMenuDelegate {
     }
 
     @objc private func addCharacter() {
-        // Installing a character is dropping a folder in. The picker just saves the
-        // user a trip to the Finder; copying is all it does.
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.allowsMultipleSelection = true
-        panel.prompt = "Install"
-        panel.message = "Choose one or more character pack folders."
-        guard panel.runModal() == .OK else { return }
-        for src in panel.urls {
-            let dst = AppController.packsDirectory.appendingPathComponent(src.lastPathComponent)
-            try? FileManager.default.removeItem(at: dst)
-            try? FileManager.default.copyItem(at: src, to: dst)
-        }
-        app.reload()
+        app.chooseAndInstallPacks()
     }
 
     @objc private func revealFolder() {
-        NSWorkspace.shared.activateFileViewerSelecting([AppController.packsDirectory])
-    }
-
-    @objc private func togglePerch() {
-        app.setPerchMode(!Preferences.perchMode)
+        NSWorkspace.shared.activateFileViewerSelecting([app.installationDirectory])
     }
 
     @objc private func toggleAudio() {
         Preferences.audioEnabled = !Preferences.audioEnabled
+        settings?.refresh()
         app.pet?.audio.enabled = Preferences.audioEnabled
             && (app.pet?.loaded.pack.requires.contains("audio") ?? false)
     }
+
+    @objc private func showSettings() {
+        if settings == nil { settings = SettingsWindowController(app: app) }
+        settings?.show()
+    }
+
+    @objc private func showAbout() {
+        let credits = NSAttributedString(string:
+            "Lodger engine and app: MIT License\nKlien character pack: CC BY-NC 4.0",
+            attributes: [.font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)])
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .credits: credits,
+            .applicationIcon: NSImage(named: NSImage.Name("AppIcon")) as Any
+        ])
+    }
+
+    @objc private func checkForUpdates() { updates.check() }
+
 
     @objc private func quit() { onQuit() }
 }

@@ -57,7 +57,8 @@ public enum SpriteLayer {
     /// (and the diagnostics HUD) can assert the zero-timer invariant.
     @discardableResult
     public static func install(clip: Pack.Clip, texture: Pack.Texture,
-                               defaultFrameMs: Int, into layer: CALayer) -> Installed {
+                               defaultFrameMs: Int, into layer: CALayer,
+                               beginTime: CFTimeInterval? = nil) -> Installed {
         layer.magnificationFilter = .nearest
         layer.minificationFilter = .nearest
         layer.removeAnimation(forKey: "sprite")
@@ -80,6 +81,7 @@ public enum SpriteLayer {
         anim.keyTimes = keyTimes(durationsMs: ms)
         anim.calculationMode = .discrete
         anim.duration = Double(total) / 1000.0
+        if let beginTime { anim.beginTime = beginTime }
         anim.repeatCount = clip.loop == .none ? 1 : .infinity
         anim.autoreverses = clip.loop == .pingpong
         anim.isRemovedOnCompletion = false

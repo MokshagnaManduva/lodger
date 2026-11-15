@@ -23,6 +23,7 @@ public struct Pack: Decodable, Sendable {
         public let id: String, name: String, version: String
         public let author: String, license: String
         public let description: String?
+        public let preview: String?
     }
 
     public struct Point: Decodable, Sendable {
@@ -187,7 +188,7 @@ public struct Pack: Decodable, Sendable {
 
     /// An engine event reference from a pack, e.g. `"pointer.click"` or
     /// `{"pointer.near": 60}`. Stored losslessly; the closed vocabulary is
-    /// enforced by the schema at build time, not re-litigated here.
+    /// enforced by PackStore before decoding, as well as by the author tools.
     public struct EventRef: Decodable, Sendable {
         public let name: String
         public let value: Double?

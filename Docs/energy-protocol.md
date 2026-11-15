@@ -1,11 +1,61 @@
 # Energy protocol — measured baselines
 
+Current status: energy certification is open. The latest recorded run set is
+[the 2026-09-21 verification](#current-version-verification--2026-09-21). Earlier passes below
+apply only to their dated fixture/configuration. The latest product changes have not received
+a final energy acceptance run.
+
+Stationary-cursor routing changed on 2026-09-22. Away from the panel it adds no timer or
+display link. While hovering, discrete clips schedule only relevant opacity changes;
+continuous walking/bobbing uses a temporary display link (up to 60 Hz). Pausing or leaving
+cancels it. Measure **cursor away**, **stable opaque pixel**, **changing silhouette edge**
+and **moving attachment hover** separately. The latter two now include necessary input
+routing work; historical zero-timer statements describe autonomous state scheduling, not
+this interactive hover exception. New whole-process hover/idle measurements are pending.
+
 First run: 2026-09-06, M5 MacBook Air (16 GB), macOS 26.6.2, release build,
 `Tests/Fixtures/test.blinker`. Rerun with `make soak`.
 
 These replace the estimates that were in CLAUDE.md §6. Treat them as a floor to
 defend, not a result to celebrate — they were taken on a synthetic 24×24 pack with
 no behaviour, no physics and no input monitor. Every one of those will add cost.
+
+## Deferred acceptance — 2026-09-30
+
+The owner deferred quiet, battery-powered hour-long samples to a later session. No new
+energy certification was completed. Settings/import changes must be included in the final
+build before resuming. The machine was on AC power; `sudo -n powermetrics` returned
+“a password is required”, so no privileged wakeup/package-power results were obtained.
+
+Resume after [product and pointer acceptance](product-acceptance.md):
+
+1. Build release, close Settings and menus, record app/pack versions and binary hashes.
+   Use a quiet machine on battery, display awake, and avoid input during idle samples.
+2. Repeat hour-long isolated idle measurements; record median/spread and defend **<7 CPU
+   seconds per idle hour**. Measure normal autonomous behavior separately.
+3. Measure cursor away, stable opaque pixels, changing silhouette edges, continuous
+   walking/attachment hover, and fall/settle separately; confirm routing/physics work stops.
+4. Obtain wakeup, WindowServer A/B, memory, package-power A/B and Energy Impact evidence.
+   Record noise and missing data rather than marking unresolved metrics as passed.
+5. Verify the final menu-bar host as well as the Pet CLI host, then implement the release
+   energy gate. `make energy-check` does not exist yet.
+
+The existing reproducible Norn CPU runner is ready for the later session:
+
+```sh
+make norn-energy ENERGY_SECONDS=3600 ENERGY_RUNS=3 ENERGY_STATES=idle
+# Optional additional quiescent-state coverage:
+make norn-energy ENERGY_SECONDS=3600 ENERGY_RUNS=3 ENERGY_STATES="reading asleep"
+```
+
+Each sample adds a 15-second warmup; three idle samples take about three hours.
+The runner retains logs, asset/binary hashes, battery/input/visibility metadata and
+scheduler/routing counters. It measures the visible Pet CLI host, **excluding the
+menu/Settings shell** and whole-system power. Its report explicitly does not certify
+full energy. Klien's ordinary `idle` is not declared quiescent; isolate scheduling for
+breathing-idle measurements and retain fixture differences, or measure its actual
+quiescent `asleep` state with the generic runner. Do not apply the idle threshold to
+normal autonomous behavior as though it were the same workload.
 
 ## Claim 2 verified: animation is render-server resident
 
@@ -302,3 +352,22 @@ The body/cane/emblem animation is now one composited atlas with no floating spri
 or bob. This result is still short-run process CPU with autonomous choices removed,
 not a measured whole-system improvement over the prior pack. Full results and raw
 logs are in `Packs/klien/reference/all-scenarios-v1/measurements-polish/`.
+
+## Current-version verification — 2026-09-21
+
+The current pack no longer includes window perching. Release-build process CPU was
+sampled with five sequential 60-second runs using the normal Klien pack and its
+autonomous behavior:
+
+| Pack | Runs, CPU seconds/hour | Median | Result |
+|---|---|---:|---|
+| `Packs/klien` | 13.14 / 6.38 / 17.38 / 27.34 / 27.28 | 17.38 | Not certified |
+| `Tests/Fixtures/build/socketed.pack` | 1.21 / 1.15 / 4.64 / 1.08 / 3.12 | 1.21 | Pass |
+| `Tests/Fixtures/test.blinker` | 18.68 / 27.97 / 15.94 / 1.16 / 1.16 | 15.94 | Noisy |
+
+These are process-CPU observations, not whole-system power measurements. Klien's normal
+autonomous behavior is also distinct from the isolated-idle condition used for the
+`<7 s/hour` idle target. The wide spread and above-target median do not establish a pass
+or identify the source of variation. Repeat isolated-idle and normal-behavior measurements
+separately on a quiet machine. WindowServer overhead, wakeups, package power, resident memory
+and Activity Monitor Energy Impact remain open, as does a reproducible energy release gate.

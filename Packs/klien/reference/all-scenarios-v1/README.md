@@ -21,9 +21,8 @@ The directory name is retained to preserve existing links.
 ## Coverage and retained limitations
 
 Idle, left/right walk, front-facing turn, watching, hat tip, startle, held,
-falling, landing, sitting/perching, sleeping/waking, posture transitions and toss.
-Turnaround and distinct dangling-leg perching are deferred. No sound added.
-Pose playback is not a substitute for permission-granted Accessibility testing.
+falling, landing, sitting, sleeping/waking, posture transitions and toss.
+Turnaround is deferred. No sound added.
 
 ## Files
 

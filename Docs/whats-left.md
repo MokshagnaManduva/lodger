@@ -4,5 +4,6 @@ The consolidated, current checklist is now **[left.md](../left.md)** at the
 repository root. Update that file as work is completed.
 
 Detailed interaction findings and acceptance scenarios remain in
-[interaction-plan.md](interaction-plan.md). Historical energy evidence is in
-[energy-protocol.md](energy-protocol.md).
+[interaction-plan.md](interaction-plan.md). Energy evidence is in
+[energy-protocol.md](energy-protocol.md), and product/release work is in
+[release.md](release.md).

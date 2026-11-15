@@ -13,7 +13,7 @@ assert p['stage']['ground'] == {'x':64,'y':120}
 assert p['initialState'] == 'idle'
 state = next(s for s in p['states'].values() if s.get('quiescent'))
 assert state['quiescent'] and not any(k in state for k in ('next','duration','motion'))
-assert not p.get('sounds') and p['requires'] == ['windowEdges']
+assert not p.get('sounds') and p['requires'] == []
 clip = p['clips']['idle']
 assert clip['loop'] == 'forever' and sum(f['ms'] for f in clip['frames']) == 3000
 assert sum(f['cell']==3 for f in clip['frames']) == 1

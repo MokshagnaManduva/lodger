@@ -1,0 +1,176 @@
+{
+  "schema": 1,
+  "pack": {
+    "id": "com.lodger.norn",
+    "name": "Norn",
+    "version": "0.3.0",
+    "author": "Lodger contributors",
+    "license": "LicenseRef-Norn-Review-Pending",
+    "description": "A curious alchemist and her leafy field assistant. Local art-development pack.",
+    "preview": "preview.png"
+  },
+  "binary": "/Users/mokshagna/projects/sc_bu/Engine/.build/out/Products/Release/lodger",
+  "binary_sha256": "e6433332d1e9a6b9c2e1dd00e84ad13bd696aed825d679b11020bf1333396614",
+  "manifest_sha256": "e498ae334e8d0e15a170a97a52f9369b90109f3844638202c3c9ec1c9e646335",
+  "asset_sha256": {
+    "atlas/body.png": "b87bf04e833b052a3b4fe97e1e4935031b8e6d9cebe6810ff50e5991459f4676",
+    "atlas/fall.png": "9091fa3617e6f2cfe5adc142f2d347f61dd6e978492dafb46aa3fb951e7d9d0a",
+    "atlas/greet.png": "fd42f04e1f41de1a4dda343162bbdd325048d99faa6c131ce9a093822daed7fa",
+    "atlas/held.png": "b2464e347ddb1ddccd1ed1226f0dbd1d0540b03c32a7a229e3ff661da0ba958d",
+    "atlas/sit.png": "255eda8a270ea753040a9dd0f9c6afb43048ebb2d2eee63c3622e7824b1edc92",
+    "atlas/sleep.png": "2e03ee90d78a9b27ca8f5609214cde69ecb655c41acc7ecf72db75ca083d5cc4",
+    "atlas/walk.png": "3b344b384ae8bff92b308e8a17e36ba706a05cb3866aa21c80ccc0d2321c37c5",
+    "masks/body.mask": "8779bb2f15040fdcd74b9e7d9817eb458451a7147790dbfa45e13d256425cbdc",
+    "masks/fall.mask": "e8b432e1895bd3d529f37a19d1e03d17c4a414820e48025c59708361cc237650",
+    "masks/greet.mask": "45f5bde27cda640e321489b31ca5e489edd2ec2fd604201311060a90b618593e",
+    "masks/held.mask": "95c23d21a88edfa091dd0fd8611b9ca35c348b1f923f4667e2719d7d01ebc61b",
+    "masks/sit.mask": "5c7d61a06a483b3b8bfb2e4714a06edeade2936bb6e36fd83c9fb016edfa3c22",
+    "masks/sleep.mask": "237d0ccf30d37856f095ea10bd0815fb5e4987db237c2f202125fdda65b91146",
+    "masks/walk.mask": "daa01aa6613e2ac33074506269720f5e48b27cb04b126ed9842e1eefbd11ed86"
+  },
+  "os": {
+    "returncode": 0,
+    "stdout": "ProductName:\t\tmacOS\nProductVersion:\t\t27.0\nBuildVersion:\t\t26A428",
+    "stderr": ""
+  },
+  "started_at": "2026-09-25T23:20:23+0530",
+  "seconds": 120,
+  "warmup_seconds": 15,
+  "runs": 3,
+  "scope": "visible CLI Pet host; full original pack; normal pointer/system subscriptions; default scale; excludes menu/settings host",
+  "full_energy_certification": false,
+  "unmeasured": [
+    "kernel wakeups",
+    "WindowServer A/B delta",
+    "package power A/B delta",
+    "Activity Monitor Energy Impact"
+  ],
+  "samples": [
+    {
+      "state": "idle",
+      "run": 1,
+      "metrics": {
+        "cpu_seconds": 0.02820700000000001,
+        "cpu_seconds_per_hour": 0.8059216083009516,
+        "display_link_running": false,
+        "display_link_starts": 0,
+        "display_link_ticks": 0,
+        "elapsed_seconds": 125.99885516666836,
+        "end_state": "idle",
+        "input_idle_seconds_end": 7.236925458,
+        "input_idle_seconds_start": 16.485909459,
+        "live_state_timers": 0,
+        "low_power_mode": false,
+        "peak_rss_bytes": 60522496,
+        "pointer_idle_armed": false,
+        "pointer_idle_deadlines": 0,
+        "pointer_monitor": true,
+        "requested_seconds": 120,
+        "requested_state": "idle",
+        "routing_display_link": false,
+        "routing_refreshes": 0,
+        "routing_timer": false,
+        "schema": 1,
+        "start_state": "idle",
+        "state_deadlines_scheduled": 0,
+        "transitions": 0,
+        "user_idle_armed": false,
+        "user_idle_deadlines": 0,
+        "visible_end": true,
+        "visible_start": true,
+        "warmup_seconds": 15
+      },
+      "quiet_scheduling": true,
+      "power_before": {
+        "returncode": 0,
+        "stdout": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=23593059)\t99%; finishing charge; 0:10 remaining present: true",
+        "stderr": ""
+      },
+      "power_after": {
+        "returncode": 0,
+        "stdout": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=23593059)\t99%; finishing charge; 0:06 remaining present: true",
+        "stderr": ""
+      }
+    },
+    {
+      "state": "reading",
+      "run": 1,
+      "metrics": {
+        "cpu_seconds": 0.013750999999999985,
+        "cpu_seconds_per_hour": 0.39288716838398363,
+        "display_link_running": false,
+        "display_link_starts": 0,
+        "display_link_ticks": 0,
+        "elapsed_seconds": 125.99953366666887,
+        "end_state": "reading",
+        "input_idle_seconds_end": 5.732499584,
+        "input_idle_seconds_start": 2.311745667,
+        "live_state_timers": 0,
+        "low_power_mode": false,
+        "peak_rss_bytes": 60686336,
+        "pointer_idle_armed": false,
+        "pointer_idle_deadlines": 0,
+        "pointer_monitor": true,
+        "requested_seconds": 120,
+        "requested_state": "reading",
+        "routing_display_link": false,
+        "routing_refreshes": 0,
+        "routing_timer": false,
+        "schema": 1,
+        "start_state": "reading",
+        "state_deadlines_scheduled": 0,
+        "transitions": 0,
+        "user_idle_armed": false,
+        "user_idle_deadlines": 0,
+        "visible_end": true,
+        "visible_start": true,
+        "warmup_seconds": 15
+      },
+      "quiet_scheduling": true,
+      "power_before": {
+        "returncode": 0,
+        "stdout": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=23593059)\t99%; finishing charge; 0:06 remaining present: true",
+        "stderr": ""
+      },
+      "power_after": {
+        "returncode": 0,
+        "stdout": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=23593059)\t100%; finishing charge; 0:02 remaining present: true",
+        "stderr": ""
+      }
+    }
+  ],
+  "summary": {
+    "idle": {
+      "samples": 1,
+      "cpu_seconds_per_hour": [
+        0.8059216083009516
+      ],
+      "median": 0.8059216083009516,
+      "minimum": 0.8059216083009516,
+      "maximum": 0.8059216083009516,
+      "quiet_scheduling": true,
+      "battery_at_boundaries": false,
+      "no_input_during_samples": false,
+      "visible_at_boundaries": true,
+      "max_peak_rss_mib": 57.71875,
+      "median_under_target": true,
+      "hour_long_samples": false
+    },
+    "reading": {
+      "samples": 1,
+      "cpu_seconds_per_hour": [
+        0.39288716838398363
+      ],
+      "median": 0.39288716838398363,
+      "minimum": 0.39288716838398363,
+      "maximum": 0.39288716838398363,
+      "quiet_scheduling": true,
+      "battery_at_boundaries": false,
+      "no_input_during_samples": false,
+      "visible_at_boundaries": true,
+      "max_peak_rss_mib": 57.875,
+      "median_under_target": true,
+      "hour_long_samples": false
+    }
+  }
+}

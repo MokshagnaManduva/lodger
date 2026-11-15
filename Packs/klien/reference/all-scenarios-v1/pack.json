@@ -1,9 +1,7 @@
 {
   "format": 1,
   "engineMin": "1.0.0",
-  "requires": [
-    "windowEdges"
-  ],
+  "requires": [],
   "identity": {
     "id": "com.mokshagna.klien",
     "name": "Klien",
@@ -427,24 +425,6 @@
         }
       ]
     },
-    "perch": {
-      "texture": "body",
-      "loop": "forever",
-      "frames": [
-        {
-          "cell": 39,
-          "ms": 1600
-        },
-        {
-          "cell": 40,
-          "ms": 120
-        },
-        {
-          "cell": 39,
-          "ms": 1280
-        }
-      ]
-    },
     "sleep_in": {
       "texture": "body",
       "loop": "none",
@@ -663,14 +643,6 @@
             "power.lowPowerMode": true
           },
           "state": "sitting_down"
-        },
-        {
-          "on": "perch.acquired",
-          "state": "perched"
-        },
-        {
-          "on": "perch.lost",
-          "state": "falling"
         }
       ]
     },
@@ -711,10 +683,6 @@
           "state": "turning"
         },
         {
-          "on": "perch.lost",
-          "state": "falling"
-        },
-        {
           "on": "pointer.grab",
           "state": "held"
         }
@@ -732,49 +700,8 @@
           "state": "idle",
           "weight": 40
         }
-      ]
-    },
-    "perched": {
-      "clip": "perch",
-      "surface": "windowTop",
-      "duration": {
-        "minMs": 6000,
-        "maxMs": 30000,
-        "scaleBy": "liveliness"
-      },
-      "next": [
-        {
-          "state": "perched",
-          "weight": 70
-        },
-        {
-          "state": "standing_up",
-          "weight": 30,
-          "when": {
-            "perched": true
-          }
-        }
       ],
-      "interrupts": [
-        {
-          "on": "perch.lost",
-          "state": "falling"
-        },
-        {
-          "on": "pointer.grab",
-          "state": "held"
-        },
-        {
-          "on": "pointer.click",
-          "state": "standing_up"
-        },
-        {
-          "on": {
-            "user.idle": 300
-          },
-          "state": "sleeping"
-        }
-      ]
+      "interrupts": []
     },
     "watching": {
       "clip": "watch",
@@ -806,10 +733,6 @@
           "state": "held"
         },
         {
-          "on": "perch.lost",
-          "state": "falling"
-        },
-        {
           "on": "pointer.click",
           "state": "tipping_hat"
         },
@@ -835,7 +758,8 @@
           "state": "watching",
           "weight": 100
         }
-      ]
+      ],
+      "interrupts": []
     },
     "tipping_hat": {
       "clip": "tip_hat",
@@ -845,7 +769,8 @@
           "state": "idle",
           "weight": 100
         }
-      ]
+      ],
+      "interrupts": []
     },
     "held": {
       "clip": "grabbed",
@@ -887,7 +812,8 @@
           "state": "idle",
           "weight": 100
         }
-      ]
+      ],
+      "interrupts": []
     },
     "sitting": {
       "clip": "sit",
@@ -927,10 +853,6 @@
         {
           "on": "pointer.grab",
           "state": "held"
-        },
-        {
-          "on": "perch.lost",
-          "state": "falling"
         }
       ]
     },
@@ -942,7 +864,8 @@
           "state": "asleep",
           "weight": 100
         }
-      ]
+      ],
+      "interrupts": []
     },
     "asleep": {
       "clip": "sleep",
@@ -965,10 +888,6 @@
         {
           "on": "system.wake",
           "state": "waking"
-        },
-        {
-          "on": "perch.lost",
-          "state": "falling"
         }
       ]
     },
@@ -980,7 +899,8 @@
           "state": "idle",
           "weight": 100
         }
-      ]
+      ],
+      "interrupts": []
     },
     "sitting_down": {
       "clip": "sit_down",
@@ -1061,14 +981,6 @@
             "power.lowPowerMode": true
           },
           "state": "sitting_down"
-        },
-        {
-          "on": "perch.acquired",
-          "state": "perched"
-        },
-        {
-          "on": "perch.lost",
-          "state": "falling"
         }
       ]
     }

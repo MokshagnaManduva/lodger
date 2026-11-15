@@ -271,16 +271,26 @@ def manifest(clips,index):
     m['stage']['defaultScale']=1
     m['identity']['version']='0.4.0'
     m['identity']['description']='Klien: a golden sun-emblem toss, compact walking, hat tips, reactions, sitting and sleep/wake animations.'
-    m['requires']=['windowEdges']; m.pop('sounds',None)
+    m['requires']=[]; m.pop('sounds',None)
     m['textures']={'body':{'strip':'art/body.png','preload':True},'cane':{'strip':'art/cane.png'}}
     m['clips']={name:{'texture':'body','loop':mode,'frames':[{'cell':index[n],'ms':ms} for n,ms in seq]} for name,(mode,seq) in clips.items()}
+    m['clips'].pop('perch', None)
     # Deliberate hand travel: toss launch and seated lowering span up to 9px.
     for name in ('toss_emblem','sit_down','stand_up','wake'):
         m['clips'][name]['anchorJumpLimit']=10
     for name,seq in [('cane_hold',[('rest',3000)]),('cane_walk',clips['walk'][1])]:
         m['clips'][name]={'texture':'cane','loop':'forever','frames':[{'cell':index[n],'ms':ms} for n,ms in seq]}
     m['parts']=[{'name':'body','bind':{'mode':'body'}}]
-    states=m['states']; states['watching']['clip']='watch'; states['perched']['clip']='perch'
+    states=m['states']; states['watching']['clip']='watch'
+    states.pop('perched', None)
+    clips.pop('perch', None)
+    for st in states.values():
+        st['next'] = [e for e in st.get('next', []) if e.get('state') != 'perched']
+        st['interrupts'] = [e for e in st.get('interrupts', [])
+                            if e.get('on') not in ('perch.acquired', 'perch.lost')
+                            and e.get('state') != 'perched']
+        if not st['next']:
+            st.pop('next', None)
     # Watching is entered on approach, before a click can arrive. It must retain
     # click/fast reactions, and distant cursor motion must not startle the pet.
     nearby={'pointerDistance':{'op':'lte','px':60}}
@@ -301,7 +311,7 @@ def manifest(clips,index):
     states['sleep_preparing']['next'][0]['state']='sleeping'
     states['standing_up']={'clip':'stand_up','duration':'clip','next':[{'state':'idle','weight':100}]}
     # Already seated states need only close the eyes.
-    for name in ('sitting','perched'):
+    for name in ('sitting',):
         for edge in states[name].get('next',[])+states[name].get('interrupts',[]):
             if edge['state']=='sleep_preparing': edge['state']='sleeping'
             if edge['state'] in ('idle','walking','tipping_hat'): edge['state']='standing_up'
@@ -359,7 +369,7 @@ def previews(frames,clips):
     page='''<!doctype html><meta charset="utf-8"><title>Klien — animation scenarios</title><style>body{font:16px system-ui;background:#ece8e2;color:#242127;margin:32px}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(272px,1fr));gap:18px}article{background:#fff;padding:16px;border-radius:12px}h2{font-size:18px}img{image-rendering:pixelated;background:#9d9596}a{color:#514275}button{padding:8px 14px}</style><h1>Klien — all scenarios</h1><p>Native 128px frames · approved identity · 26 body colors + 5 gold colors. Finite actions repeat here for review; the toss occurs occasionally in the app.</p><p><button onclick="document.querySelectorAll('img').forEach(i=>{i.width=i.width===256?128:256;i.height=i.width})">Toggle native / 2×</button></p><main>'''+''.join(cards)+'</main>'
     (OUT/'gallery.html').write_text(page)
     # One glanceable all-scenario poster.
-    chosen=[('idle','rest'),('walking','walk0'),('turning','turn1'),('watching','watch'),('hat tip','tip2'),('startled','startle1'),('held','held1'),('falling','fall1'),('landing','land0'),('sitting','sit'),('perched','perch'),('drowsing','drowse'),('asleep','sleep'),('waking','lower1'),('sun emblem toss','toss4')]
+    chosen=[('idle','rest'),('walking','walk0'),('turning','turn1'),('watching','watch'),('hat tip','tip2'),('startled','startle1'),('held','held1'),('falling','fall1'),('landing','land0'),('sitting','sit'),('drowsing','drowse'),('asleep','sleep'),('waking','lower1'),('sun emblem toss','toss4')]
     poster=Image.new('RGB',(4*272,4*286),(229,225,220)); d=ImageDraw.Draw(poster)
     for i,(name,n) in enumerate(chosen):
         im=frames[n][0].copy(); x=i%4*272+8;y=i//4*286+8

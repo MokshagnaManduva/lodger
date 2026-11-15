@@ -4,8 +4,9 @@ import AppKit
 ///
 /// Note what this class does *not* contain: any per-frame loop. Sprite frames are
 /// advanced by the render server, state changes by one scheduled wake, and pointer
-/// reactions by events the OS already had to deliver. There is nowhere here for a
-/// poll to hide.
+/// reactions by events the OS already had to deliver. PointerMonitor additionally
+/// refreshes input routing at silhouette boundaries and during continuous hover;
+/// that narrowly scoped work does not drive the sprite animation.
 public final class Pet {
 
     public let loaded: PackStore.Loaded
@@ -18,7 +19,6 @@ public final class Pet {
     private var atlases: [String: CGImage] = [:]
     private var masks: [String: HitMask] = [:]
     private var currentClip: Pack.Clip?
-    private var clipStartedAt = Date()
     private var link: CADisplayLink?
     private var lastLinkTime: CFTimeInterval = 0
     private var motion: Motion
@@ -29,12 +29,8 @@ public final class Pet {
     private var walkRemaining: Double = 0
     private var walkSpeed: Double = 0
     private var walkDirection: Guard.Side = .left
+    private let displayScale: Int
 
-    // MARK: perching
-    //
-    // Off by default, so the app ships asking for nothing. See CLAUDE.md 4a.
-    public var perchMode = false
-    public let perchTracker = PerchTracker()
     public let systemEvents = SystemEvents()
     public let audio = Audio()
     /// One for system-wide input, one for the cursor specifically.
@@ -49,15 +45,6 @@ public final class Pet {
     /// own settings store; the engine only ever divides durations by them.
     public var tuning: [String: Double] = [:] {
         didSet { director.tuning = tuning }
-    }
-    private var perchedOn: Perch.Candidate?
-    public var isPerched: Bool { perchedOn != nil }
-
-    /// Does the loaded pack want perching at all? A pack that never declares the
-    /// capability behaves identically whether the mode is on or off, because
-    /// `perch.acquired` simply never fires for it.
-    public var packSupportsPerching: Bool {
-        loaded.pack.requires.contains("windowEdges")
     }
     /// Measurement only: `LODGER_ABLATE=window` skips the window move,
     /// `=springs` skips float displacement, `=both` skips both. Used to attribute
@@ -81,20 +68,22 @@ public final class Pet {
     /// Called on every state change, for the diagnostics HUD. Never on a timer.
     public var onStateChange: ((Director.Plan, Scheduler) -> Void)?
 
-    public init(loaded: PackStore.Loaded, seed: UInt64 = 0x9E3779B97F4A7C15) {
+    public init(loaded: PackStore.Loaded, scale: Int? = nil,
+                seed: UInt64 = 0x9E3779B97F4A7C15) {
         self.loaded = loaded
         let stage = loaded.pack.stage
+        self.displayScale = scale ?? stage.defaultScale
         self.panel = PetPanel(cellSize: CGSize(width: stage.cell.w, height: stage.cell.h),
-                              scale: stage.defaultScale,
+                              scale: self.displayScale,
                               margin: Body.attachmentMargin(for: loaded.pack))
         self.director = Director(pack: loaded.pack, seed: seed)
         self.motion = Motion(feet: .zero)
         self.pointer = PointerMonitor(panel: panel)
-        self.pointer.scale = CGFloat(stage.defaultScale)
+        self.pointer.scale = CGFloat(self.displayScale)
         // cellTopLeft is wired in start(), once the rig exists.
         self.pointer.hitTargets = { [weak self] in
             guard let self, let body = self.body else { return [] }
-            return body.hitParts { self.visibleCell(of: $0) }.compactMap { hp in
+            return body.hitParts { body.visibleCell(of: $0) }.compactMap { hp in
                 guard let m = self.masks[hp.texture] else { return nil }
                 return PointerMonitor.Target(mask: m, cell: hp.cell, offset: hp.offset, mirrored: hp.mirrored)
             }
@@ -134,16 +123,9 @@ public final class Pet {
     public var world: Motion.World {
         if let w = cachedWorld { return w }
         let w: Motion.World
-        if let perch = perchedOn {
-            // Perched: the walkable surface is the top edge of that one window.
-            w = Perch.surface(of: perch.bounds,
-                              screenHeight: WindowFinder.primaryScreenHeight,
-                              halfWidth: halfWidth)
-        } else {
-            let s = screen ?? Stage.screen(containing: motion.feet) ?? NSScreen.main
-            w = s.map { Stage.world(on: $0, halfWidth: halfWidth) }
-             ?? Motion.World(floor: 0, left: 0, right: 0)
-        }
+        let s = screen ?? Stage.screen(containing: motion.feet) ?? NSScreen.main
+        w = s.map { Stage.world(on: $0, halfWidth: halfWidth) }
+         ?? Motion.World(floor: 0, left: 0, right: 0)
         cachedWorld = w
         return w
     }
@@ -161,6 +143,7 @@ public final class Pet {
 
     private func syncWindow() {
         panel.placeFeet(at: motion.feet, groundOffsetFromBottom: groundOffsetFromBottom)
+        if pointer.installed { pointer.sample(notify: false) }
     }
 
     public var isWalking: Bool { walk != nil }
@@ -190,9 +173,13 @@ public final class Pet {
         // Occlusion always earns its place: it lets the engine stop animating behind
         // another window whether or not the pack asked to hear about it.
         w.insert(.occlusion)
-        systemEvents.onEvent = { [weak self] name, value in self?.send(name, value: value) }
+        systemEvents.onEvent = { [weak self] name, value in
+            guard let self else { return }
+            self.send(name, value: value)
+        }
         systemEvents.onOcclusionChanged = { [weak self] hidden in
             self?.body?.setPaused(hidden)
+            self?.pointer.sample(notify: false)
         }
         systemEvents.install(w, window: panel)
 
@@ -200,15 +187,21 @@ public final class Pet {
         pointerIdle.onIdle = { [weak self] secs in self?.send("pointer.idle", value: secs) }
         pointer.onChange = { [weak self] r in self?.pointerMoved(r) }
         pointer.cellTopLeft = { [weak self] in self?.cellTopLeftOnScreen() ?? .zero }
-        perchTracker.onMoved = { [weak self] c in self?.perchMoved(to: c) }
-        perchTracker.onLost = { [weak self] in self?.perchLost() }
         pointer.interactionFrame = { [weak self] in
             guard let self else { return .zero }
             let top = self.cellTopLeftOnScreen()
             let stage = self.loaded.pack.stage
-            let scale = CGFloat(stage.defaultScale)
+            let scale = CGFloat(self.displayScale)
             return CGRect(x: top.x, y: top.y - CGFloat(stage.cell.h) * scale,
                           width: CGFloat(stage.cell.w) * scale, height: CGFloat(stage.cell.h) * scale)
+        }
+        pointer.animationUpdate = { [weak self] cursor in
+            guard let self, let body = self.body, !body.isPaused else { return .none }
+            if self.walk != nil { return .continuous }
+            let top = self.cellTopLeftOnScreen()
+            let scale = CGFloat(self.displayScale)
+            return body.routingUpdate(cursor: CGPoint(x: (cursor.x - top.x) / scale,
+                                                       y: (top.y - cursor.y) / scale), masks: self.masks)
         }
         apply(director.start())
         // Install after layers, masks and callbacks exist; never fall back to a
@@ -222,7 +215,6 @@ public final class Pet {
         userIdle.cancel()
         pointerIdle.cancel()
         systemEvents.uninstall()
-        perchTracker.detach()
         stopLink()
         pointer.uninstall()
         panel.orderOut(nil)
@@ -307,6 +299,7 @@ public final class Pet {
         timed("stepSprings") { settled = body?.stepSprings(dt) ?? true }
         if settled && !wasSettled { send("physics.settled") }
         if settled && !motion.needsTicking { stopLink() }
+        if pointer.installed { pointer.sample(notify: false) }
     }
 
     private func deliver(_ e: Motion.Event) {
@@ -360,7 +353,7 @@ public final class Pet {
     public var groundOffsetFromBottom: CGFloat {
         let stage = loaded.pack.stage
         return (CGFloat(stage.cell.h) + panel.margin - CGFloat(stage.ground.y))
-             * CGFloat(stage.defaultScale)
+             * CGFloat(displayScale)
     }
 
     private var packUsesPointer: Bool {
@@ -371,38 +364,13 @@ public final class Pet {
 
     // MARK: state
 
-    /// Which atlas cell is on screen right now.
-    ///
-    /// The render server owns frame advancement, so this is derived from elapsed
-    /// time rather than read back - O(1), computed only when a mouse-move event we
-    /// were already handling asks for it. Never polled.
-    private func visibleCell(of clip: Pack.Clip) -> Int {
-        let ms = clip.durations(default: loaded.pack.stage.defaultFrameMs)
-        let total = ms.reduce(0, +)
-        guard total > 0, clip.frames.count > 1 else { return clip.frames.first?.cell ?? 0 }
-        var t = Int(Date().timeIntervalSince(clipStartedAt) * 1000)
-        if clip.loop == .none { t = min(t, total - 1) }
-        else if clip.loop == .pingpong {
-            let cycle = total * 2
-            t %= cycle
-            if t >= total { t = cycle - 1 - t }        // reverse leg
-        } else { t %= total }
-        var acc = 0
-        for (i, d) in ms.enumerated() {
-            acc += d
-            if t < acc { return clip.frames[i].cell }
-        }
-        return clip.frames.last?.cell ?? 0
-    }
-
     private func apply(_ plan: Director.Plan) {
         guard let clip = loaded.pack.clips[plan.clip] else { return }
 
         currentClip = clip
-        clipStartedAt = Date()
 
         if body == nil, let host = panel.contentView?.layer {
-            body = Body(pack: loaded.pack, host: host) { [weak self] in self?.atlas(named: $0) }
+            body = Body(pack: loaded.pack, host: host, scale: displayScale) { [weak self] in self?.atlas(named: $0) }
         }
         endWalk()                       // adopt the position of any walk in flight
         body?.apply(state: plan.state, bodyClip: clip)
@@ -438,9 +406,12 @@ public final class Pet {
     /// Top-left of the character's cell in screen coordinates, accounting for the
     /// rig's current slide inside a walk-wide window.
     private func cellTopLeftOnScreen() -> CGPoint {
-        let scale = CGFloat(loaded.pack.stage.defaultScale)
+        let scale = CGFloat(displayScale)
         let margin = panel.margin * scale
-        let rigMinX = (body?.rig.position.x ?? rigHalfWidth) - rigHalfWidth
+        // The model position is the end of a render-server walk. Hit testing
+        // must use its current presentation position, including while paused.
+        let rig = body?.rig
+        let rigMinX = (rig?.presentation()?.position.x ?? rig?.position.x ?? rigHalfWidth) - rigHalfWidth
         return CGPoint(x: panel.frame.minX + rigMinX + margin,
                        y: panel.frame.minY + margin
                         + CGFloat(loaded.pack.stage.cell.h) * scale)
@@ -504,9 +475,11 @@ public final class Pet {
         scheduler.apply(.after(stretch.seconds)) { [weak self] in
             self?.walkStretchFinished()
         }
+        if pointer.installed { pointer.sample(notify: false) }
     }
 
     private func walkStretchFinished() {
+        defer { if pointer.installed { pointer.sample(notify: false) } }
         guard let stretch = walk else { return }
         motion.feet.x = stretch.endX
         walkRemaining = stretch.remainingAfter(walkRemaining)
@@ -629,9 +602,9 @@ public final class Pet {
         c.pointerDistance = lastDistance.isFinite ? lastDistance : nil
         c.pointerSide = lastPointerSide
         c.facing = motion.facing
+        c.perched = false
         c.lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
-        c.perched = isPerched
-        c.edge = isPerched ? .windowTop : .floor
+        c.edge = .floor
         c.minutesSinceMidnight = Self.minutesSinceMidnight()
         return c
     }
@@ -654,64 +627,7 @@ public final class Pet {
 
     private func endDrag() {
         guard case .drag = motion.kind else { return }
-        // The drop is the perch selection. Enumerate windows exactly here - once,
-        // inside a user interaction - and never on a timer.
-        if tryPerch(at: NSEvent.mouseLocation) { return }
         send("pointer.release")
-    }
-
-    /// Returns true if the pet took a perch, in which case `perch.acquired` was
-    /// sent instead of `pointer.release`.
-    @discardableResult
-    private func tryPerch(at cursor: CGPoint) -> Bool {
-        guard perchMode, packSupportsPerching else { return false }
-        let h = WindowFinder.primaryScreenHeight
-        guard let target = Perch.target(under: cursor, in: WindowFinder.windows(),
-                                        ownPID: ProcessInfo.processInfo.processIdentifier,
-                                        screenHeight: h) else { return false }
-        switch perchTracker.attach(to: target) {
-        case .attached:
-            perchedOn = target
-            cachedWorld = nil
-            let w = world
-            motion.feet = CGPoint(x: min(max(motion.feet.x, w.left), w.right), y: w.floor)
-            syncWindow()
-            send("perch.acquired")
-            return true
-        case .needsPermission:
-            // Ask now, with the user having just aimed at a specific window, rather
-            // than at launch for no visible reason. The pet falls this time.
-            PerchTracker.requestPermission()
-            return false
-        case .notFound:
-            return false
-        }
-    }
-
-    private func perchMoved(to c: Perch.Candidate) {
-        perchedOn = c
-        cachedWorld = nil
-        guard walk == nil else { endWalk(); return }   // re-seat, then let the state re-plan
-        let w = world
-        motion.feet = CGPoint(x: min(max(motion.feet.x, w.left), w.right), y: w.floor)
-        syncWindow()
-    }
-
-    /// One handler for every way a perch can go away: the window moved off-screen,
-    /// was minimised, hidden, closed, resized too small, or went full screen.
-    private func perchLost() {
-        guard perchedOn != nil else { return }
-        endWalk()
-        perchedOn = nil
-        cachedWorld = nil
-        send("perch.lost")
-    }
-
-    /// Turn window perching on or off. Dropping the perch is a `perch.lost`, so the
-    /// pack's own fall-and-land states bring the pet back to the floor.
-    public func setPerchMode(_ on: Bool) {
-        perchMode = on
-        if !on { perchTracker.detach(); perchLost() }
     }
 
     private var lastPointerSide: Guard.Side?
@@ -744,7 +660,8 @@ public final class Pet {
     private func atlas(named: String) -> CGImage? {
         if let a = atlases[named] { return a }
         guard let tex = loaded.pack.textures[named],
-              let img = SpriteLayer.atlas(at: loaded.root.appendingPathComponent(tex.file))
+              let url = try? PackFiles.file(tex.file, in: loaded.root),
+              let img = SpriteLayer.atlas(at: url)
         else { return nil }
         atlases[named] = img
         return img

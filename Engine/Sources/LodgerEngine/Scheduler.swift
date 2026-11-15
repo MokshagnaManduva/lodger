@@ -4,8 +4,8 @@ import Foundation
 ///
 /// Concentrating it here means the Rule 2 invariant is checkable by reading one
 /// file, and `liveTimers` can be asserted in tests and shown in the diagnostics
-/// HUD. If that count is non-zero while the pet is in a quiescent state, that is
-/// the bug.
+/// HUD. The autonomous state scheduler stays at zero in quiescent states.
+/// PointerMonitor owns a separate instance for necessary hover-routing deadlines.
 ///
 /// There is deliberately no repeating timer anywhere. A state schedules exactly
 /// one wake for its own end; the next state schedules its own.
@@ -31,11 +31,14 @@ public final class Scheduler {
 
     /// Arrange the single wake a plan asks for. `.none` cancels everything and
     /// leaves the process with nothing scheduled at all.
-    public func apply(_ wake: Director.Wake, _ fire: @escaping () -> Void) {
+    public func apply(_ wake: Director.Wake, leeway requestedLeeway: TimeInterval? = nil,
+                      _ fire: @escaping () -> Void) {
         cancel()
         guard case .after(let interval) = wake, interval > 0 else { return }
 
-        let leeway = min(Self.maxLeeway, max(0.01, interval * Self.leewayFraction))
+        // Interaction deadlines can request tighter timing: delaying a silhouette
+        // boundary can route a real click to the wrong application.
+        let leeway = requestedLeeway ?? min(Self.maxLeeway, max(0.01, interval * Self.leewayFraction))
         let t = DispatchSource.makeTimerSource(queue: queue)
         t.schedule(deadline: .now() + interval, leeway: .milliseconds(Int(leeway * 1000)))
         t.setEventHandler { [weak self] in

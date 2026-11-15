@@ -17,7 +17,6 @@ struct TossAcceptance {
             ("pointer.near", 30, "watching"), ("pointer.fast", 1500, "startled"),
             ("pointer.grab", nil, "held"), ("pointer.click", nil, "tipping_hat"),
             ("user.idle", 300, "sleep_preparing"), ("power.lowPowerMode", 1, "sitting_down"),
-            ("perch.acquired", nil, "perched"), ("perch.lost", nil, "falling")
         ]
         for (event, value, target) in events {
             _ = director.enter("toss_emblem", reason: "acceptance")

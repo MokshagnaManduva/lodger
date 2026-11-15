@@ -75,6 +75,87 @@ public final class Body {
     private let panelSize: CGSize
     private let margin: CGFloat
     private let atlas: (String) -> CGImage?
+    private var animationStartedAt: CFTimeInterval = 0
+    private var bodyClip: Pack.Clip?
+
+    public var animationElapsed: TimeInterval {
+        max(0, rig.convertTime(CACurrentMediaTime(), from: nil) - animationStartedAt)
+    }
+
+    public func visibleCell(of clip: Pack.Clip) -> Int {
+        clip.frames[ClipTimeline(clip: clip, defaultFrameMs: pack.stage.defaultFrameMs)
+            .sample(at: animationElapsed).index].cell
+    }
+
+    /// Frame deadlines only matter at pixels whose opacity can change. A moving
+    /// attachment additionally needs presentation updates while the cursor lies
+    /// in its swept cell. Outside these regions there is no routing wake.
+    public func routingUpdate(cursor local: CGPoint, masks: [String: HitMask]) -> PointerMonitor.AnimationUpdate {
+        guard !isPaused else { return .none }
+        var delay: TimeInterval?
+        var continuous = false
+        var alwaysInside = false
+        let elapsed = animationElapsed
+        let flipped = rig.transform.m11 < 0
+        func boundary(_ clip: Pack.Clip) {
+            if let next = ClipTimeline(clip: clip, defaultFrameMs: pack.stage.defaultFrameMs).sample(at: elapsed).nextBoundary {
+                delay = min(delay ?? next, next)
+            }
+        }
+        for p in parts where p.decl.hitTest && !p.layer.isHidden {
+            guard let clip = p.clip, let mask = masks[clip.texture] else { continue }
+            let bind = p.decl.bind
+            if bind.mode == "float" {
+                let rest = centre(dx: 0, dy: 0)
+                let dx = (p.restCentre.x - rest.x) / scale * (flipped && p.decl.mirrorWithBody ? -1 : 1)
+                let dy = (rest.y - p.restCentre.y) / scale
+                let xTravel = bind.maxOffset / scale + bind.bob.amplitudeX
+                let yTravel = bind.maxOffset / scale + bind.bob.amplitudeY
+                let swept = CGRect(x: dx - xTravel, y: dy - yTravel,
+                                   width: cell.width + 2 * xTravel, height: cell.height + 2 * yTravel)
+                guard swept.contains(local) else { continue }
+                if !(p.spring?.settled ?? true) || bind.bob.amplitudeX > 0 || bind.bob.amplitudeY > 0 {
+                    continuous = true
+                    continue
+                }
+            }
+            if bind.mode == "socket", let bodyClip {
+                if let name = bind.anchor {
+                    let base = baseAnchor(name, on: bodyClip)
+                    let offsets = bodyClip.frames.compactMap { $0.anchors[name] }.map {
+                        CGPoint(x: ($0.x - base.x + bind.offset.x) * (flipped ? -1 : 1),
+                                y: $0.y - base.y + bind.offset.y)
+                    }
+                    let minX = offsets.map(\.x).min() ?? 0, maxX = offsets.map(\.x).max() ?? 0
+                    let minY = offsets.map(\.y).min() ?? 0, maxY = offsets.map(\.y).max() ?? 0
+                    guard CGRect(x: minX, y: minY, width: cell.width + maxX - minX,
+                                 height: cell.height + maxY - minY).contains(local) else { continue }
+                }
+                // Its anchor positions use the body's clock, independent of the
+                // attachment's own sprite clip. Both deadlines are relevant.
+                boundary(bodyClip)
+                boundary(clip)
+                continue
+            }
+            let live = p.layer.presentation()?.position ?? p.layer.position
+            let rest = centre(dx: 0, dy: 0)
+            let dx = (live.x - rest.x) / scale * (flipped ? -1 : 1)
+            let dy = (rest.y - live.y) / scale
+            let column = Int(floor(local.x - dx)), y = Int(floor(local.y - dy))
+            let mirrored = flipped != (p.layer.transform.m11 < 0)
+            let x = mirrored ? mask.cellWidth - 1 - column : column
+            let values = clip.frames.map { mask.opaque(cell: $0.cell, x: x, y: y) }
+            if (bind.mode == "body" || bind.mode == "overlay"), values.allSatisfy({ $0 }) {
+                alwaysInside = true
+            }
+            if let next = ClipTimeline(clip: clip, defaultFrameMs: pack.stage.defaultFrameMs).nextChange(at: elapsed, values: values) {
+                delay = min(delay ?? next, next)
+            }
+        }
+        if alwaysInside { return .none }
+        if continuous { return .continuous }
+        return delay.map { .after($0) } ?? .none
+    }
 
     /// How far outside the cell the art can travel, in cell pixels. A window sized
     /// exactly to the cell clips a drifting float; this is what the panel pads by.
@@ -86,13 +167,15 @@ public final class Body {
         return Int(drift.rounded(.up))
     }
 
-    public init(pack: Pack, host: CALayer, atlas: @escaping (String) -> CGImage?) {
+    public init(pack: Pack, host: CALayer, scale: Int? = nil,
+                atlas: @escaping (String) -> CGImage?) {
         self.pack = pack
-        self.scale = CGFloat(pack.stage.defaultScale)
+        self.scale = CGFloat(scale ?? pack.stage.defaultScale)
         self.cell = CGSize(width: pack.stage.cell.w, height: pack.stage.cell.h)
         self.margin = CGFloat(Body.attachmentMargin(for: pack))
-        self.panelSize = CGSize(width: (cell.width + margin * 2) * scale,
-                                height: (cell.height + margin * 2) * scale)
+        let panelWidth = (cell.width + margin * 2) * self.scale
+        let panelHeight = (cell.height + margin * 2) * self.scale
+        self.panelSize = CGSize(width: panelWidth, height: panelHeight)
         self.atlas = atlas
 
         rig.frame = CGRect(origin: .zero, size: panelSize)
@@ -104,8 +187,10 @@ public final class Body {
         for (_, decl) in ordered {
             let layer = CALayer()
             // Each part layer is one cell, centred in the padded panel.
-            layer.frame = CGRect(x: margin * scale, y: margin * scale,
-                                 width: cell.width * scale, height: cell.height * scale)
+            let origin = margin * self.scale
+            let width = cell.width * self.scale
+            let height = cell.height * self.scale
+            layer.frame = CGRect(x: origin, y: origin, width: width, height: height)
             layer.magnificationFilter = .nearest
             layer.minificationFilter = .nearest
             rig.addSublayer(layer)
@@ -182,6 +267,11 @@ public final class Body {
     // MARK: applying a state
 
     public func apply(state: String, bodyClip: Pack.Clip) {
+        self.bodyClip = bodyClip
+        animationStartedAt = rig.convertTime(CACurrentMediaTime(), from: nil)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        defer { CATransaction.commit() }
         let bodyMs = bodyClip.durations(default: pack.stage.defaultFrameMs)
         let bodyKeyTimes = SpriteLayer.keyTimes(durationsMs: bodyMs)
         let bodyDuration = Double(bodyMs.reduce(0, +)) / 1000
@@ -231,14 +321,25 @@ public final class Body {
 
     /// Everything the pointer could be over, with each piece's current offset.
     ///
-    /// A socket's offset is read from its presentation layer, because the render
-    /// server owns that position - which is the whole point of animating it there.
-    /// Called once per mouse-move event, never on a tick.
+    /// Discrete sockets share the sprite clock; continuously moving parts use
+    /// presentation geometry. Called on pointer events and scoped routing wakes.
     public func hitParts(visibleCell: (Pack.Clip) -> Int) -> [HitPart] {
         var out: [HitPart] = []
         for p in parts {
             guard p.decl.hitTest, !p.layer.isHidden, let clip = p.clip else { continue }
-            let live = p.layer.presentation()?.position ?? p.layer.position
+            var live = p.layer.presentation()?.position ?? p.layer.position
+            if p.decl.bind.mode == "socket", let bodyClip, bodyClip.frames.count > 1,
+               let name = p.decl.bind.anchor {
+                // At a scheduled boundary the presentation tree may still be the
+                // previous compositor frame. Resolve discrete anchors with the
+                // same explicit clock as the sprite instead of keeping that hit.
+                let index = ClipTimeline(clip: bodyClip, defaultFrameMs: pack.stage.defaultFrameMs)
+                    .sample(at: animationElapsed).index
+                let base = baseAnchor(name, on: bodyClip)
+                let point = anchor(name, on: bodyClip, frame: index) ?? base
+                live = centre(dx: point.x - base.x + p.decl.bind.offset.x,
+                              dy: point.y - base.y + p.decl.bind.offset.y)
+            }
             let rest = centre(dx: 0, dy: 0)
             let rigFlipped = rig.transform.m11 < 0
             let offset = CGPoint(x: (live.x - rest.x) / scale * (rigFlipped ? -1 : 1),
@@ -255,7 +356,8 @@ public final class Body {
         guard let tex = pack.textures[clip.texture], let image = atlas(clip.texture) else { return }
         if layer.contents as AnyObject? !== image { layer.contents = image }
         SpriteLayer.install(clip: clip, texture: tex,
-                            defaultFrameMs: pack.stage.defaultFrameMs, into: layer)
+                            defaultFrameMs: pack.stage.defaultFrameMs, into: layer,
+                            beginTime: layer.convertTime(animationStartedAt, from: rig))
     }
 
     private func applySocket(_ p: inout Part, bodyClip: Pack.Clip, keyTimes: [NSNumber],
@@ -288,6 +390,7 @@ public final class Body {
         move.keyTimes = keyTimes
         move.calculationMode = .discrete
         move.duration = duration
+        move.beginTime = p.layer.convertTime(animationStartedAt, from: rig)
         move.repeatCount = repeats ? .infinity : 1
         move.autoreverses = autoreverse
         move.isRemovedOnCompletion = false

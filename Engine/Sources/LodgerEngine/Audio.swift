@@ -39,7 +39,7 @@ public final class Audio {
     /// Play one sound now. Safe to call when disabled or when the id is unknown.
     public func play(_ id: String) {
         guard enabled, let sound = sounds[id], let root else { return }
-        let url = root.appendingPathComponent(sound.file)
+        guard let url = try? PackFiles.file(sound.file, in: root) else { return }
         let pool = players[id] ?? []
         let free = pool.first { !$0.isPlaying }
         let player: AVAudioPlayer

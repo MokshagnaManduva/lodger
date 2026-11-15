@@ -221,7 +221,7 @@
           },
           "quiescent": {
             "type": "boolean", "default": false,
-            "description": "The engine installs no timer, no display link and no run-loop source in this state. Requires a looping or single-frame clip and an empty or absent 'next'."
+            "description": "No autonomous state timer or physics display link. Cursor-over-animation routing may schedule engine-owned input updates. Requires a looping or single-frame clip and an empty or absent 'next'."
           },
           "sound": { "type": "string" },
           "next": {

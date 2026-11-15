@@ -1,0 +1,852 @@
+{
+  "format": 1,
+  "identity": {
+    "id": "com.lodger.norn",
+    "name": "Norn",
+    "version": "0.3.0",
+    "author": "Lodger contributors",
+    "license": "LicenseRef-Norn-Review-Pending",
+    "description": "A curious alchemist and her leafy field assistant. Local art-development pack.",
+    "preview": "preview.png"
+  },
+  "stage": {
+    "cell": {
+      "w": 128,
+      "h": 128
+    },
+    "bodyHeight": 96,
+    "ground": {
+      "x": 72,
+      "y": 114
+    },
+    "artFacing": "left",
+    "pixelPerfect": true,
+    "scaleSteps": [
+      1,
+      2,
+      3
+    ],
+    "defaultScale": 2,
+    "defaultFrameMs": 250
+  },
+  "textures": {
+    "body": {
+      "file": "atlas/body.png",
+      "columns": 4,
+      "rows": 4,
+      "preload": true
+    },
+    "sleep": {
+      "file": "atlas/sleep.png",
+      "columns": 3,
+      "rows": 2,
+      "preload": true
+    },
+    "held": {
+      "file": "atlas/held.png",
+      "columns": 3,
+      "rows": 2,
+      "preload": false
+    },
+    "fall": {
+      "file": "atlas/fall.png",
+      "columns": 3,
+      "rows": 2,
+      "preload": false
+    },
+    "walk": {
+      "file": "atlas/walk.png",
+      "columns": 3,
+      "rows": 2,
+      "preload": true
+    },
+    "greet": {
+      "file": "atlas/greet.png",
+      "columns": 3,
+      "rows": 3,
+      "preload": true
+    },
+    "sit": {
+      "file": "atlas/sit.png",
+      "columns": 3,
+      "rows": 3,
+      "preload": true
+    }
+  },
+  "hitMasks": {
+    "body": "masks/body.mask",
+    "sleep": "masks/sleep.mask",
+    "held": "masks/held.mask",
+    "fall": "masks/fall.mask",
+    "walk": "masks/walk.mask",
+    "greet": "masks/greet.mask",
+    "sit": "masks/sit.mask"
+  },
+  "parts": [
+    {
+      "name": "body",
+      "bind": {
+        "mode": "body"
+      }
+    }
+  ],
+  "clips": {
+    "idle": {
+      "texture": "body",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 4200
+        },
+        {
+          "cell": 1,
+          "ms": 140
+        },
+        {
+          "cell": 0,
+          "ms": 3300
+        },
+        {
+          "cell": 3,
+          "ms": 600
+        },
+        {
+          "cell": 0,
+          "ms": 2300
+        }
+      ]
+    },
+    "inspect": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 300
+        },
+        {
+          "cell": 2,
+          "ms": 1200
+        },
+        {
+          "cell": 3,
+          "ms": 700
+        },
+        {
+          "cell": 0,
+          "ms": 400
+        }
+      ]
+    },
+    "tiptoe": {
+      "texture": "walk",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 180
+        },
+        {
+          "cell": 2,
+          "ms": 180
+        },
+        {
+          "cell": 1,
+          "ms": 180
+        },
+        {
+          "cell": 5,
+          "ms": 180
+        }
+      ]
+    },
+    "watch": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 250
+        },
+        {
+          "cell": 8,
+          "ms": 950
+        },
+        {
+          "cell": 0,
+          "ms": 250
+        }
+      ]
+    },
+    "greet": {
+      "texture": "greet",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 6,
+          "ms": 180
+        },
+        {
+          "cell": 0,
+          "ms": 120
+        },
+        {
+          "cell": 1,
+          "ms": 160
+        },
+        {
+          "cell": 2,
+          "ms": 180
+        },
+        {
+          "cell": 3,
+          "ms": 140
+        },
+        {
+          "cell": 4,
+          "ms": 250
+        },
+        {
+          "cell": 5,
+          "ms": 250
+        },
+        {
+          "cell": 4,
+          "ms": 180
+        },
+        {
+          "cell": 3,
+          "ms": 140
+        },
+        {
+          "cell": 2,
+          "ms": 180
+        },
+        {
+          "cell": 1,
+          "ms": 160
+        },
+        {
+          "cell": 0,
+          "ms": 120
+        },
+        {
+          "cell": 6,
+          "ms": 240
+        }
+      ]
+    },
+    "settle": {
+      "texture": "sit",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 6,
+          "ms": 160
+        },
+        {
+          "cell": 0,
+          "ms": 120
+        },
+        {
+          "cell": 1,
+          "ms": 180
+        },
+        {
+          "cell": 2,
+          "ms": 180
+        },
+        {
+          "cell": 3,
+          "ms": 200
+        },
+        {
+          "cell": 4,
+          "ms": 250
+        }
+      ]
+    },
+    "read": {
+      "texture": "sit",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 4,
+          "ms": 6000
+        },
+        {
+          "cell": 5,
+          "ms": 550
+        },
+        {
+          "cell": 4,
+          "ms": 2500
+        }
+      ]
+    },
+    "sleep": {
+      "texture": "sleep",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 950
+        },
+        {
+          "cell": 1,
+          "ms": 650
+        },
+        {
+          "cell": 2,
+          "ms": 800
+        },
+        {
+          "cell": 3,
+          "ms": 750
+        },
+        {
+          "cell": 4,
+          "ms": 1000
+        },
+        {
+          "cell": 5,
+          "ms": 650
+        }
+      ]
+    },
+    "wake": {
+      "texture": "sit",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 4,
+          "ms": 220
+        },
+        {
+          "cell": 3,
+          "ms": 220
+        },
+        {
+          "cell": 2,
+          "ms": 200
+        },
+        {
+          "cell": 1,
+          "ms": 200
+        },
+        {
+          "cell": 0,
+          "ms": 120
+        },
+        {
+          "cell": 6,
+          "ms": 240
+        }
+      ]
+    },
+    "held": {
+      "texture": "held",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 260
+        },
+        {
+          "cell": 1,
+          "ms": 200
+        },
+        {
+          "cell": 2,
+          "ms": 180
+        },
+        {
+          "cell": 3,
+          "ms": 220
+        },
+        {
+          "cell": 4,
+          "ms": 200
+        },
+        {
+          "cell": 5,
+          "ms": 260
+        }
+      ]
+    },
+    "fall": {
+      "texture": "fall",
+      "loop": "forever",
+      "frames": [
+        {
+          "cell": 0,
+          "ms": 130
+        },
+        {
+          "cell": 1,
+          "ms": 110
+        },
+        {
+          "cell": 2,
+          "ms": 110
+        },
+        {
+          "cell": 3,
+          "ms": 110
+        },
+        {
+          "cell": 4,
+          "ms": 110
+        },
+        {
+          "cell": 5,
+          "ms": 130
+        }
+      ]
+    },
+    "land": {
+      "texture": "body",
+      "loop": "none",
+      "frames": [
+        {
+          "cell": 14,
+          "ms": 180
+        },
+        {
+          "cell": 15,
+          "ms": 420
+        },
+        {
+          "cell": 0,
+          "ms": 250
+        }
+      ]
+    }
+  },
+  "initialState": "idle",
+  "states": {
+    "idle": {
+      "clip": "idle",
+      "quiescent": true,
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "system.willSleep",
+          "state": "asleep"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "asleep",
+          "when": {
+            "lowPower": true
+          }
+        },
+        {
+          "on": "pointer.doubleClick",
+          "state": "walking"
+        },
+        {
+          "on": "pointer.click",
+          "state": "greeting"
+        },
+        {
+          "on": "pointer.enter",
+          "state": "watching"
+        }
+      ]
+    },
+    "inspecting": {
+      "clip": "inspect",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 1
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "system.willSleep",
+          "state": "asleep"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "asleep",
+          "when": {
+            "lowPower": true
+          }
+        },
+        {
+          "on": "pointer.doubleClick",
+          "state": "walking"
+        },
+        {
+          "on": "pointer.click",
+          "state": "greeting"
+        }
+      ]
+    },
+    "watching": {
+      "clip": "watch",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "inspecting",
+          "weight": 1
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "system.willSleep",
+          "state": "asleep"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "asleep",
+          "when": {
+            "lowPower": true
+          }
+        },
+        {
+          "on": "pointer.doubleClick",
+          "state": "walking"
+        },
+        {
+          "on": "pointer.click",
+          "state": "greeting"
+        }
+      ],
+      "facing": "toPointer"
+    },
+    "greeting": {
+      "clip": "greet",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "inspecting",
+          "weight": 1
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "system.willSleep",
+          "state": "asleep"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "asleep",
+          "when": {
+            "lowPower": true
+          }
+        },
+        {
+          "on": "pointer.doubleClick",
+          "state": "walking"
+        },
+        {
+          "on": "pointer.click",
+          "state": "greeting"
+        }
+      ],
+      "facing": "toPointer"
+    },
+    "walking": {
+      "clip": "tiptoe",
+      "motion": {
+        "type": "walk",
+        "speed": 24,
+        "direction": "random"
+      },
+      "duration": {
+        "minMs": 2400,
+        "maxMs": 4800
+      },
+      "next": [
+        {
+          "state": "settling",
+          "weight": 1
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "system.willSleep",
+          "state": "asleep"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "asleep",
+          "when": {
+            "lowPower": true
+          }
+        },
+        {
+          "on": "pointer.doubleClick",
+          "state": "walking"
+        },
+        {
+          "on": "pointer.click",
+          "state": "greeting"
+        },
+        {
+          "on": {
+            "edge.reached": "left"
+          },
+          "state": "idle"
+        },
+        {
+          "on": {
+            "edge.reached": "right"
+          },
+          "state": "idle"
+        },
+        {
+          "on": "pointer.enter",
+          "state": "watching"
+        }
+      ]
+    },
+    "settling": {
+      "clip": "settle",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "reading",
+          "weight": 1
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "system.willSleep",
+          "state": "asleep"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "asleep",
+          "when": {
+            "lowPower": true
+          }
+        },
+        {
+          "on": "pointer.doubleClick",
+          "state": "walking"
+        },
+        {
+          "on": "pointer.click",
+          "state": "greeting"
+        }
+      ]
+    },
+    "reading": {
+      "clip": "read",
+      "quiescent": true,
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "system.willSleep",
+          "state": "asleep"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "asleep",
+          "when": {
+            "lowPower": true
+          }
+        },
+        {
+          "on": "pointer.click",
+          "state": "waking"
+        },
+        {
+          "on": "pointer.doubleClick",
+          "state": "waking"
+        },
+        {
+          "on": "pointer.enter",
+          "state": "waking"
+        },
+        {
+          "on": "system.wake",
+          "state": "waking"
+        }
+      ]
+    },
+    "asleep": {
+      "clip": "sleep",
+      "quiescent": true,
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "pointer.click",
+          "state": "waking"
+        },
+        {
+          "on": "pointer.doubleClick",
+          "state": "waking"
+        },
+        {
+          "on": "system.wake",
+          "state": "waking"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": false
+          },
+          "state": "waking",
+          "when": {
+            "lowPower": false
+          }
+        }
+      ]
+    },
+    "waking": {
+      "clip": "wake",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 1
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "system.willSleep",
+          "state": "asleep"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "asleep",
+          "when": {
+            "lowPower": true
+          }
+        },
+        {
+          "on": "pointer.doubleClick",
+          "state": "walking"
+        },
+        {
+          "on": "pointer.click",
+          "state": "greeting"
+        }
+      ]
+    },
+    "held": {
+      "clip": "held",
+      "surface": "air",
+      "motion": {
+        "type": "drag"
+      },
+      "interrupts": [
+        {
+          "on": "pointer.release",
+          "state": "falling"
+        }
+      ]
+    },
+    "falling": {
+      "clip": "fall",
+      "surface": "air",
+      "motion": {
+        "type": "fall",
+        "gravity": 1000,
+        "terminal": 720
+      },
+      "interrupts": [
+        {
+          "on": "physics.landed",
+          "state": "landing"
+        },
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        }
+      ]
+    },
+    "landing": {
+      "clip": "land",
+      "duration": "clip",
+      "next": [
+        {
+          "state": "idle",
+          "weight": 1
+        }
+      ],
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "system.willSleep",
+          "state": "asleep"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "asleep",
+          "when": {
+            "lowPower": true
+          }
+        },
+        {
+          "on": "pointer.doubleClick",
+          "state": "walking"
+        },
+        {
+          "on": "pointer.click",
+          "state": "greeting"
+        }
+      ]
+    }
+  }
+}

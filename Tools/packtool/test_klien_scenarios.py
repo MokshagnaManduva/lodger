@@ -11,7 +11,7 @@ p=json.loads((ROOT/'pack.json').read_text())
 blueprint=json.loads((ROOT/'reference/planned-pack.json').read_text())
 source=json.loads((SRC/'pack.json').read_text())
 meta=json.loads((SRC/'frames.json').read_text())
-assert set(blueprint['states']) <= set(p['states']), 'Missing scenario'
+assert set(blueprint['states']) - {'perched'} <= set(p['states']), 'Missing scenario'
 assert set(blueprint['clips'])-{'dumpling_idle','dumpling_squash'} <= set(source['clips']), 'Missing original art clip'
 assert {'sitting_down','sleep_preparing','standing_up'} <= set(p['states'])
 assert 'cane' not in p['textures'], 'Redundant composited cane atlas loaded at runtime'
@@ -21,8 +21,7 @@ assert not any(k in p['states']['asleep'] for k in ('next','duration','motion'))
 assert p['states']['held']['motion']['type']=='drag'
 assert p['states']['falling']['motion']['type']=='fall'
 assert p['states']['walking']['motion']['type']=='walk'
-assert p['states']['perched']['surface']=='windowTop'
-assert p['requires']==['windowEdges'] and not p.get('sounds')
+assert p['requires']==[] and not p.get('sounds')
 frames={name:np.array(Image.open(SRC/f'frames/{name}.png').convert('RGBA')) for name in meta['order']}
 rest=frames['rest']
 # Head identity stays fixed across every walk pose; feet actually change.
@@ -35,7 +34,7 @@ assert all(not frames[f'fall{i}'][115:,:,3].any() for i in range(3))
 assert all(frames[f'land{i}'][119,:,3].any() for i in range(3))
 assert all(not a[120:,:,3].any() for a in frames.values())
 # Blink changes only the face, including in the separate watching pose.
-for open_name,closed_name in [('sit','sit_blink'),('watch','watch_blink'),('perch','perch_blink')]:
+for open_name,closed_name in [('sit','sit_blink'),('watch','watch_blink')]:
     a,b=frames[open_name],frames[closed_name]
     assert np.array_equal(a[90:],b[90:]), f'{open_name} blink moves lower body'
 for x0,x1 in ((41,53),(63,75)):
@@ -96,7 +95,7 @@ print('Sun emblem: toss arc, catch, interruption destinations, compact legs and 
 
 # A lowered body must not push its knees outside its supporting feet. Both soles
 # stay identical during seated breathing/sleep; coat pixels cannot fake a foot.
-seated=('sit','sit_breath','sit_blink','drowse','sleep','sleep_breath','perch','perch_blink')
+seated=('sit','sit_breath','sit_blink','drowse','sleep','sleep_breath')
 for name in seated+('lower0','lower1','lower2','land0','land1','land2'):
     left,right=meta['poses'][name]['legs']
     assert left[-1][0] <= left[1][0] <= right[-1][0], name

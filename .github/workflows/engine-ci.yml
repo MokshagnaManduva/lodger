@@ -1,0 +1,35 @@
+name: Engine and pack checks
+
+on:
+  push:
+    paths-ignore:
+      - "site/**"
+  pull_request:
+    paths-ignore:
+      - "site/**"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install validation dependencies
+        run: python3 -m pip install -r Tools/packtool/requirements.txt -r Scripts/requirements-release.txt
+      - name: Select Swift toolchain
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0"
+      - name: Pack and art checks
+        run: make test
+      - name: Engine self-tests
+        run: make engine-test
+      - name: Engine/pack separation
+        run: make separation
+      - name: Release and update regression checks
+        run: make release-test

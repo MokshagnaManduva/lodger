@@ -1,91 +1,103 @@
 # Lodger
 
-A macOS desktop companion: a small animated character that lives on screen, reacts to the
-cursor, and idles quietly all day on battery.
+Lodger is a macOS menu-bar companion for small animated characters. Characters are data
+packs; the reusable engine does not contain character art or character-specific behavior.
 
-The character is **not** part of this codebase. It lives in a *character pack* — a folder of
-data — and the engine knows nothing about any particular one. Installing a character means
-dropping in a folder.
+## Current version
 
-## Status
+The working tree contains a development build, with these implemented features:
 
-There is a working app. `make app` assembles `build/Lodger.app` without Xcode — a real
-`Info.plist`, `LSUIElement`, an ad-hoc signature and the bundled default character. It puts
-a menu bar item up, discovers characters from
-`~/Library/Application Support/Lodger/Packs/`, and runs one on screen.
+- cursor-aware reactions, click-versus-drag handling, falling, walking, and multi-display recovery;
+- native Settings with character previews, size/reset, sound/volume, personality controls and removal to Trash;
+- staged pack installation with schema/asset/path validation, ID-based replacement and tested rollback;
+- pack validation, an incomplete authoring scaffold, and static texture previews;
+- render-server animation for idle/walking, with no autonomous timer/physics display link in quiescent states;
+  changing silhouettes under a cursor use scoped input-routing work.
 
-Klien has a complete scenario set, with a gold sun-emblem toss and compact leg
-poses in the current polish pass. Audio playback infrastructure is implemented;
-the bundled character stays silent. Remaining work includes art refinements,
-interaction/perching and energy verification, settings, safe pack import, and
-release preparation. See [the current backlog](left.md) and the
-[interaction verification order](Docs/interaction-plan.md).
+Window perching and full turnaround runtime art are absent from the current development build.
+Manual update checking activates when an HTTPS feed is configured. Automatic installation
+and in-app archive signature verification remain unfinished. See
+[current status](left.md) and [future ideas](Docs/future-ideas.md).
 
-```bash
-make test          # pack validation and native-art acceptance checks
-make engine-test   # engine self-tests, no Xcode needed
-make all           # both, plus pack validation
-make soak          # CPU soaks, repeated runs with the spread reported
+Release readiness remains open: final Settings/import and desktop input acceptance, energy
+certification, production artwork, and distribution testing. September 30 recorded 30 app
+checks, 306 generic engine checks and pack/art checks passing; the earlier September 22
+run included both working packs (308 total). These do not prove live desktop workflows.
+Quiet battery energy samples were deferred by the owner. See the
+[acceptance record](Docs/product-acceptance.md) for exact scope and next steps.
+
+## Build and test
+
+Requires macOS 14+ and Swift from Xcode or the Command Line Tools.
+
+```sh
+make test             # pack and character checks
+make engine-test      # native engine checks
+make app-test         # isolated Settings/import/controller checks
+make release-test     # signature, packaging-sequence and update-feed checks
+make separation       # engine/pack boundary check
+make app              # build build/Lodger.app, ad-hoc signed
+make release-check    # local release gate
 ```
 
-Start with [`CLAUDE.md`](CLAUDE.md) — it carries the architecture and the reasoning.
-[`Docs/PACK_FORMAT.md`](Docs/PACK_FORMAT.md) is the pack format for authors.
+`make run` builds and launches the app. `make soak` runs the repeatable CPU probe described in
+[`Docs/energy-protocol.md`](Docs/energy-protocol.md).
 
-## Install and use
+## Use the app
 
-Requires macOS 14+ and a Swift toolchain (Xcode or the Command Line Tools) — no
-Xcode project is needed to build or run.
+Open `build/Lodger.app`. Lodger appears in the menu bar and starts the bundled `klien` pack.
+Use **Settings…** to select/preview a character, change its size, reset character defaults,
+set sound/volume, or adjust personality knobs used by its state durations. Installed packs
+can be moved to Trash; bundled/development source packs are protected. Resize and active
+replacement preserve position within display bounds. Actual desktop acceptance remains open.
 
-```bash
-git clone https://github.com/MokshagnaManduva/lodger.git
-cd lodger
-make app     # builds and ad-hoc signs build/Lodger.app
-open build/Lodger.app
+Use **Add Character…** in Settings or the menu to import pack folders. Imports validate the
+manifest, referenced assets, contained paths and resource limits before ID-based replacement.
+Failed and unrelated imports preserve the running pet. Commit/restoration failures have
+regression coverage; abrupt termination between renames still requires manual backup recovery.
+See [installation guarantees](Docs/pack-installation.md).
+
+Installed packs live in:
+
+```text
+~/Library/Application Support/Lodger/Packs/
 ```
 
-`make run` builds and launches it directly from the terminal instead. The app
-puts a menu-bar item up (it has no Dock icon or window, by design — see
-`LSUIElement` in `CLAUDE.md` §4) and starts the bundled `klien` character.
+## Author a pack
 
-**Installing a different character:** drop its folder into
-`~/Library/Application Support/Lodger/Packs/`, or use the menu bar item's
-*Add Character…* (also has *Reveal Characters Folder*). Packs are watched, so a
-valid one appears immediately; an invalid one shows its exact loading error in
-the menu instead of failing silently. See `Docs/PACK_FORMAT.md` if you're
-authoring one yourself.
+```sh
+python3 Tools/packtool/packtool.py generate Packs/demo --id demo.pet --name Demo
+# Author a complete manifest and artwork before running the commands below.
+python3 Tools/packtool/packtool.py validate Packs/demo
+python3 Tools/packtool/packtool.py preview Packs/demo
+python3 Tools/packtool/packtool.py build Packs/demo --out build/demo.pack
+```
 
-**Quitting:** *Quit Lodger* (⌘Q) in the menu bar item — there's no window to close.
+`generate` creates an incomplete scaffold, not a valid starter pack or generated animations.
+`preview` produces a static texture contact sheet; animated clip previews and anchor traces
+are still pending.
 
-## The two rules
+The normative manifest contract is [`Schema/pack.schema.json`](Schema/pack.schema.json), with
+the human-readable explanation in [`Docs/PACK_FORMAT.md`](Docs/PACK_FORMAT.md).
 
-**The engine knows nothing about any character.** Sprite sizes, animation names, attachment
-names, timing — all pack data. Delete every pack and the engine still builds and runs.
+## Repository map
 
-**Idle cost outranks features.** Sprite animation is a `CAKeyframeAnimation` on
-`contentsRect` with `calculationMode = .discrete`, so it runs in the render server and the
-app process does no per-frame work. This is verified, not assumed: sending `SIGSTOP` freezes
-our code and the frames keep advancing.
-
-![render server proof](Docs/render-server-proof.png)
-
-A `quiescent` state installs no timer, no display link and no run-loop source at all. The
-same idea extends to movement: a walk is resolved up front and handed to the render server
-as one animation, so the pet keeps walking even while the process is frozen — 0.10% of one
-core, down from 4.5% when the window was moved per frame.
-
-![walking while frozen](Docs/render-server-walk-proof.png)
-
-## Layout
-
-| | |
+| Path | Purpose |
 |---|---|
-| `Engine/` | Swift package — no character data, no asset files |
-| `Packs/klien/` | the reference character (manifest and art direction) |
-| `Tools/packtool/` | the asset pipeline: `validate`, `palette`, `pixelize`, `anchors`, `build` |
-| `Schema/pack.schema.json` | the normative pack manifest schema |
-| `Docs/` | format spec, measurements, energy protocol |
-| `Scripts/bundle.sh` | assembles the `.app` without Xcode |
+| `Engine/` | Reusable Swift engine and menu-bar application |
+| `Packs/` | Character packs and their authoring references |
+| `Tools/packtool/` | Validation, authoring, preview, and build tools |
+| `Schema/` | Pack manifest schema |
+| `Scripts/` | Bundle, separation, and release helpers |
+| `Assets/Branding/` | Project-owned app icon source |
+| `Docs/` | Current guidance and historical evidence |
+| `site/` | Public website: landing page, docs and character gallery ([README](site/README.md)) |
 
-## Licence
+For the documentation index, read [`Docs/README.md`](Docs/README.md). For the engineering
+architecture, read [`CLAUDE.md`](CLAUDE.md).
 
-Engine: TBD. The `klien` character pack is licensed separately — see `Packs/klien/`.
+## Licensing
+
+The working tree contains MIT terms in [`LICENSE`](LICENSE) and a CC-BY-NC-4.0 notice for
+Klien matching its manifest. Owner confirmation of the engine license choice and review of
+asset provenance/attribution remain release tasks; see [`CREDITS.md`](CREDITS.md).

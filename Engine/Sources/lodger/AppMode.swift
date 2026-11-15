@@ -12,7 +12,17 @@ func runApp(devPaths: [URL]) -> Never {
     // straight from the command line.
     app.setActivationPolicy(.accessory)
 
-    let controller = AppController(extraSearchPaths: devPaths)
+    // Explicit verification profiles keep acceptance imports/defaults away from
+    // the user's installation. Production bundles have no such plist entry.
+    let profilePath = ProcessInfo.processInfo.environment["LODGER_PROFILE_DIRECTORY"]
+        ?? Bundle.main.object(forInfoDictionaryKey: "LodgerVerificationProfile") as? String
+    let directory: URL
+    if let profilePath {
+        let profile = URL(fileURLWithPath: profilePath).standardizedFileURL
+        directory = profile.appendingPathComponent("Packs", isDirectory: true)
+        Preferences.defaults = UserDefaults(suiteName: "com.mokshagna.lodger.verification." + profile.lastPathComponent)!
+    } else { directory = AppController.packsDirectory }
+    let controller = AppController(extraSearchPaths: devPaths, installationDirectory: directory)
     controller.reload()
 
     var menuBar: MenuBar?
@@ -35,7 +45,7 @@ func runApp(devPaths: [URL]) -> Never {
         print("  ! \(f.url.lastPathComponent): \(f.reason)")
     }
     if controller.packs.isEmpty {
-        print("  drop a character folder into \(AppController.packsDirectory.path)")
+        print("  drop a character folder into \(controller.installationDirectory.path)")
     }
     print("menu bar item installed; nothing polls until you open the menu")
 
