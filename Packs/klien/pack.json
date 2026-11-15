@@ -1,11 +1,11 @@
 {
-  "format": 1,
+  "format": 2,
   "engineMin": "1.0.0",
   "requires": [],
   "identity": {
     "id": "com.mokshagna.klien",
     "name": "Klien",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "author": "Mokshagna",
     "license": "CC-BY-NC-4.0",
     "description": "Klien: a golden sun-emblem toss, compact walking, hat tips, reactions, sitting and sleep/wake animations.",
@@ -1466,22 +1466,26 @@
         },
         {
           "state": "walking",
-          "weight": 35
+          "weight": 35,
+          "weightBy": "wander"
         },
         {
           "state": "tipping_hat",
-          "weight": 10
+          "weight": 10,
+          "weightBy": "hatTips"
         },
         {
           "state": "sitting_down",
           "weight": 15,
           "when": {
             "random": 0.5
-          }
+          },
+          "weightBy": "sit"
         },
         {
           "state": "toss_emblem",
-          "weight": 15
+          "weight": 15,
+          "weightBy": "toss"
         }
       ],
       "interrupts": [
@@ -1489,7 +1493,13 @@
           "on": {
             "pointer.near": 60
           },
-          "state": "watching"
+          "state": "watching",
+          "when": {
+            "flag": {
+              "name": "reactsToCursor",
+              "value": true
+            }
+          }
         },
         {
           "on": {
@@ -1497,10 +1507,20 @@
           },
           "state": "startled",
           "when": {
-            "pointerDistance": {
-              "op": "lte",
-              "px": 60
-            }
+            "all": [
+              {
+                "flag": {
+                  "name": "startles",
+                  "value": true
+                }
+              },
+              {
+                "pointerDistance": {
+                  "op": "lte",
+                  "px": 60
+                }
+              }
+            ]
           }
         },
         {
@@ -1513,7 +1533,9 @@
         },
         {
           "on": {
-            "user.idle": 300
+            "user.idle": {
+              "knob": "sleepAfter"
+            }
           },
           "state": "sleep_preparing"
         },
@@ -1621,10 +1643,20 @@
           },
           "state": "startled",
           "when": {
-            "pointerDistance": {
-              "op": "lte",
-              "px": 60
-            }
+            "all": [
+              {
+                "flag": {
+                  "name": "startles",
+                  "value": true
+                }
+              },
+              {
+                "pointerDistance": {
+                  "op": "lte",
+                  "px": 60
+                }
+              }
+            ]
           }
         }
       ]
@@ -1715,10 +1747,20 @@
                 "lowPower": true
               },
               {
-                "timeOfDay": {
-                  "from": "23:00",
-                  "to": "06:00"
-                }
+                "all": [
+                  {
+                    "flag": {
+                      "name": "sleepsAtNight",
+                      "value": true
+                    }
+                  },
+                  {
+                    "timeOfDay": {
+                      "from": "23:00",
+                      "to": "06:00"
+                    }
+                  }
+                ]
               }
             ]
           }
@@ -1827,7 +1869,13 @@
           "on": {
             "pointer.near": 60
           },
-          "state": "watching"
+          "state": "watching",
+          "when": {
+            "flag": {
+              "name": "reactsToCursor",
+              "value": true
+            }
+          }
         },
         {
           "on": {
@@ -1835,10 +1883,20 @@
           },
           "state": "startled",
           "when": {
-            "pointerDistance": {
-              "op": "lte",
-              "px": 60
-            }
+            "all": [
+              {
+                "flag": {
+                  "name": "startles",
+                  "value": true
+                }
+              },
+              {
+                "pointerDistance": {
+                  "op": "lte",
+                  "px": 60
+                }
+              }
+            ]
           }
         },
         {
@@ -1851,7 +1909,9 @@
         },
         {
           "on": {
-            "user.idle": 300
+            "user.idle": {
+              "knob": "sleepAfter"
+            }
           },
           "state": "sleep_preparing"
         },
@@ -1869,13 +1929,76 @@
       "label": "Liveliness",
       "min": 0.2,
       "max": 2.0,
-      "default": 1.0
+      "default": 1.0,
+      "unit": "percent",
+      "group": "Activity",
+      "description": "How quickly he moves from one activity to the next."
+    },
+    "wander": {
+      "label": "Wandering",
+      "min": 0,
+      "max": 2,
+      "default": 1,
+      "unit": "percent",
+      "group": "Activity",
+      "description": "How often he goes for a walk. 0% keeps him in one place."
+    },
+    "toss": {
+      "label": "Emblem tosses",
+      "min": 0,
+      "max": 2,
+      "default": 1,
+      "unit": "percent",
+      "group": "Activity",
+      "description": "How often he tosses the sun emblem."
+    },
+    "hatTips": {
+      "label": "Hat tips",
+      "min": 0,
+      "max": 2,
+      "default": 1,
+      "unit": "percent",
+      "group": "Activity",
+      "description": "How often he tips his hat unprompted."
+    },
+    "sit": {
+      "label": "Sitting",
+      "min": 0,
+      "max": 2,
+      "default": 1,
+      "unit": "percent",
+      "group": "Activity",
+      "description": "How often he sits down for a while."
     },
     "sleepAfter": {
-      "label": "Sleep after (minutes)",
-      "min": 1,
-      "max": 120,
-      "default": 5
+      "label": "Sleep after",
+      "min": 60,
+      "max": 3600,
+      "default": 300,
+      "unit": "seconds",
+      "group": "Rest",
+      "description": "How long you are away from the keyboard and mouse before he falls asleep."
+    },
+    "sleepsAtNight": {
+      "type": "toggle",
+      "label": "Dozes off at night",
+      "default": true,
+      "group": "Rest",
+      "description": "While sitting between 23:00 and 06:00 he may fall asleep."
+    },
+    "reactsToCursor": {
+      "type": "toggle",
+      "label": "Watches the cursor",
+      "default": true,
+      "group": "Pointer",
+      "description": "Turns to watch when the cursor comes close."
+    },
+    "startles": {
+      "type": "toggle",
+      "label": "Startles",
+      "default": true,
+      "group": "Pointer",
+      "description": "Jumps when the cursor rushes past nearby."
     }
   },
   "hitMasks": {

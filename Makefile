@@ -1,7 +1,7 @@
 PACK ?= Packs/klien
 PY   ?= python3
 
-.PHONY: help validate validate-dev test audit sketches engine engine-test app-test build-fixture klien-idle klien-animations norn-animations norn-pack norn-test norn-energy soak proof bench app archive run separation release-check release-test sign notarize appcast all
+.PHONY: help validate validate-dev test audit sketches engine engine-test app-test build-fixture klien-idle klien-animations klien-test norn-animations norn-pack norn-test norn-energy soak proof bench app archive run separation release-check release-test sign notarize appcast all
 
 help:
 	@echo "make validate      strict pack validation (release gate)"
@@ -10,6 +10,7 @@ help:
 	@echo "make sketches      palette + tracing sketches from the raw reference"
 	@echo "make klien-idle    rebuild the archived approved idle artwork"
 	@echo "make klien-animations build all Klien scenarios and animation previews"
+	@echo "make klien-test    check Klien artwork and Director behaviour, including Settings controls"
 	@echo "make norn-animations build Norn's local runtime pack and clip preview"
 	@echo "make norn-pack     export Norn without source sheets or gallery files"
 	@echo "make norn-test     check Norn artwork, masks and Director transitions"
@@ -58,6 +59,13 @@ klien-animations:
 	$(PY) Tools/packtool/packtool.py validate Packs/klien
 	$(PY) Tools/packtool/test_klien_idle.py
 	$(PY) Tools/packtool/test_klien_scenarios.py
+
+klien-test:
+	$(PY) Tools/packtool/test_klien_idle.py
+	$(PY) Tools/packtool/test_klien_scenarios.py
+	@mkdir -p build/klien-verification
+	swiftc Engine/Sources/LodgerEngine/Pack.swift Engine/Sources/LodgerEngine/Guard.swift Engine/Sources/LodgerEngine/Director.swift Tools/packtool/test_klien_director.swift -o build/klien-verification/test-director
+	./build/klien-verification/test-director Packs/klien/pack.json
 
 norn-animations:
 	$(PY) Tools/packtool/build_norn.py

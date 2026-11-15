@@ -15,7 +15,7 @@ import shutil
 import tempfile
 from PIL import Image, ImageDraw
 from build import build
-from packtool import Report, check_schema, check_references, check_idle_policy, check_anchors, check_reachability
+from packtool import Report, check_schema, check_references, check_idle_policy, check_anchors, check_reachability, check_controls
 
 REPO=Path(__file__).resolve().parents[2]
 PACK=REPO/'Packs/klien'
@@ -269,7 +269,7 @@ def manifest(clips,index):
     m=copy.deepcopy(blueprint)
     # Owner preference: half the former 2x display size, retaining native pixels.
     m['stage']['defaultScale']=1
-    m['identity']['version']='0.4.0'
+    m['identity']['version']='0.5.0'
     m['identity']['description']='Klien: a golden sun-emblem toss, compact walking, hat tips, reactions, sitting and sleep/wake animations.'
     m['requires']=[]; m.pop('sounds',None)
     m['textures']={'body':{'strip':'art/body.png','preload':True},'cane':{'strip':'art/cane.png'}}
@@ -324,7 +324,48 @@ def manifest(clips,index):
     states['toss_emblem']={'clip':'toss_emblem','motion':'none','surface':'floor',
         'duration':'clip','next':[{'state':'idle','weight':100}],
         'interrupts':copy.deepcopy(states['idle']['interrupts'])}
+    controls(m)
     return m
+
+
+def controls(m):
+    """Settings controls. Defaults reproduce the authored behaviour exactly."""
+    m['format']=2
+    act,ptr,rest='Activity','Pointer','Rest'
+    def freq(label,desc): return {'label':label,'min':0,'max':2,'default':1,'unit':'percent','group':act,'description':desc}
+    m['tuning']={
+        'liveliness':{'label':'Liveliness','min':0.2,'max':2.0,'default':1.0,'unit':'percent','group':act,
+                      'description':'How quickly he moves from one activity to the next.'},
+        'wander':freq('Wandering','How often he goes for a walk. 0% keeps him in one place.'),
+        'toss':freq('Emblem tosses','How often he tosses the sun emblem.'),
+        'hatTips':freq('Hat tips','How often he tips his hat unprompted.'),
+        'sit':freq('Sitting','How often he sits down for a while.'),
+        'sleepAfter':{'label':'Sleep after','min':60,'max':3600,'default':300,'unit':'seconds','group':rest,
+                      'description':'How long you are away from the keyboard and mouse before he falls asleep.'},
+        'sleepsAtNight':{'type':'toggle','label':'Dozes off at night','default':True,'group':rest,
+                         'description':'While sitting between 23:00 and 06:00 he may fall asleep.'},
+        'reactsToCursor':{'type':'toggle','label':'Watches the cursor','default':True,'group':ptr,
+                          'description':'Turns to watch when the cursor comes close.'},
+        'startles':{'type':'toggle','label':'Startles','default':True,'group':ptr,
+                    'description':'Jumps when the cursor rushes past nearby.'}}
+    def flag(name): return {'flag':{'name':name,'value':True}}
+    def also(edge,name):
+        edge['when']={'all':[flag(name),edge['when']]} if 'when' in edge else flag(name)
+    weights={'walking':'wander','toss_emblem':'toss','tipping_hat':'hatTips','sitting_down':'sit'}
+    for edge in m['states']['idle']['next']:
+        if edge['state'] in weights: edge['weightBy']=weights[edge['state']]
+    for st in m['states'].values():
+        for edge in st.get('interrupts',[]):
+            on=edge['on']
+            if not isinstance(on,dict): continue
+            if 'user.idle' in on: on['user.idle']={'knob':'sleepAfter'}
+            if 'pointer.near' in on and edge['state']=='watching': also(edge,'reactsToCursor')
+            if 'pointer.fast' in on and edge['state']=='startled': also(edge,'startles')
+    for edge in m['states']['sitting']['next']:
+        if edge['state']=='sleeping':
+            night=[g for g in edge['when']['any'] if 'timeOfDay' in g]
+            assert len(night)==1
+            edge['when']['any']=[g for g in edge['when']['any'] if 'timeOfDay' not in g]+[{'all':[flag('sleepsAtNight'),night[0]]}]
 
 
 def previews(frames,clips):
@@ -398,7 +439,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='klien-scenarios-') as tmp:
         rep=Report();built=build(OUT,Path(tmp),rep,clean=False)
         if check_schema(built,rep):
-            check_references(built,Path(tmp),rep);check_idle_policy(built,rep);check_anchors(built,rep);check_reachability(built,rep)
+            check_references(built,Path(tmp),rep);check_idle_policy(built,rep);check_anchors(built,rep);check_reachability(built,rep);check_controls(built,rep)
         if rep.emit('Klien scenarios'): raise SystemExit(1)
         if args.install:
             # The cane remains editable in source, but its animation is already
