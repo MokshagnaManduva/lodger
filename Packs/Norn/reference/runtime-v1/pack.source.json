@@ -1,12 +1,12 @@
 {
-  "format": 1,
+  "format": 2,
   "identity": {
     "id": "com.lodger.norn",
     "name": "Norn",
-    "version": "0.3.0",
-    "author": "Lodger contributors",
-    "license": "LicenseRef-Norn-Review-Pending",
-    "description": "A curious alchemist and her leafy field assistant. Local art-development pack.",
+    "version": "0.4.0",
+    "author": "Mokshagna",
+    "license": "CC-BY-NC-4.0",
+    "description": "A curious alchemist and her leafy field assistant. She rests quietly by default and can be set to wander on her own.",
     "preview": "preview.png"
   },
   "stage": {
@@ -424,7 +424,7 @@
       ]
     }
   },
-  "initialState": "idle",
+  "initialState": "inspecting",
   "states": {
     "idle": {
       "clip": "idle",
@@ -444,7 +444,17 @@
           },
           "state": "asleep",
           "when": {
-            "lowPower": true
+            "all": [
+              {
+                "flag": {
+                  "name": "napsInLowPower",
+                  "value": true
+                }
+              },
+              {
+                "lowPower": true
+              }
+            ]
           }
         },
         {
@@ -453,11 +463,33 @@
         },
         {
           "on": "pointer.click",
-          "state": "greeting"
+          "state": "greeting",
+          "when": {
+            "flag": {
+              "name": "greets",
+              "value": true
+            }
+          }
         },
         {
           "on": "pointer.enter",
-          "state": "watching"
+          "state": "watching",
+          "when": {
+            "flag": {
+              "name": "noticesCursor",
+              "value": true
+            }
+          }
+        },
+        {
+          "on": "controls.changed",
+          "state": "inspecting",
+          "when": {
+            "flag": {
+              "name": "wanders",
+              "value": true
+            }
+          }
         }
       ]
     },
@@ -467,7 +499,23 @@
       "next": [
         {
           "state": "idle",
-          "weight": 1
+          "weight": 1,
+          "when": {
+            "flag": {
+              "name": "wanders",
+              "value": false
+            }
+          }
+        },
+        {
+          "state": "idle_restless",
+          "weight": 1,
+          "when": {
+            "flag": {
+              "name": "wanders",
+              "value": true
+            }
+          }
         }
       ],
       "interrupts": [
@@ -485,7 +533,17 @@
           },
           "state": "asleep",
           "when": {
-            "lowPower": true
+            "all": [
+              {
+                "flag": {
+                  "name": "napsInLowPower",
+                  "value": true
+                }
+              },
+              {
+                "lowPower": true
+              }
+            ]
           }
         },
         {
@@ -494,7 +552,13 @@
         },
         {
           "on": "pointer.click",
-          "state": "greeting"
+          "state": "greeting",
+          "when": {
+            "flag": {
+              "name": "greets",
+              "value": true
+            }
+          }
         }
       ]
     },
@@ -522,7 +586,17 @@
           },
           "state": "asleep",
           "when": {
-            "lowPower": true
+            "all": [
+              {
+                "flag": {
+                  "name": "napsInLowPower",
+                  "value": true
+                }
+              },
+              {
+                "lowPower": true
+              }
+            ]
           }
         },
         {
@@ -531,7 +605,13 @@
         },
         {
           "on": "pointer.click",
-          "state": "greeting"
+          "state": "greeting",
+          "when": {
+            "flag": {
+              "name": "greets",
+              "value": true
+            }
+          }
         }
       ],
       "facing": "toPointer"
@@ -560,7 +640,17 @@
           },
           "state": "asleep",
           "when": {
-            "lowPower": true
+            "all": [
+              {
+                "flag": {
+                  "name": "napsInLowPower",
+                  "value": true
+                }
+              },
+              {
+                "lowPower": true
+              }
+            ]
           }
         },
         {
@@ -569,7 +659,13 @@
         },
         {
           "on": "pointer.click",
-          "state": "greeting"
+          "state": "greeting",
+          "when": {
+            "flag": {
+              "name": "greets",
+              "value": true
+            }
+          }
         }
       ],
       "facing": "toPointer"
@@ -606,7 +702,17 @@
           },
           "state": "asleep",
           "when": {
-            "lowPower": true
+            "all": [
+              {
+                "flag": {
+                  "name": "napsInLowPower",
+                  "value": true
+                }
+              },
+              {
+                "lowPower": true
+              }
+            ]
           }
         },
         {
@@ -615,7 +721,13 @@
         },
         {
           "on": "pointer.click",
-          "state": "greeting"
+          "state": "greeting",
+          "when": {
+            "flag": {
+              "name": "greets",
+              "value": true
+            }
+          }
         },
         {
           "on": {
@@ -631,7 +743,13 @@
         },
         {
           "on": "pointer.enter",
-          "state": "watching"
+          "state": "watching",
+          "when": {
+            "flag": {
+              "name": "noticesCursor",
+              "value": true
+            }
+          }
         }
       ]
     },
@@ -641,7 +759,23 @@
       "next": [
         {
           "state": "reading",
-          "weight": 1
+          "weight": 1,
+          "when": {
+            "flag": {
+              "name": "wanders",
+              "value": false
+            }
+          }
+        },
+        {
+          "state": "reading_restless",
+          "weight": 1,
+          "when": {
+            "flag": {
+              "name": "wanders",
+              "value": true
+            }
+          }
         }
       ],
       "interrupts": [
@@ -659,7 +793,17 @@
           },
           "state": "asleep",
           "when": {
-            "lowPower": true
+            "all": [
+              {
+                "flag": {
+                  "name": "napsInLowPower",
+                  "value": true
+                }
+              },
+              {
+                "lowPower": true
+              }
+            ]
           }
         },
         {
@@ -668,7 +812,13 @@
         },
         {
           "on": "pointer.click",
-          "state": "greeting"
+          "state": "greeting",
+          "when": {
+            "flag": {
+              "name": "greets",
+              "value": true
+            }
+          }
         }
       ]
     },
@@ -690,7 +840,17 @@
           },
           "state": "asleep",
           "when": {
-            "lowPower": true
+            "all": [
+              {
+                "flag": {
+                  "name": "napsInLowPower",
+                  "value": true
+                }
+              },
+              {
+                "lowPower": true
+              }
+            ]
           }
         },
         {
@@ -708,6 +868,16 @@
         {
           "on": "system.wake",
           "state": "waking"
+        },
+        {
+          "on": "controls.changed",
+          "state": "waking",
+          "when": {
+            "flag": {
+              "name": "wanders",
+              "value": true
+            }
+          }
         }
       ]
     },
@@ -748,7 +918,23 @@
       "next": [
         {
           "state": "idle",
-          "weight": 1
+          "weight": 1,
+          "when": {
+            "flag": {
+              "name": "wanders",
+              "value": false
+            }
+          }
+        },
+        {
+          "state": "idle_restless",
+          "weight": 1,
+          "when": {
+            "flag": {
+              "name": "wanders",
+              "value": true
+            }
+          }
         }
       ],
       "interrupts": [
@@ -766,7 +952,17 @@
           },
           "state": "asleep",
           "when": {
-            "lowPower": true
+            "all": [
+              {
+                "flag": {
+                  "name": "napsInLowPower",
+                  "value": true
+                }
+              },
+              {
+                "lowPower": true
+              }
+            ]
           }
         },
         {
@@ -775,7 +971,13 @@
         },
         {
           "on": "pointer.click",
-          "state": "greeting"
+          "state": "greeting",
+          "when": {
+            "flag": {
+              "name": "greets",
+              "value": true
+            }
+          }
         }
       ]
     },
@@ -817,7 +1019,23 @@
       "next": [
         {
           "state": "idle",
-          "weight": 1
+          "weight": 1,
+          "when": {
+            "flag": {
+              "name": "wanders",
+              "value": false
+            }
+          }
+        },
+        {
+          "state": "idle_restless",
+          "weight": 1,
+          "when": {
+            "flag": {
+              "name": "wanders",
+              "value": true
+            }
+          }
         }
       ],
       "interrupts": [
@@ -835,7 +1053,17 @@
           },
           "state": "asleep",
           "when": {
-            "lowPower": true
+            "all": [
+              {
+                "flag": {
+                  "name": "napsInLowPower",
+                  "value": true
+                }
+              },
+              {
+                "lowPower": true
+              }
+            ]
           }
         },
         {
@@ -844,9 +1072,200 @@
         },
         {
           "on": "pointer.click",
-          "state": "greeting"
+          "state": "greeting",
+          "when": {
+            "flag": {
+              "name": "greets",
+              "value": true
+            }
+          }
         }
       ]
+    },
+    "idle_restless": {
+      "clip": "idle",
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "system.willSleep",
+          "state": "asleep"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "asleep",
+          "when": {
+            "all": [
+              {
+                "flag": {
+                  "name": "napsInLowPower",
+                  "value": true
+                }
+              },
+              {
+                "lowPower": true
+              }
+            ]
+          }
+        },
+        {
+          "on": "pointer.doubleClick",
+          "state": "walking"
+        },
+        {
+          "on": "pointer.click",
+          "state": "greeting",
+          "when": {
+            "flag": {
+              "name": "greets",
+              "value": true
+            }
+          }
+        },
+        {
+          "on": "pointer.enter",
+          "state": "watching",
+          "when": {
+            "flag": {
+              "name": "noticesCursor",
+              "value": true
+            }
+          }
+        },
+        {
+          "on": "controls.changed",
+          "state": "inspecting",
+          "when": {
+            "flag": {
+              "name": "wanders",
+              "value": false
+            }
+          }
+        }
+      ],
+      "duration": {
+        "minMs": 20000,
+        "maxMs": 60000,
+        "scaleBy": "wanderPace"
+      },
+      "next": [
+        {
+          "state": "walking",
+          "weight": 1
+        }
+      ]
+    },
+    "reading_restless": {
+      "clip": "read",
+      "interrupts": [
+        {
+          "on": "pointer.grab",
+          "state": "held"
+        },
+        {
+          "on": "system.willSleep",
+          "state": "asleep"
+        },
+        {
+          "on": {
+            "power.lowPowerMode": true
+          },
+          "state": "asleep",
+          "when": {
+            "all": [
+              {
+                "flag": {
+                  "name": "napsInLowPower",
+                  "value": true
+                }
+              },
+              {
+                "lowPower": true
+              }
+            ]
+          }
+        },
+        {
+          "on": "pointer.click",
+          "state": "waking"
+        },
+        {
+          "on": "pointer.doubleClick",
+          "state": "waking"
+        },
+        {
+          "on": "pointer.enter",
+          "state": "waking"
+        },
+        {
+          "on": "system.wake",
+          "state": "waking"
+        },
+        {
+          "on": "controls.changed",
+          "state": "waking",
+          "when": {
+            "flag": {
+              "name": "wanders",
+              "value": false
+            }
+          }
+        }
+      ],
+      "duration": {
+        "minMs": 45000,
+        "maxMs": 120000,
+        "scaleBy": "wanderPace"
+      },
+      "next": [
+        {
+          "state": "waking",
+          "weight": 1
+        }
+      ]
+    }
+  },
+  "tuning": {
+    "wanders": {
+      "type": "toggle",
+      "label": "Wanders on her own",
+      "default": false,
+      "group": "Activity",
+      "description": "Off: she rests until you interact, using no timers. On: she walks, reads and gets up again by herself."
+    },
+    "wanderPace": {
+      "label": "Wander pace",
+      "min": 0.5,
+      "max": 2,
+      "default": 1,
+      "unit": "percent",
+      "group": "Activity",
+      "description": "How soon she moves on while wandering is on."
+    },
+    "noticesCursor": {
+      "type": "toggle",
+      "label": "Notices the cursor",
+      "default": true,
+      "group": "Pointer",
+      "description": "Looks up and inspects her flask when the cursor touches her."
+    },
+    "greets": {
+      "type": "toggle",
+      "label": "Greets on click",
+      "default": true,
+      "group": "Pointer",
+      "description": "Waves when clicked. Double-click still sends her for a walk."
+    },
+    "napsInLowPower": {
+      "type": "toggle",
+      "label": "Naps in Low Power Mode",
+      "default": true,
+      "group": "Rest",
+      "description": "Falls asleep while Low Power Mode is on."
     }
   }
 }

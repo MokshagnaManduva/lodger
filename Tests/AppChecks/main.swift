@@ -64,7 +64,7 @@ Preferences.volume = 2
 check(Preferences.volume == 1, "volume clamped")
 Preferences.volume = 0.3
 check(Preferences.volume == 0.3, "volume stored")
-if let name = pack.tuning.keys.sorted().first, let knob = pack.tuning[name] {
+if let name = pack.tuning.keys.sorted().first(where: { pack.tuning[$0]?.isToggle == false }), let knob = pack.tuning[name] {
     controller.setTuning(knob.max + 10, name: name, for: first)
     check(controller.pet!.tuning[name] == knob.max, "personality clamped and applied")
     controller.reset(id: first)
@@ -101,7 +101,7 @@ if let view = settings.window?.contentView {
     }
 }
 let tunable = controller.pet!.loaded.pack
-if let name = tunable.tuning.keys.sorted().first, let knob = tunable.tuning[name] {
+if let name = tunable.tuning.keys.sorted().first(where: { tunable.tuning[$0]?.isToggle == false }), let knob = tunable.tuning[name] {
     controller.setTuning(knob.max + 10, name: name, for: second)
     check(controller.pet!.tuning[name] == knob.max, "personality clamped and applied")
     controller.activate(id: first); controller.activate(id: second)

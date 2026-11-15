@@ -1,4 +1,12 @@
-# Norn artwork provenance
+# Norn credits
+
+Norn artwork and character-specific pack data: Mokshagna Manduva.
+
+License: CC BY-NC 4.0, confirmed by the project owner on 2026-11-15. The Lodger engine
+and app source use the repository-level MIT License; that license does not relicense
+this pack.
+
+## Artwork provenance
 
 - `Norn.png`: project-owner-supplied character identity reference, retained unchanged.
 - `drafts/*.png`: prior generated motion studies; prompts preserved in `drafts.js`.
@@ -16,6 +24,6 @@
   32-color-plus-transparent palette, binary alpha and native 128 × 128 cells.
 - No Klien artwork or character-specific animation routines are used.
 
-The runtime sheet is generated art normalized for a working prototype, not a
-claim of hand-pixeled production animation. Ownership/provenance of the supplied
-character and a public distribution license still need confirmation.
+The runtime sheets are generated art, produced with an AI image tool from the
+owner's reference and then normalized by the build script. They are not a claim of
+hand-pixeled production animation.
