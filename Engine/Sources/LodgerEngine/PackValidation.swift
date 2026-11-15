@@ -50,9 +50,11 @@ enum PackValidation {
         }
         try require((max(w, h) + 2 * Body.attachmentMargin(for: p)) * (p.stage.scaleSteps.max() ?? 1) <= 8192,
                     "scaled stage including attachments exceeds 8192 pixels")
-        for (name, knob) in p.tuning {
+        try require(p.tuning.count <= 64, "too many tuning controls")
+        for (name, knob) in p.tuning where !knob.isToggle {
             try require(knob.min <= knob.defaultValue && knob.defaultValue <= knob.max, "tuning.\(name): require min <= default <= max")
         }
+        try validateControls(p, manifest: manifest)
         for (name, clip) in p.clips {
             guard let texture = p.textures[clip.texture] else { throw PackStore.Failure.invalid("clip \(name): unknown texture \(clip.texture)") }
             // Bounds below are checked before multiplying any dimensions.
@@ -136,6 +138,57 @@ enum PackValidation {
         }
         if let preview = (manifest["identity"] as? [String: Any])?["preview"] as? String {
             _ = try decodeImage(preview, root: root)
+        }
+    }
+
+    /// Controls are referenced by name from four places. Each reference must name
+    /// a control of the right kind, and the version 2 features must not appear in
+    /// a pack that declares version 1.
+    private static func validateControls(_ p: Pack, manifest: [String: Any]) throws {
+        func require(_ ok: Bool, _ message: String) throws {
+            if !ok { throw PackStore.Failure.invalid(message) }
+        }
+        func slider(_ name: String) -> Pack.Knob? {
+            guard let knob = p.tuning[name], !knob.isToggle else { return nil }
+            return knob
+        }
+        var usesVersion2 = false
+        for entry in (manifest["tuning"] as? [String: [String: Any]] ?? [:]).values
+        where !Set(entry.keys).isSubset(of: ["label", "min", "max", "default"]) { usesVersion2 = true }
+        var flagNames = Set<String>()
+        func collectFlags(_ g: Guard?) {
+            switch g {
+            case .flag(let name, _)?: flagNames.insert(name)
+            case .all(let gs)?, .any(let gs)?: gs.forEach { collectFlags($0) }
+            case .not(let inner)?: collectFlags(inner)
+            default: break
+            }
+        }
+        for (name, state) in p.states {
+            if let knob = state.duration?.scaleBy {
+                try require(slider(knob) != nil, "state \(name): scaleBy must name a slider declared in tuning")
+            }
+            for edge in state.next {
+                collectFlags(edge.when)
+                guard let knob = edge.weightBy else { continue }
+                usesVersion2 = true
+                try require(slider(knob).map { $0.min >= 0 } ?? false,
+                            "state \(name): weightBy must name a slider with a non-negative range")
+            }
+            for edge in state.interrupts {
+                collectFlags(edge.when)
+                guard let knob = edge.on.knob else { continue }
+                usesVersion2 = true
+                try require(slider(knob).map { $0.min > 0 } ?? false,
+                            "state \(name): event threshold must name a slider with a positive range")
+            }
+        }
+        if p.format >= 2 {
+            for name in flagNames.sorted() {
+                try require(p.tuning[name]?.isToggle == true, "flag \(name) must name a toggle declared in tuning")
+            }
+        } else {
+            try require(!usesVersion2, "typed tuning controls, weightBy and knob thresholds require format 2")
         }
     }
 

@@ -8,7 +8,7 @@
   "additionalProperties": false,
 
   "properties": {
-    "format": { "const": 1 },
+    "format": { "enum": [1, 2], "description": "Format version. 2 adds typed tuning controls, weightBy and knob-valued event thresholds; a pack that uses them must declare 2." },
     "engineMin": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+\\.\\d+$",
@@ -233,6 +233,7 @@
               "properties": {
                 "state": { "type": "string" },
                 "weight": { "type": "number", "exclusiveMinimum": 0 },
+                "weightBy": { "type": "string", "description": "Name of a slider declared in `tuning`. The weight is multiplied by its value, so zero removes this option. If every option is scaled to zero the authored weights apply." },
                 "when": { "$ref": "#/$defs/guard" }
               }
             }
@@ -281,17 +282,37 @@
 
     "tuning": {
       "type": "object",
-      "description": "Scalar knobs the pack wants surfaced in Settings. The engine renders a generic control for each, so it needs no knowledge of what they mean.",
+      "description": "Controls the pack wants surfaced in Settings: numeric sliders and on/off toggles. The host renders a generic control for each, so neither it nor the engine needs to know what they mean. A slider is used through duration.scaleBy, next[].weightBy or an event threshold {knob: name}; a toggle is read by the flag guard.",
       "additionalProperties": {
-        "type": "object",
-        "required": ["label", "min", "max", "default"],
-        "additionalProperties": false,
-        "properties": {
-          "label": { "type": "string" },
-          "min": { "type": "number" },
-          "max": { "type": "number" },
-          "default": { "type": "number" }
-        }
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["label", "min", "max", "default"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "const": "slider" },
+              "label": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "min": { "type": "number" },
+              "max": { "type": "number" },
+              "default": { "type": "number" },
+              "group": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "description": { "type": "string", "maxLength": 200 },
+              "unit": { "type": "string", "maxLength": 16, "description": "Display hint only: 'seconds' or 'percent'. Anything else shows the plain number." }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["type", "label", "default"],
+            "additionalProperties": false,
+            "properties": {
+              "type": { "const": "toggle" },
+              "label": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "default": { "type": "boolean" },
+              "group": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "description": { "type": "string", "maxLength": 200 }
+            }
+          }
+        ]
       }
     }
   },
@@ -392,6 +413,14 @@
     },
 
     "comparison": { "enum": ["lt", "lte", "gt", "gte", "eq"] },
+    "threshold": {
+      "description": "A literal threshold, or the name of a slider in `tuning` that supplies it.",
+      "oneOf": [
+        { "type": "number", "exclusiveMinimum": 0 },
+        { "type": "object", "required": ["knob"], "additionalProperties": false,
+          "properties": { "knob": { "type": "string", "minLength": 1 } } }
+      ]
+    },
 
     "event": {
       "description": "Closed vocabulary. Adding to it is an engine change plus a format-version bump - that is the seam that keeps packs inert.",
@@ -408,13 +437,13 @@
           ]
         },
         { "type": "object", "required": ["pointer.near"], "additionalProperties": false,
-          "properties": { "pointer.near": { "type": "number", "exclusiveMinimum": 0 } } },
+          "properties": { "pointer.near": { "$ref": "#/$defs/threshold" } } },
         { "type": "object", "required": ["pointer.idle"], "additionalProperties": false,
-          "properties": { "pointer.idle": { "type": "number", "exclusiveMinimum": 0 } } },
+          "properties": { "pointer.idle": { "$ref": "#/$defs/threshold" } } },
         { "type": "object", "required": ["pointer.fast"], "additionalProperties": false,
-          "properties": { "pointer.fast": { "type": "number", "exclusiveMinimum": 0 } } },
+          "properties": { "pointer.fast": { "$ref": "#/$defs/threshold" } } },
         { "type": "object", "required": ["user.idle"], "additionalProperties": false,
-          "properties": { "user.idle": { "type": "number", "exclusiveMinimum": 0 } } },
+          "properties": { "user.idle": { "$ref": "#/$defs/threshold" } } },
         { "type": "object", "required": ["edge.reached"], "additionalProperties": false,
           "properties": { "edge.reached": { "enum": ["left", "right", "top", "bottom"] } } },
         { "type": "object", "required": ["power.lowPowerMode"], "additionalProperties": false,

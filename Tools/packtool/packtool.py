@@ -299,6 +299,77 @@ def check_reachability(pack: dict, rep: Report) -> None:
             rep.error(f"states/{sname}", "is a dead end: no 'next' and no 'interrupts'")
 
 
+# ---------------------------------------------------------------------- controls
+
+def _flag_names(guard) -> set:
+    if not isinstance(guard, dict):
+        return set()
+    out = set()
+    for key, value in guard.items():
+        if key == "flag":
+            out.add(value["name"])
+        elif key in ("all", "any"):
+            for child in value:
+                out |= _flag_names(child)
+        elif key == "not":
+            out |= _flag_names(value)
+    return out
+
+
+def check_controls(pack: dict, rep: Report) -> None:
+    """Every reference to a tuning control must name one of the right kind.
+
+    Mirrors the engine loader (PackValidation.validateControls): sliders are used
+    by scaleBy, weightBy and event thresholds; toggles by the flag guard. The
+    version 2 features may not appear in a pack that declares format 1.
+    """
+    tuning = pack.get("tuning", {})
+    version = pack.get("format", 1)
+
+    def slider(name):
+        knob = tuning.get(name)
+        return knob if knob is not None and knob.get("type", "slider") == "slider" else None
+
+    uses_v2 = any(set(k) - {"label", "min", "max", "default"} for k in tuning.values())
+    used = set()
+    for name, knob in tuning.items():
+        if knob.get("type", "slider") == "slider" and not knob["min"] <= knob["default"] <= knob["max"]:
+            rep.error(f"tuning/{name}", "require min <= default <= max")
+    flags = set()
+    for sname, st in pack.get("states", {}).items():
+        where = f"states/{sname}"
+        duration = st.get("duration")
+        if isinstance(duration, dict) and "scaleBy" in duration:
+            knob = slider(duration["scaleBy"]); used.add(duration["scaleBy"])
+            if knob is None or knob["min"] <= 0:
+                rep.error(where, "scaleBy must name a slider declared in tuning with a positive range")
+        for edge in st.get("next", []):
+            flags |= _flag_names(edge.get("when"))
+            if "weightBy" in edge:
+                uses_v2 = True; used.add(edge["weightBy"])
+                knob = slider(edge["weightBy"])
+                if knob is None or knob["min"] < 0:
+                    rep.error(where, "weightBy must name a slider with a non-negative range")
+        for edge in st.get("interrupts", []):
+            flags |= _flag_names(edge.get("when"))
+            on = edge["on"]
+            ref = next(iter(on.values())) if isinstance(on, dict) else None
+            if isinstance(ref, dict) and "knob" in ref:
+                uses_v2 = True; used.add(ref["knob"])
+                knob = slider(ref["knob"])
+                if knob is None or knob["min"] <= 0:
+                    rep.error(where, "event threshold must name a slider with a positive range")
+    if version >= 2:
+        for name in sorted(flags):
+            used.add(name)
+            if tuning.get(name, {}).get("type") != "toggle":
+                rep.error("tuning", f"flag {name!r} must name a toggle declared in tuning")
+        for name in sorted(set(tuning) - used):
+            rep.warn(f"tuning/{name}", "is declared but never used; Settings will not show it")
+    elif uses_v2:
+        rep.error("format", "typed tuning controls, weightBy and knob thresholds require format 2")
+
+
 # --------------------------------------------------------------------------- cmds
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -322,6 +393,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         check_attachment_margin(pack, rep)
         check_anchors(pack, rep, jump_limit=args.anchor_jump)
         check_reachability(pack, rep)
+        check_controls(pack, rep)
     return rep.emit(pack.get("identity", {}).get("id", "pack"))
 
 

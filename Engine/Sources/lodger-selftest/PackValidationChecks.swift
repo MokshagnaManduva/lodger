@@ -28,7 +28,7 @@ func runPackValidationChecks() throws {
     let cases: [(String, [String], Any)] = [
         ("unknown properties", ["typo"], true),
         ("boolean format", ["format"], true),
-        ("unsupported format", ["format"], 2),
+        ("unsupported format", ["format"], 3),
         ("unsupported engine version", ["engineMin"], "999.0.0"),
         ("invalid ID", ["identity", "id"], "../escape"),
         ("unknown capability", ["requires"], ["scripts"]),
@@ -69,6 +69,42 @@ func runPackValidationChecks() throws {
     for (name, path, value) in cases {
         try write(changed(path, value, in: manifest), invalid)
         check((try? loader.load(root: invalid)) == nil, "reject \(name)")
+    }
+    // Controls: every reference must name a control of the right kind.
+    let slider: [String: Any] = ["label": "S", "min": 0.5, "max": 2, "default": 1]
+    let zeroSlider: [String: Any] = ["label": "Z", "min": 0, "max": 2, "default": 1]
+    let toggle: [String: Any] = ["type": "toggle", "label": "T", "default": true]
+    func controls(format: Int, tuning: [String: Any], interrupts: [[String: Any]]) -> [String: Any] {
+        var m = changed(["states", "resting", "interrupts"], interrupts, in: manifest)
+        m["format"] = format; m["tuning"] = tuning
+        return m
+    }
+    func click(_ when: [String: Any]) -> [[String: Any]] { [["on": "pointer.click", "state": "resting", "when": when]] }
+    func flag(_ name: String) -> [String: Any] { ["flag": ["name": name, "value": true]] }
+    let both: [String: Any] = ["s": slider, "z": zeroSlider, "t": toggle]
+    let controlCases: [(String, Bool, [String: Any])] = [
+        ("accept a toggle read by a flag guard", true, controls(format: 2, tuning: both, interrupts: click(flag("t")))),
+        ("accept a nested flag guard", true, controls(format: 2, tuning: both, interrupts: click(["not": ["all": [flag("t")]]]))),
+        ("accept a knob threshold", true, controls(format: 2, tuning: both, interrupts: [["on": ["user.idle": ["knob": "s"]], "state": "resting"]])),
+        ("reject a flag naming an undeclared control", false, controls(format: 2, tuning: both, interrupts: click(flag("missing")))),
+        ("reject a nested flag naming a slider", false, controls(format: 2, tuning: both, interrupts: click(["any": [["not": flag("s")]]]))),
+        ("reject a knob threshold naming a toggle", false, controls(format: 2, tuning: both, interrupts: [["on": ["user.idle": ["knob": "t"]], "state": "resting"]])),
+        ("reject a knob threshold naming an undeclared control", false, controls(format: 2, tuning: both, interrupts: [["on": ["pointer.near": ["knob": "missing"]], "state": "resting"]])),
+        ("reject a knob threshold whose slider can reach zero", false, controls(format: 2, tuning: both, interrupts: [["on": ["user.idle": ["knob": "z"]], "state": "resting"]])),
+        ("reject a knob on an unparameterised event", false, controls(format: 2, tuning: both, interrupts: [["on": ["pointer.click": ["knob": "s"]], "state": "resting"]])),
+        ("reject a toggle with a range", false, controls(format: 2, tuning: ["t": ["type": "toggle", "label": "T", "default": true, "min": 0]], interrupts: click(flag("t")))),
+        ("reject a toggle with a numeric default", false, controls(format: 2, tuning: ["t": ["type": "toggle", "label": "T", "default": 1]], interrupts: click(flag("t")))),
+        ("reject a slider default outside its range", false, controls(format: 2, tuning: ["s": ["label": "S", "min": 0, "max": 1, "default": 2]], interrupts: click(["lowPower": true]))),
+        ("format 1 keeps permissive undeclared flags", true, controls(format: 1, tuning: ["s": slider], interrupts: click(flag("anything")))),
+        ("format 1 rejects typed controls", false, controls(format: 1, tuning: both, interrupts: click(["lowPower": true]))),
+        ("format 1 rejects slider metadata", false, controls(format: 1, tuning: ["s": ["label": "S", "min": 0.5, "max": 2, "default": 1, "group": "G"]], interrupts: click(["lowPower": true]))),
+        ("format 1 rejects knob thresholds", false, controls(format: 1, tuning: ["s": slider], interrupts: [["on": ["user.idle": ["knob": "s"]], "state": "resting"]]))
+    ]
+    for (name, valid, document) in controlCases {
+        try write(document, invalid)
+        var reason = ""
+        do { _ = try loader.load(root: invalid) } catch { reason = String(describing: error) }
+        check(reason.isEmpty == valid, name, reason)
     }
     let canonical = String(data: try JSONSerialization.data(withJSONObject: manifest, options: [.sortedKeys]), encoding: .utf8)!
     let repeated = canonical.replacingOccurrences(of: "\"cell\":0", with: "\"cell\":-1,\"cell\":0")

@@ -91,7 +91,7 @@ public struct PackStore: Sendable {
         // parsers can disagree about repeated keys in the original bytes.
         let canonical = try JSONSerialization.data(withJSONObject: raw, options: [.sortedKeys])
         let pack = try JSONDecoder().decode(Pack.self, from: canonical)
-        guard pack.format == 1 else { throw Failure.unsupportedFormat(pack.format) }
+        guard (1...2).contains(pack.format) else { throw Failure.unsupportedFormat(pack.format) }
         try PackValidation.validate(pack, manifest: raw as! [String: Any], root: root)
 
         return Loaded(pack: pack, root: root, origin: origin)

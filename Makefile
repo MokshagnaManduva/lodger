@@ -40,6 +40,7 @@ validate-dev:
 test:
 	$(PY) Scripts/embed-pack-schema.py --check
 	$(PY) Tools/packtool/test_packtool.py
+	$(PY) Tools/packtool/test_controls.py
 	$(PY) Tools/packtool/test_klien_idle.py
 	$(PY) Tools/packtool/test_klien_scenarios.py
 	$(PY) Tools/packtool/test_norn.py
