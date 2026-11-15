@@ -18,6 +18,9 @@ OUT=${1:-build}
 APP="$OUT/$NAME.app"
 SPARKLE_FEED_URL=${SPARKLE_FEED_URL:-}
 export SPARKLE_FEED_URL
+# Characters shipped inside the app. The first is shown on first run. Set it to
+# an empty string to build the supported zero-pack bundle.
+BUNDLED_PACKS=${BUNDLED_PACKS-Packs/klien Packs/Norn}
 
 echo "building release binary"
 (cd Engine && swift build -c release >/dev/null)
@@ -63,13 +66,12 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
+# The bundled characters. Each is copied by the same rule and loaded through the
+# identical code path as an installed one - see CLAUDE.md 8a.
+# shellcheck disable=SC2086
+LODGER_DEFAULT_PACK=$(python3 Scripts/bundle-pack.py copy "$APP/Contents/Resources/Packs" $BUNDLED_PACKS)
+export LODGER_DEFAULT_PACK
 python3 Scripts/configure-bundle.py "$APP/Contents/Info.plist"
-
-# The bundled default character. Loaded through the identical code path as an
-# installed one - see CLAUDE.md 8a.
-if [ -f Packs/klien/pack.json ]; then
-  rsync -a --exclude 'reference' Packs/klien/ "$APP/Contents/Resources/Packs/klien/"
-fi
 
 # Ad-hoc signature so macOS will launch it.
 codesign --force --sign - --timestamp=none "$APP"

@@ -137,6 +137,10 @@ soak:
 		done; echo "s/hr  ($(RUNS) runs of $(SECS)s)"; \
 	done
 
+# Characters shipped inside the app; the first is the first-run default.
+BUNDLED_PACKS ?= Packs/klien Packs/Norn
+export BUNDLED_PACKS
+
 app:
 	./Scripts/bundle.sh
 
@@ -152,8 +156,11 @@ release-test:
 release-check: app separation validate
 	@test -f Assets/Branding/lodger-icon.png
 	@test -f build/Lodger.app/Contents/Resources/AppIcon.icns
-	@test -f build/Lodger.app/Contents/Resources/Packs/klien/LICENSE
-	@test -f build/Lodger.app/Contents/Resources/Packs/klien/CREDITS.md
+	$(PY) Scripts/bundle-pack.py check build/Lodger.app $(BUNDLED_PACKS)
+	@for pack in build/Lodger.app/Contents/Resources/Packs/*/; do \
+		./build/Lodger.app/Contents/MacOS/Lodger --pack "$$pack" --headless >/dev/null \
+			|| { echo "bundled pack does not load: $$pack"; exit 1; }; \
+	done
 	@echo "release checks passed; distribution signing and notarization remain credentialed steps"
 
 IDENTITY ?=

@@ -29,7 +29,7 @@ final class AppController {
         return base.appendingPathComponent("Lodger/Packs", isDirectory: true)
     }
 
-    /// Packs bundled inside the app. Klien ships here so Lodger is never empty on
+    /// Packs bundled inside the app. Characters ship here so Lodger is never empty on
     /// first run - loaded through the identical code path as anything installed.
     static var bundledPacksDirectory: URL? {
         Bundle.main.resourceURL?.appendingPathComponent("Packs", isDirectory: true)

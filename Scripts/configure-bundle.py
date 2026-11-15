@@ -16,6 +16,13 @@ if feed:
     metadata["SUFeedURL"] = feed
 else:
     metadata.pop("SUFeedURL", None)
+# The character shown before the user has chosen one. Decided by the build, so no
+# pack ID appears in app source.
+default_pack = os.environ.get("LODGER_DEFAULT_PACK", "")
+if default_pack:
+    metadata["LodgerDefaultPack"] = default_pack
+else:
+    metadata.pop("LodgerDefaultPack", None)
 # The manual browser-download flow does not verify an Ed25519 signature in-app.
 # Public keys are used by build-appcast.py; do not imply an automatic updater here.
 metadata.pop("SUPublicEDKey", None)

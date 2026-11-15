@@ -11,7 +11,7 @@ import LodgerEngine
 //      process and watching it keep going
 //   3. a quiescent state that installs no timer at all
 //
-// Deliberately no behaviour, no physics, and no Klien.
+// Deliberately no behaviour, no physics, and no particular character.
 
 // Line-buffer stdout: this process is long-lived and its diagnostics are read by
 // external verification scripts while it is still running.
