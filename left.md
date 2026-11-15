@@ -69,7 +69,8 @@ speed was made robust. `make app-test` and `make release-check` are not in CI ye
 
 Still open from this work:
 
-- **Owner art approval of the new looks.** Klien's colourways tint hat, hair, suit and
+- The owner approved the new looks on 2026-11-16, as rendered by `make looks`. Known
+  traits of the approved art: Klien's colourways tint hat, hair, suit and
   cape together because they share one dark ramp; keeping his hair black would need
   the base art re-authored with a separate hair ramp. Norn's irises share two of the
   potion purples and shift slightly with the potion colour.

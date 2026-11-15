@@ -11,7 +11,7 @@ palettes; `make looks` renders them to `build/looks-klien.png`.
 - **Sun emblem:** Gold (as drawn), Silver, Rose gold. The emblem has its own five-colour
   ramp, so this is independent of the colourway.
 
-These are recolourings awaiting owner approval, not new drawings.
+These are recolourings, not new drawings. The owner approved them on 2026-11-16.
 
 ## Settings controls (0.5.0)
 

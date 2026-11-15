@@ -26,7 +26,7 @@ whole-character reset. Spec: `Docs/superpowers/specs/2026-11-15-settings-redesig
 Packs can also declare `appearance` choices: colour maps applied once when an atlas
 loads (`Recolor.swift`), never per frame and never touching alpha, so masks and anchors
 stay valid. Klien offers four colourways and three emblem metals, Norn four potion
-colours (`make looks` renders them); these looks still need owner art approval. Settings
+colours (`make looks` renders them); the owner approved these looks on 2026-11-16. Settings
 has a fourth tab, Appearance. Spec: `Docs/superpowers/specs/2026-11-15-appearance-variants-design.md`.
 Recorded November 15: 377 engine checks with both packs, 89 app checks, 92 Norn and all
 Klien Director checks, pack/art, separation and release checks passed.
