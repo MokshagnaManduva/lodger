@@ -73,6 +73,8 @@ class Controls(unittest.TestCase):
         self.assertTrue(errors(1, BOTH, click({"lowPower": True})))
         self.assertTrue(errors(1, {"s": dict(SLIDER, group="G")}, click({"lowPower": True})))
         self.assertTrue(errors(1, {"s": SLIDER}, [{"on": {"user.idle": {"knob": "s"}}, "state": "resting"}]))
+        self.assertTrue(errors(1, {"s": SLIDER}, [{"on": "controls.changed", "state": "resting"}]))
+        self.assertEqual(errors(2, BOTH, [{"on": "controls.changed", "state": "resting", "when": flag("t")}]), [])
 
 
 if __name__ == "__main__":

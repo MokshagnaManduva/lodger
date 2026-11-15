@@ -353,6 +353,8 @@ def check_controls(pack: dict, rep: Report) -> None:
         for edge in st.get("interrupts", []):
             flags |= _flag_names(edge.get("when"))
             on = edge["on"]
+            if on == "controls.changed":
+                uses_v2 = True
             ref = next(iter(on.values())) if isinstance(on, dict) else None
             if isinstance(ref, dict) and "knob" in ref:
                 uses_v2 = True; used.add(ref["knob"])
@@ -367,7 +369,7 @@ def check_controls(pack: dict, rep: Report) -> None:
         for name in sorted(set(tuning) - used):
             rep.warn(f"tuning/{name}", "is declared but never used; Settings will not show it")
     elif uses_v2:
-        rep.error("format", "typed tuning controls, weightBy and knob thresholds require format 2")
+        rep.error("format", "typed tuning controls, weightBy, knob thresholds and controls.changed require format 2")
 
 
 # --------------------------------------------------------------------------- cmds

@@ -130,7 +130,10 @@ controlManifest["tuning"] = [
     "unused": ["label": "Unused", "min": 0, "max": 1, "default": 0.5]]
 controlManifest["states"] = ["resting": ["clip": "still", "quiescent": true, "interrupts": [
     ["on": "pointer.click", "state": "resting", "when": ["flag": ["name": "alert", "value": true]]],
-    ["on": ["user.idle": ["knob": "wait"]], "state": "resting"]]]]
+    ["on": "controls.changed", "state": "dozing", "when": ["flag": ["name": "alert", "value": false]]],
+    ["on": ["user.idle": ["knob": "wait"]], "state": "resting"]]],
+    "dozing": ["clip": "still", "quiescent": true, "interrupts": [
+    ["on": "controls.changed", "state": "resting", "when": ["flag": ["name": "alert", "value": true]]]]]]
 try JSONSerialization.data(withJSONObject: controlManifest).write(to: controlSource.appendingPathComponent("pack.json"))
 let controlMessages = controller.installPacks(from: [controlSource])
 check(controlMessages.isEmpty, "pack with controls installs")
@@ -144,6 +147,11 @@ check(controller.pet === controlled && controlled.userIdle.threshold == 120, "ch
 controller.setFlag(false, name: "alert", for: cid)
 check(controller.pet === controlled && controlled.flags["alert"] == false, "toggle applies live without restarting")
 check(controlled.director.flags["alert"] == false, "toggle reaches the guard evaluator")
+check(controlled.director.current == "dozing", "a pack can respond to the switch itself, even from a quiescent state")
+controller.setFlag(false, name: "alert", for: cid)
+controller.setFlag(true, name: "alert", for: cid)
+check(controlled.director.current == "resting", "and respond again when it is switched back")
+controller.setFlag(false, name: "alert", for: cid)
 controller.setFlag(true, name: "wait", for: cid); controller.setTuning(1, name: "alert", for: cid)
 check(Preferences.flags(for: cid)["wait"] == nil && Preferences.tuning(for: cid)["alert"] == nil, "a control cannot be set as the wrong kind")
 let reread = AppController(extraSearchPaths: [], installationDirectory: controller.installationDirectory)

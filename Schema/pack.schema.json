@@ -432,7 +432,7 @@
             "pointer.grab", "pointer.release",
             "physics.landed", "physics.settled",
             "system.wake", "system.willSleep",
-            "display.changed", "space.changed",
+            "display.changed", "space.changed", "controls.changed",
             "perch.acquired", "perch.lost"
           ]
         },

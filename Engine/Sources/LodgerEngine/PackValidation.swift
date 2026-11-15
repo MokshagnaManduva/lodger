@@ -177,6 +177,7 @@ enum PackValidation {
             }
             for edge in state.interrupts {
                 collectFlags(edge.when)
+                if edge.on.name == "controls.changed" { usesVersion2 = true }
                 guard let knob = edge.on.knob else { continue }
                 usesVersion2 = true
                 try require(slider(knob).map { $0.min > 0 } ?? false,
@@ -188,7 +189,7 @@ enum PackValidation {
                 try require(p.tuning[name]?.isToggle == true, "flag \(name) must name a toggle declared in tuning")
             }
         } else {
-            try require(!usesVersion2, "typed tuning controls, weightBy and knob thresholds require format 2")
+            try require(!usesVersion2, "typed tuning controls, weightBy, knob thresholds and controls.changed require format 2")
         }
     }
 

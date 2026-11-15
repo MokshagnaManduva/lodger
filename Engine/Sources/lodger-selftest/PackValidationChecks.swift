@@ -98,6 +98,8 @@ func runPackValidationChecks() throws {
         ("format 1 keeps permissive undeclared flags", true, controls(format: 1, tuning: ["s": slider], interrupts: click(flag("anything")))),
         ("format 1 rejects typed controls", false, controls(format: 1, tuning: both, interrupts: click(["lowPower": true]))),
         ("format 1 rejects slider metadata", false, controls(format: 1, tuning: ["s": ["label": "S", "min": 0.5, "max": 2, "default": 1, "group": "G"]], interrupts: click(["lowPower": true]))),
+        ("accept controls.changed in format 2", true, controls(format: 2, tuning: both, interrupts: [["on": "controls.changed", "state": "resting", "when": flag("t")]])),
+        ("format 1 rejects controls.changed", false, controls(format: 1, tuning: ["s": slider], interrupts: [["on": "controls.changed", "state": "resting"]])),
         ("format 1 rejects knob thresholds", false, controls(format: 1, tuning: ["s": slider], interrupts: [["on": ["user.idle": ["knob": "s"]], "state": "resting"]]))
     ]
     for (name, valid, document) in controlCases {

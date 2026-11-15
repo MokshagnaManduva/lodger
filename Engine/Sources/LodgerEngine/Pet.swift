@@ -56,7 +56,14 @@ public final class Pet {
     /// Values for the toggles the pack declared in `tuning`, read by its `flag`
     /// guards. Takes effect at the next event or timeout; nothing is scheduled.
     public var flags: [String: Bool] = [:] {
-        didSet { director.flags = flags }
+        didSet {
+            director.flags = flags
+            // Lets a pack respond to the switch itself - re-routing out of a
+            // quiescent state, say - instead of waiting for its next event. Sent
+            // only on a user's change, and dropped by `send` unless the current
+            // state listens for it.
+            if started, oldValue != flags { send("controls.changed") }
+        }
     }
     private var started = false
     /// Measurement only: `LODGER_ABLATE=window` skips the window move,
