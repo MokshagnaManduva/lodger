@@ -30,7 +30,7 @@ PY
 checked=0
 for name in $names; do
   checked=$((checked + 1))
-  if grep -rniw --include='*.swift' -- "$name" Engine/Sources; then
+  if grep -rni --include='*.swift' -- "$name" Engine/Sources; then
     echo "ERROR Engine/Sources mentions the character '$name'"
     bad=1
   fi

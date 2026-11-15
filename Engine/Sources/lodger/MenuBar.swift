@@ -63,6 +63,10 @@ final class MenuBar: NSObject, NSMenuDelegate {
             }
         }
 
+        if !app.packs.isEmpty {
+            add(menu, Preferences.hidden ? "Show Character" : "Hide Character", #selector(toggleHidden))
+        }
+
         // Anything that looks like a pack but will not load says why, rather than
         // being silently skipped.
         if !app.failures.isEmpty {
@@ -121,7 +125,7 @@ final class MenuBar: NSObject, NSMenuDelegate {
             lines.append("walking: \(pet.isWalking)")
             lines.append("pointer monitor: \(pet.pointer.installed ? "installed" : "off")")
         } else {
-            lines.append("no character running")
+            lines.append(Preferences.hidden ? "character hidden; nothing running" : "no character running")
         }
         lines.append("low power mode: \(cpu.isLowPowerModeEnabled)")
         for l in lines {
@@ -143,6 +147,11 @@ final class MenuBar: NSObject, NSMenuDelegate {
         app.chooseAndInstallPacks()
     }
 
+    @objc private func toggleHidden() {
+        app.setHidden(!Preferences.hidden)
+        settings?.refresh()
+    }
+
     @objc private func revealFolder() {
         NSWorkspace.shared.activateFileViewerSelecting([app.installationDirectory])
     }
@@ -160,8 +169,8 @@ final class MenuBar: NSObject, NSMenuDelegate {
     }
 
     @objc private func showAbout() {
-        let credits = NSAttributedString(string:
-            "Lodger engine and app: MIT License\nKlien character pack: CC BY-NC 4.0",
+        app.reload()
+        let credits = NSAttributedString(string: app.creditsText,
             attributes: [.font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)])
         NSApp.orderFrontStandardAboutPanel(options: [
             .credits: credits,

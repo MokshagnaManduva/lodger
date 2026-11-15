@@ -17,11 +17,16 @@ pack-declared Settings controls: sliders (`scaleBy`, `weightBy`, event threshold
 event. Format 1 packs still load. Klien has nine controls, Norn five; Norn's wandering is
 off by default so her resting states stay quiescent. Design and plan:
 `Docs/superpowers/specs/2026-11-15-norn-deployment-behaviour-controls-design.md`.
-Two follow-on sub-projects are agreed but not started: (2) Settings redesign plus
-app-level controls, (3) appearance variants (palette swaps plus prop options).
-Recorded November 15: 349 engine checks with both packs (347 generic), 55 app checks,
-92 Norn and all Klien Director checks, pack/art, separation and release checks passed.
-Live desktop acceptance of the new controls has not been done.
+Settings is now three tabs (Character, Behaviour, General). General holds app-level
+options that apply to any character and add no timer: Show character (hidden means no
+pet exists), Opacity, Stay in place (`Director.allowsAutonomousWalking`), Calmer on
+battery (`Director.pace`, driven by the IOKit power-source notification) and Launch at
+login (`SMAppService`, behind the `LoginItem` seam). Behaviour has per-control and
+whole-character reset. Spec: `Docs/superpowers/specs/2026-11-15-settings-redesign-app-controls-design.md`.
+Appearance variants (palette swaps plus prop options) are agreed but not started.
+Recorded November 15: 358 engine checks with both packs, 76 app checks, 92 Norn and all
+Klien Director checks, pack/art, separation and release checks passed.
+Live desktop acceptance of the new Settings window and controls has not been done.
 
 **Earlier status, 2026-09-30.** Klien holds a small gold
 sun emblem in his free hand and occasionally tosses it. The current art has compact

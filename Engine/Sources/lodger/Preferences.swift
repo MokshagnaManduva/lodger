@@ -17,6 +17,10 @@ struct Preferences {
         static let volume = "audio.volume"
         static let tuning = "tuning"
         static let flags = "flags"
+        static let hidden = "pet.hidden"
+        static let opacity = "pet.opacity"
+        static let stayInPlace = "pet.stayInPlace"
+        static let calmOnBattery = "pet.calmOnBattery"
     }
 
     static var packID: String? {
@@ -50,6 +54,36 @@ struct Preferences {
         set { if newValue.isFinite { d.set(min(1, max(0, newValue)), forKey: Key.volume) } }
     }
 
+    // MARK: app-level options, for whichever character is running
+
+    /// The character is not shown and nothing of it runs.
+    static var hidden: Bool {
+        get { d.bool(forKey: Key.hidden) }
+        set { d.set(newValue, forKey: Key.hidden) }
+    }
+
+    static let opacityRange = 0.3...1.0
+    static var opacity: Double {
+        get {
+            let value = d.object(forKey: Key.opacity) as? Double ?? 1
+            return value.isFinite ? min(opacityRange.upperBound, max(opacityRange.lowerBound, value)) : 1
+        }
+        set { if newValue.isFinite { d.set(min(opacityRange.upperBound, max(opacityRange.lowerBound, newValue)), forKey: Key.opacity) } }
+    }
+
+    /// Never set off walking unprompted.
+    static var stayInPlace: Bool {
+        get { d.bool(forKey: Key.stayInPlace) }
+        set { d.set(newValue, forKey: Key.stayInPlace) }
+    }
+
+    /// Change activity half as often while on battery power.
+    static var calmOnBattery: Bool {
+        get { d.bool(forKey: Key.calmOnBattery) }
+        set { d.set(newValue, forKey: Key.calmOnBattery) }
+    }
+    static let batteryPace = 0.5
+
     /// Per-pack values for the knobs a pack declares in `tuning`. Keyed by pack id
     /// so switching characters does not clobber the other's settings.
     static func tuning(for packID: String) -> [String: Double] {
@@ -73,6 +107,18 @@ struct Preferences {
         var all = d.dictionary(forKey: Key.flags) ?? [:]
         all[packID] = values
         d.set(all, forKey: Key.flags)
+    }
+
+    /// Forget one control's saved value, of either kind.
+    static func resetControl(_ name: String, for packID: String) {
+        var sliders = tuning(for: packID), toggles = flags(for: packID)
+        sliders.removeValue(forKey: name); toggles.removeValue(forKey: name)
+        setTuning(sliders, for: packID); setFlags(toggles, for: packID)
+    }
+
+    /// Forget every saved control value, keeping the size.
+    static func resetBehaviour(packID: String) {
+        setTuning([:], for: packID); setFlags([:], for: packID)
     }
 
     static func reset(packID: String) {

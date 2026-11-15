@@ -14,5 +14,6 @@ swiftc -I "$modules" "${objects[@]}" \
   Engine/Sources/lodger/Preferences.swift Engine/Sources/lodger/AppController.swift \
   Engine/Sources/lodger/SettingsWindow.swift Engine/Sources/lodger/MenuBar.swift \
   Engine/Sources/lodger/UpdateChecker.swift Engine/Sources/lodger/UpdateFeed.swift \
+  Engine/Sources/lodger/LoginItem.swift \
   Tests/AppChecks/main.swift -o build/app-checks
 ./build/app-checks "$PWD"

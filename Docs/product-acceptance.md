@@ -43,6 +43,23 @@ add these to the next desktop session:
 - Switch Norn's "Wanders on her own" on and off; she should react at once both ways.
 - Confirm tooltips, group headings, readouts and scrolling in light and dark mode.
 
+## Tabbed Settings and app-level options — 2026-11-15
+
+Settings is now Character / Behaviour / General. The 76 app checks cover: the three
+tabs with and without packs, per-control and whole-behaviour reset, opacity clamping
+and application, Stay in place and Calmer on battery reaching the running character
+and the next one, hide/show keeping selection and position across a relaunch, launch
+at login through a test double (success, refusal, unavailable), and About credits.
+
+Add to the next desktop session:
+
+- Hide and show from both the menu and Settings; quit and relaunch while hidden.
+- Opacity at 30% and 100%; confirm clicks and drags still land on the silhouette.
+- Stay in place with each character for several minutes; drag still works.
+- Calmer on battery: unplug, and confirm activity changes arrive about half as often.
+- Launch at login from the built app; confirm it appears in System Settings and that
+  removing it there is reflected when Settings is reopened.
+
 ## Recorded automated evidence
 
 The September 30 run passed **30/30 app checks**, **306/306 generic engine checks**,

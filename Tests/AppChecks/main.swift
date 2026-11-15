@@ -93,12 +93,27 @@ let settings = SettingsWindowController(app: controller)
 check(settings.window != nil, "settings constructs with pack controls")
 controller.activate(id: second)
 settings.refresh()
-if let view = settings.window?.contentView {
-    view.layoutSubtreeIfNeeded()
-    if let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+// Offscreen renders of each tab, for inspection. Not a substitute for real input.
+func renderTabs(_ controller: SettingsWindowController, prefix: String) throws {
+    guard let window = controller.window, let view = window.contentView,
+          let tabs = view.subviews.compactMap({ $0 as? NSTabView }).first else { return }
+    window.appearance = NSAppearance(named: .aqua)
+    for item in tabs.tabViewItems {
+        tabs.selectTabViewItem(item)
+        view.layoutSubtreeIfNeeded()
+        guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { continue }
         view.cacheDisplay(in: view.bounds, to: bitmap)
-        try bitmap.representation(using: .png, properties: [:])?.write(to: root.appendingPathComponent("build/settings-preview.png"))
+        let image = NSImage(size: view.bounds.size)
+        image.lockFocus()
+        NSColor.windowBackgroundColor.setFill(); view.bounds.fill()
+        bitmap.draw(in: view.bounds)
+        image.unlockFocus()
+        if let tiff = image.tiffRepresentation, let flat = NSBitmapImageRep(data: tiff) {
+            try flat.representation(using: .png, properties: [:])?
+                .write(to: root.appendingPathComponent("build/settings-\(prefix)-\(item.label.lowercased()).png"))
+        }
     }
+    tabs.selectTabViewItem(at: 0)
 }
 let tunable = controller.pet!.loaded.pack
 if let name = tunable.tuning.keys.sorted().first(where: { tunable.tuning[$0]?.isToggle == false }), let knob = tunable.tuning[name] {
@@ -167,7 +182,10 @@ func find(_ view: NSView, _ id: String) -> NSView? {
     for child in view.subviews { if let hit = find(child, id) { return hit } }
     return nil
 }
-let controlRoot = controlSettings.window!.contentView!
+let controlRoot = NSView()
+for item in (controlSettings.window!.contentView!.subviews.compactMap { $0 as? NSTabView }.first?.tabViewItems ?? []) {
+    if let page = item.view { controlRoot.addSubview(page) }
+}
 check((find(controlRoot, "alert") as? NSButton)?.state == .off, "settings shows a checkbox for a used toggle")
 check((find(controlRoot, "wait") as? NSSlider)?.doubleValue == 120, "settings shows a slider for a used knob")
 check((find(controlRoot, "readout.wait") as? NSTextField)?.stringValue == "2 min", "slider readout follows the unit hint")
@@ -192,6 +210,84 @@ let fallback = AppController(extraSearchPaths: [root.appendingPathComponent("Pac
 fallback.reload(); fallback.activate(id: nil)
 check(fallback.activeID == first, "a missing default falls back to the first character")
 fallback.pet?.stop()
+// App-level options and the tabbed Settings window.
+controller.activate(id: cid)
+let tabbed = SettingsWindowController(app: controller)
+let tabRoot = tabbed.window!.contentView!
+func tabView(_ view: NSView) -> NSTabView? {
+    if let t = view as? NSTabView { return t }
+    for child in view.subviews { if let hit = tabView(child) { return hit } }
+    return nil
+}
+let tabControl = tabView(tabRoot)!
+check(tabControl.tabViewItems.map(\.label) == ["Character", "Behaviour", "General"], "settings has three tabs")
+func inTabs(_ id: String) -> NSView? {
+    for item in tabControl.tabViewItems { if let v = item.view, let hit = find(v, id) { return hit } }
+    return nil
+}
+controller.setTuning(240, name: "wait", for: cid)
+tabbed.refresh()
+check((inTabs("reset.wait") as? NSButton)?.isEnabled == true, "a changed slider offers its own reset")
+(inTabs("reset.wait") as! NSButton).performClick(nil)
+check(controller.pet!.tuning["wait"] == 300 && Preferences.tuning(for: cid)["wait"] == nil, "per-control reset restores the pack default live")
+check((inTabs("reset.wait") as? NSButton)?.isEnabled == false && (inTabs("wait") as? NSSlider)?.doubleValue == 300,
+      "and the control shows the default again")
+controller.setFlag(false, name: "alert", for: cid); controller.setScale(controller.scales(for: cid).last!, for: cid)
+let sizeBefore = controller.scale(for: cid)
+(inTabs("resetBehaviour") as! NSButton).performClick(nil)
+check(controller.pet!.flags["alert"] == true && controller.scale(for: cid) == sizeBefore, "reset behaviour restores controls and keeps the size")
+
+let running = controller.pet!
+controller.setOpacity(0.1)
+check(Preferences.opacity == 0.3 && abs(running.panel.alphaValue - 0.3) < 0.001, "opacity is clamped and applied to the window")
+controller.setOpacity(0.6)
+controller.setStayInPlace(true)
+check(running.allowsAutonomousWalking == false && running.director.allowsAutonomousWalking == false, "stay in place reaches the running character")
+controller.setCalmOnBattery(true)
+check(running.batteryPace == Preferences.batteryPace, "calmer on battery reaches the running character")
+check(controller.pet === running, "app-level options do not restart the character")
+controller.activate(id: second)
+check(abs(controller.pet!.panel.alphaValue - 0.6) < 0.001 && controller.pet!.allowsAutonomousWalking == false
+      && controller.pet!.batteryPace == Preferences.batteryPace, "app-level options apply to the next character too")
+controller.setCalmOnBattery(false); controller.setStayInPlace(false)
+check(controller.pet!.batteryPace == nil && controller.pet!.allowsAutonomousWalking, "and switch back off")
+
+let spot = CGPoint(x: controller.pet!.world.left + 90, y: controller.pet!.world.floor)
+controller.pet!.place(at: spot)
+controller.setHidden(true)
+check(controller.pet == nil && controller.activeID == second && Preferences.hidden, "hiding stops the character and keeps the selection")
+tabbed.refresh()
+check((inTabs("general.shown") as? NSButton)?.state == .off, "settings reflects a hidden character")
+controller.activate(id: first)
+check(controller.pet == nil && controller.activeID == first, "choosing a character while hidden does not start it")
+let hiddenRelaunch = AppController(extraSearchPaths: [root.appendingPathComponent("Packs")], installationDirectory: controller.installationDirectory)
+hiddenRelaunch.reload(); hiddenRelaunch.activate(id: Preferences.packID)
+check(hiddenRelaunch.pet == nil && hiddenRelaunch.activeID == first, "a relaunch stays hidden")
+controller.setHidden(false)
+check(controller.pet != nil && controller.activeID == first && abs(controller.pet!.feet.x - spot.x) < 1, "showing restores the chosen character where it was")
+controller.setOpacity(1)
+
+var registered = false, refuse = false
+struct Refused: Error {}
+let fakeLogin = LoginItem(isAvailable: true, isEnabled: { registered },
+                          setEnabled: { on in if refuse { throw Refused() }; registered = on })
+let loginController = AppController(installationDirectory: temporary.appendingPathComponent("Login"), loginItem: fakeLogin)
+check(loginController.setLaunchAtLogin(true) == nil && registered, "launch at login registers through the service")
+refuse = true
+check(loginController.setLaunchAtLogin(false) != nil && registered, "a refusal is reported and the state is unchanged")
+let noLogin = AppController(installationDirectory: temporary.appendingPathComponent("NoLogin"),
+                            loginItem: LoginItem(isAvailable: false, isEnabled: { false }, setEnabled: { _ in }))
+check(noLogin.setLaunchAtLogin(true) != nil, "launch at login explains when it is unavailable")
+let noLoginSettings = SettingsWindowController(app: noLogin)
+check((find(tabView(noLoginSettings.window!.contentView!)!.tabViewItems[2].view!, "general.login") as? NSButton)?.isEnabled == false,
+      "the login checkbox is disabled when unavailable")
+let credits = controller.creditsText
+check(credits.contains("MIT License") && controller.packs.allSatisfy { credits.contains($0.pack.identity.name) },
+      "about credits list the installed characters")
+for id in [first, second] {
+    controller.activate(id: id)
+    try renderTabs(SettingsWindowController(app: controller), prefix: controller.packs.first { $0.pack.identity.id == id }!.root.lastPathComponent.lowercased())
+}
 let empty = AppController(installationDirectory: temporary.appendingPathComponent("Empty"))
 empty.reload(); empty.activate(id: nil)
 let emptySettings = SettingsWindowController(app: empty)

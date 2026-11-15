@@ -9,6 +9,11 @@ final class AppController {
 
     private(set) var packs: [PackStore.Loaded] = []
     private(set) var pet: Pet?
+    /// The chosen character. Kept apart from `pet` because a hidden character is
+    /// still the selection.
+    private(set) var selectedID: String?
+    private var lastFeet: CGPoint?
+    let loginItem: LoginItem
     private(set) var failures: [(url: URL, reason: String)] = []
 
     let store: PackStore
@@ -37,8 +42,10 @@ final class AppController {
 
     init(extraSearchPaths: [URL] = [], installationDirectory: URL = AppController.packsDirectory,
          defaultPackID: String? = Bundle.main.object(forInfoDictionaryKey: "LodgerDefaultPack") as? String,
+         loginItem: LoginItem = .system,
          trash: @escaping (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }) {
         self.trash = trash
+        self.loginItem = loginItem
         self.defaultPackID = defaultPackID
         self.installationDirectory = installationDirectory
         try? FileManager.default.createDirectory(at: installationDirectory,
@@ -84,14 +91,17 @@ final class AppController {
     // MARK: the running character
 
     func activate(id: String?) {
-        let previousFeet = pet?.feet
+        let previousFeet = pet?.feet ?? lastFeet
         pet?.stop()
         pet = nil
         let chosen = packs.first { $0.pack.identity.id == id }
             ?? packs.first { $0.pack.identity.id == defaultPackID }
             ?? packs.first
-        guard let chosen else { Preferences.packID = nil; onChange?(); return }
+        guard let chosen else { selectedID = nil; Preferences.packID = nil; onChange?(); return }
+        selectedID = chosen.pack.identity.id
         Preferences.packID = chosen.pack.identity.id
+        // Hidden: remember who and where, and run nothing at all.
+        if Preferences.hidden { lastFeet = previousFeet; onChange?(); return }
 
         let allowedScales = chosen.pack.stage.scaleSteps
         let savedScale = Preferences.scale(for: chosen.pack.identity.id,
@@ -102,6 +112,7 @@ final class AppController {
         p.flags = Preferences.resolvedFlags(for: chosen.pack)
         p.audio.enabled = Preferences.audioEnabled && chosen.pack.requires.contains("audio")
         p.audio.volume = Preferences.volume
+        applyHostOptions(to: p)
         if let previousFeet { p.place(at: previousFeet) }
         p.start()
         p.panel.orderFrontRegardless()
@@ -109,7 +120,75 @@ final class AppController {
         onChange?()
     }
 
-    var activeID: String? { pet?.loaded.pack.identity.id }
+    var activeID: String? { selectedID }
+
+    // MARK: app-level options
+
+    private func applyHostOptions(to p: Pet) {
+        p.opacity = Preferences.opacity
+        p.allowsAutonomousWalking = !Preferences.stayInPlace
+        p.batteryPace = Preferences.calmOnBattery ? Preferences.batteryPace : nil
+    }
+
+    func setHidden(_ hidden: Bool) {
+        guard hidden != Preferences.hidden else { return }
+        Preferences.hidden = hidden
+        if hidden {
+            lastFeet = pet?.feet
+            pet?.stop()
+            pet = nil
+            onChange?()
+        } else {
+            activate(id: selectedID ?? Preferences.packID)
+        }
+    }
+
+    func setOpacity(_ value: Double) {
+        Preferences.opacity = value
+        pet?.opacity = Preferences.opacity
+    }
+
+    func setStayInPlace(_ on: Bool) {
+        Preferences.stayInPlace = on
+        pet?.allowsAutonomousWalking = !on
+    }
+
+    func setCalmOnBattery(_ on: Bool) {
+        Preferences.calmOnBattery = on
+        pet?.batteryPace = on ? Preferences.batteryPace : nil
+    }
+
+    /// Returns a message when the system refused, so the caller can say why.
+    func setLaunchAtLogin(_ on: Bool) -> String? {
+        guard loginItem.isAvailable else { return "Launch at login is available when Lodger runs as an app." }
+        do { try loginItem.setEnabled(on); return nil }
+        catch { return error.localizedDescription }
+    }
+
+    /// One control back to the pack's default, applied to the running character.
+    func resetControl(_ name: String, for id: String) {
+        Preferences.resetControl(name, for: id)
+        applyControls(for: id)
+    }
+
+    func resetBehaviour(id: String) {
+        Preferences.resetBehaviour(packID: id)
+        applyControls(for: id)
+    }
+
+    private func applyControls(for id: String) {
+        guard activeID == id, let pack = packs.first(where: { $0.pack.identity.id == id })?.pack else { return }
+        pet?.tuning = Preferences.resolvedTuning(for: pack)
+        pet?.flags = Preferences.resolvedFlags(for: pack)
+    }
+
+    /// Credits for the About panel, from whatever is installed rather than from a
+    /// list in source.
+    var creditsText: String {
+        (["Lodger engine and app: MIT License"] + packs.prefix(8).map {
+            "\($0.pack.identity.name) character pack: \($0.pack.identity.license)"
+        }).joined(separator: "\n")
+    }
 
     func scales(for id: String) -> [Int] {
         packs.first { $0.pack.identity.id == id }?.pack.stage.scaleSteps ?? []

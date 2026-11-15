@@ -44,7 +44,22 @@ and art checks, `make test`, `make separation`, `make release-test` and
 `make release-check` passed. The built bundle was launched from outside the repository
 and discovered both bundled packs; a zero-pack bundle launched to the empty state.
 
+**Settings redesign and app-level controls (same day).** Settings has Character,
+Behaviour and General tabs. General adds Show character, Opacity, Stay in place,
+Calmer on battery and Launch at login; Behaviour adds a reset per slider and a
+whole-behaviour reset. The About panel now lists installed characters from their
+manifests instead of naming one in source, and the separation check catches that case.
+Results after this step: **358/358 engine checks** with both packs and **76/76 app
+checks**. Each tab is rendered offscreen to `build/settings-<character>-<tab>.png`
+during `make app-test` for inspection.
+
 Still open from this work:
+
+- Launch at login has only been exercised through a test double; it needs a run from
+  the built app (and ideally a signed one).
+- Calmer on battery and Stay in place are verified at the Director and controller
+  level, not by watching a character for a while on battery.
+- Quiet hours and a home-display choice were considered and left out; see the spec.
 
 - Live desktop acceptance of the new sliders and checkboxes in Settings. The automated
   checks construct the controls and drive the controller, not real input.
@@ -52,8 +67,7 @@ Still open from this work:
   values. Defaults are unchanged in cost by construction, not by a new measurement.
 - With Klien's cursor watching switched off, the pointer monitor stays installed because
   clicks and grabs still need it.
-- Sub-project 2 (Settings redesign, app-level controls) and sub-project 3 (appearance
-  variants: palette swaps plus prop options) are agreed but not started.
+- Appearance variants (palette swaps plus prop options) are agreed but not started.
 - `site/` and `.github/workflows/site.yml` remain uncommitted local work.
 
 ### Settings/import correctness — 2026-09-30
