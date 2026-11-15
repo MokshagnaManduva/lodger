@@ -1,7 +1,7 @@
 PACK ?= Packs/klien
 PY   ?= python3
 
-.PHONY: help validate validate-dev test audit sketches engine engine-test app-test build-fixture klien-idle klien-animations klien-test norn-animations norn-pack norn-test norn-energy soak proof bench app archive run separation release-check release-test sign notarize appcast all
+.PHONY: help validate validate-dev test audit sketches engine engine-test app-test build-fixture klien-idle klien-animations klien-test looks norn-animations norn-pack norn-test norn-energy soak proof bench app archive run separation release-check release-test sign notarize appcast all
 
 help:
 	@echo "make validate      strict pack validation (release gate)"
@@ -10,6 +10,7 @@ help:
 	@echo "make sketches      palette + tracing sketches from the raw reference"
 	@echo "make klien-idle    rebuild the archived approved idle artwork"
 	@echo "make klien-animations build all Klien scenarios and animation previews"
+	@echo "make looks         render every selectable look of both characters to build/"
 	@echo "make klien-test    check Klien artwork and Director behaviour, including Settings controls"
 	@echo "make norn-animations build Norn's local runtime pack and clip preview"
 	@echo "make norn-pack     export Norn without source sheets or gallery files"
@@ -59,6 +60,11 @@ klien-animations:
 	$(PY) Tools/packtool/packtool.py validate Packs/klien
 	$(PY) Tools/packtool/test_klien_idle.py
 	$(PY) Tools/packtool/test_klien_scenarios.py
+
+# Every selectable look of the bundled characters, for art review.
+looks:
+	$(PY) Tools/packtool/looks.py Packs/klien build/looks-klien.png
+	$(PY) Tools/packtool/looks.py Packs/Norn build/looks-norn.png
 
 klien-test:
 	$(PY) Tools/packtool/test_klien_idle.py

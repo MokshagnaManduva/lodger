@@ -62,3 +62,47 @@ def atlas_colors(paths) -> set:
         for rgb in np.unique(pixels[pixels[:, :, 3] > 0][:, :3], axis=0):
             out.add(tuple(int(v) for v in rgb))
     return out
+
+
+def contact_sheet(pack_dir, out, scale=3, background=(200, 196, 190)):
+    """Every option of every choice applied to the pack's preview, for review.
+
+    One row per choice; the first cell of each row is the default look.
+    """
+    import json
+    from pathlib import Path
+    import numpy as np
+    from PIL import Image
+    pack_dir = Path(pack_dir)
+    pack = json.loads((pack_dir / "pack.json").read_text())
+    preview = Image.open(pack_dir / pack["identity"]["preview"]).convert("RGBA")
+    rows = []
+    for choice in pack.get("appearance", []):
+        cells = []
+        for option in choice["options"]:
+            pixels = np.asarray(preview).copy()
+            for source, target in option.get("recolor", {}).items():
+                s = tuple(int(source[i:i + 2], 16) for i in (1, 3, 5))
+                t = tuple(int(target[i:i + 2], 16) for i in (1, 3, 5))
+                match = ((pixels[:, :, 0] == s[0]) & (pixels[:, :, 1] == s[1])
+                         & (pixels[:, :, 2] == s[2]) & (pixels[:, :, 3] == 255))
+                pixels[match, :3] = t
+            cells.append(Image.fromarray(pixels))
+        rows.append(cells)
+    if not rows:
+        raise SystemExit(f"{pack_dir} declares no appearance choices")
+    width = max(len(r) for r in rows) * preview.width * scale
+    sheet = Image.new("RGB", (width, len(rows) * preview.height * scale), background)
+    for y, cells in enumerate(rows):
+        for x, cell in enumerate(cells):
+            big = cell.resize((cell.width * scale, cell.height * scale), Image.NEAREST)
+            sheet.paste(big, (x * big.width, y * big.height), big)
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(out)
+    print(f"{out}: " + "; ".join(
+        f"{c['label']}: " + ", ".join(o["label"] for o in c["options"]) for c in pack["appearance"]))
+
+
+if __name__ == "__main__":
+    import sys
+    contact_sheet(sys.argv[1], sys.argv[2])

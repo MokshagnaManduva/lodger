@@ -1,7 +1,7 @@
 import AppKit
 import LodgerEngine
 
-/// Settings: Character, Behaviour and General tabs.
+/// Settings: Character, Appearance, Behaviour and General tabs.
 ///
 /// Created on demand and refreshed only by user actions and pack changes; there is
 /// no timer here. Everything on the Behaviour tab is generated from what the
@@ -18,6 +18,12 @@ final class SettingsWindowController: NSWindowController {
     private let details = NSTextField(wrappingLabelWithString: "")
     private let remove = NSButton(title: "Remove Character…", target: nil, action: nil)
     private let reset = NSButton(title: "Reset Character Settings", target: nil, action: nil)
+
+    // Appearance
+    private let appearanceTitle = NSTextField(labelWithString: "")
+    private let lookPreview = NSImageView()
+    private let looks = NSStackView()
+    private let resetAppearance = NSButton(title: "Reset Appearance", target: nil, action: nil)
 
     // Behaviour
     private let behaviourTitle = NSTextField(labelWithString: "")
@@ -64,6 +70,7 @@ final class SettingsWindowController: NSWindowController {
             tabs.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -12)
         ])
         addTab("Character", identifier: "character", content: characterTab(), scrolls: false)
+        addTab("Appearance", identifier: "appearance", content: appearanceTab(), scrolls: false)
         addTab("Behaviour", identifier: "behaviour", content: behaviourTab(), scrolls: true)
         addTab("General", identifier: "general", content: generalTab(), scrolls: false)
     }
@@ -147,6 +154,28 @@ final class SettingsWindowController: NSWindowController {
         ])
     }
 
+    private func appearanceTab() -> NSStackView {
+        appearanceTitle.font = .systemFont(ofSize: 13, weight: .semibold)
+        lookPreview.imageScaling = .scaleProportionallyUpOrDown
+        lookPreview.setAccessibilityLabel("Appearance preview")
+        lookPreview.identifier = NSUserInterfaceItemIdentifier("lookPreview")
+        // An integer multiple of a typical cell, so pixel art stays crisp.
+        lookPreview.widthAnchor.constraint(equalToConstant: 192).isActive = true
+        lookPreview.heightAnchor.constraint(equalToConstant: 192).isActive = true
+        lookPreview.wantsLayer = true
+        lookPreview.layer?.magnificationFilter = .nearest
+        looks.orientation = .vertical; looks.alignment = .leading; looks.spacing = 10
+        wire(resetAppearance, #selector(resetAppearancePressed), id: "resetAppearance")
+        let side = NSStackView(views: [looks, resetAppearance])
+        side.orientation = .vertical; side.alignment = .leading; side.spacing = 14
+        let row = NSStackView(views: [lookPreview, side]); row.spacing = 24; row.alignment = .top
+        return NSStackView(views: [
+            appearanceTitle,
+            caption("Looks are recolourings the character itself offers. Choosing one redraws the character where it stands."),
+            row
+        ])
+    }
+
     private func behaviourTab() -> NSStackView {
         behaviourTitle.font = .systemFont(ofSize: 13, weight: .semibold)
         controls.orientation = .vertical; controls.alignment = .leading; controls.spacing = 8
@@ -210,8 +239,11 @@ final class SettingsWindowController: NSWindowController {
     func refresh() {
         characters.removeAllItems()
         for pack in app.packs {
-            characters.addItem(withTitle: pack.pack.identity.name)
-            characters.lastItem?.representedObject = pack.pack.identity.id
+            // Through the menu, not addItem(withTitle:), which silently replaces an
+            // existing item of the same title: two characters may share a name.
+            let item = NSMenuItem(title: pack.pack.identity.name, action: nil, keyEquivalent: "")
+            item.representedObject = pack.pack.identity.id
+            characters.menu?.addItem(item)
         }
         if let id = app.activeID, let i = app.packs.firstIndex(where: { $0.pack.identity.id == id }) {
             characters.selectItem(at: i)
@@ -247,13 +279,16 @@ final class SettingsWindowController: NSWindowController {
     private func refreshCharacter() {
         scales.removeAllItems()
         for view in controls.arrangedSubviews { controls.removeArrangedSubview(view); view.removeFromSuperview() }
-        preview.image = nil
+        for view in looks.arrangedSubviews { looks.removeArrangedSubview(view); view.removeFromSuperview() }
+        preview.image = nil; lookPreview.image = nil
         guard let id = selectedID, let loaded = app.packs.first(where: { $0.pack.identity.id == id }) else {
             scales.isEnabled = false; reset.isEnabled = false; remove.isEnabled = false
             resetBehaviour.isEnabled = false
             details.stringValue = "No characters installed. Add a character to get started."
             behaviourTitle.stringValue = "Behaviour"
             controls.addArrangedSubview(caption("Add a character to see its controls."))
+            appearanceTitle.stringValue = "Appearance"; resetAppearance.isEnabled = false
+            looks.addArrangedSubview(caption("Add a character to see its looks."))
             return
         }
         let values = app.scales(for: id)
@@ -267,7 +302,10 @@ final class SettingsWindowController: NSWindowController {
             "By \(pack.identity.author) · \(pack.identity.license)",
             app.removablePack(for: id) != nil ? "Installed by you" : "Included with Lodger or a development folder"
         ].filter { !$0.isEmpty }.joined(separator: "\n")
-        if let data = try? app.store.previewData(for: loaded) { preview.image = NSImage(data: data) }
+        let picture = app.previewImage(for: id)
+        preview.image = picture; lookPreview.image = picture
+        appearanceTitle.stringValue = "\(pack.identity.name)’s appearance"
+        buildLooks(for: pack, id: id)
         behaviourTitle.stringValue = "\(pack.identity.name)’s behaviour"
         buildControls(for: pack)
     }
@@ -326,6 +364,33 @@ final class SettingsWindowController: NSWindowController {
         }
     }
 
+    /// One pop-up per choice the pack offers, in the pack's order.
+    private func buildLooks(for pack: Pack, id: String) {
+        let current = app.appearance(for: id)
+        resetAppearance.isEnabled = current != pack.defaultAppearance
+        guard !pack.appearance.isEmpty else {
+            looks.addArrangedSubview(caption("\(pack.identity.name) has one look."))
+            return
+        }
+        for choice in pack.appearance {
+            let label = NSTextField(labelWithString: choice.label)
+            label.widthAnchor.constraint(equalToConstant: 100).isActive = true
+            let menu = NSPopUpButton()
+            for option in choice.options {
+                let item = NSMenuItem(title: option.label, action: nil, keyEquivalent: "")
+                item.representedObject = option.id
+                menu.menu?.addItem(item)
+            }
+            if let i = choice.options.firstIndex(where: { $0.id == current[choice.id] }) { menu.selectItem(at: i) }
+            menu.target = self; menu.action = #selector(lookChanged(_:))
+            menu.identifier = NSUserInterfaceItemIdentifier("look." + choice.id)
+            menu.setAccessibilityLabel(choice.label)
+            menu.widthAnchor.constraint(equalToConstant: 170).isActive = true
+            let row = NSStackView(views: [label, menu]); row.spacing = 10
+            looks.addArrangedSubview(row)
+        }
+    }
+
     private func sibling<T: NSView>(of view: NSView, _ id: String) -> T? {
         view.superview?.subviews.first { $0.identifier?.rawValue == id } as? T
     }
@@ -371,6 +436,15 @@ final class SettingsWindowController: NSWindowController {
         app.resetBehaviour(id: id)
         refreshCharacter()
     }
+
+    // MARK: actions — appearance
+
+    @objc private func lookChanged(_ menu: NSPopUpButton) {
+        guard let id = selectedID, let raw = menu.identifier?.rawValue, raw.hasPrefix("look."),
+              let option = menu.selectedItem?.representedObject as? String else { return }
+        app.setAppearance(option, choice: String(raw.dropFirst("look.".count)), for: id)
+    }
+    @objc private func resetAppearancePressed() { if let id = selectedID { app.resetAppearance(id: id) } }
 
     // MARK: actions — general
 

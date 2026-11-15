@@ -9,6 +9,7 @@ The working tree contains a development build, with these implemented features:
 
 - cursor-aware reactions, click-versus-drag handling, falling, walking, and multi-display recovery;
 - native Settings with character previews, size/reset, sound/volume, each character's own behaviour sliders and toggles, and removal to Trash;
+- selectable looks per character (Klien's colourway and emblem metal, Norn's potion colour);
 - app-level options: hide/show, opacity, stay in place, calmer on battery and launch at login;
 - two bundled characters, Klien and Norn, loaded through the same path as installed packs;
 - staged pack installation with schema/asset/path validation, ID-based replacement and tested rollback;

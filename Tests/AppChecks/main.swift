@@ -220,7 +220,7 @@ func tabView(_ view: NSView) -> NSTabView? {
     return nil
 }
 let tabControl = tabView(tabRoot)!
-check(tabControl.tabViewItems.map(\.label) == ["Character", "Behaviour", "General"], "settings has three tabs")
+check(tabControl.tabViewItems.map(\.label) == ["Character", "Appearance", "Behaviour", "General"], "settings has four tabs")
 func inTabs(_ id: String) -> NSView? {
     for item in tabControl.tabViewItems { if let v = item.view, let hit = find(v, id) { return hit } }
     return nil
@@ -279,11 +279,74 @@ let noLogin = AppController(installationDirectory: temporary.appendingPathCompon
                             loginItem: LoginItem(isAvailable: false, isEnabled: { false }, setEnabled: { _ in }))
 check(noLogin.setLaunchAtLogin(true) != nil, "launch at login explains when it is unavailable")
 let noLoginSettings = SettingsWindowController(app: noLogin)
-check((find(tabView(noLoginSettings.window!.contentView!)!.tabViewItems[2].view!, "general.login") as? NSButton)?.isEnabled == false,
+check((find(tabView(noLoginSettings.window!.contentView!)!.tabViewItems[3].view!, "general.login") as? NSButton)?.isEnabled == false,
       "the login checkbox is disabled when unavailable")
 let credits = controller.creditsText
 check(credits.contains("MIT License") && controller.packs.allSatisfy { credits.contains($0.pack.identity.name) },
       "about credits list the installed characters")
+// Appearance, on a synthetic pack whose single texture colour is known.
+let lookSource = temporary.appendingPathComponent("look-source")
+try fm.copyItem(at: root.appendingPathComponent("Tests/Fixtures/test.solidsquare"), to: lookSource)
+var lookManifest = try JSONSerialization.jsonObject(with: Data(contentsOf: lookSource.appendingPathComponent("pack.json"))) as! [String: Any]
+func opaqueColours(_ image: CGImage) -> Set<UInt32> {
+    var bytes = [UInt8](repeating: 0, count: image.width * image.height * 4)
+    bytes.withUnsafeMutableBytes {
+        let c = CGContext(data: $0.baseAddress, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: image.width * 4,
+                          space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue)!
+        c.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    }
+    var out = Set<UInt32>()
+    for i in stride(from: 0, to: bytes.count, by: 4) where bytes[i + 3] == 255 {
+        out.insert(UInt32(bytes[i]) << 16 | UInt32(bytes[i + 1]) << 8 | UInt32(bytes[i + 2]))
+    }
+    return out
+}
+let squareFile = ((lookManifest["textures"] as! [String: [String: Any]]).values.first!["file"] as! String)
+let squareImage = CGImageSourceCreateImageAtIndex(CGImageSourceCreateWithURL(lookSource.appendingPathComponent(squareFile) as CFURL, nil)!, 0, nil)!
+let drawn = opaqueColours(squareImage).first!
+let drawnHex = String(format: "#%06x", drawn)
+lookManifest["format"] = 2
+var lookIdentity = lookManifest["identity"] as! [String: Any]
+lookIdentity["id"] = "test.looks"; lookIdentity["preview"] = squareFile; lookManifest["identity"] = lookIdentity
+lookManifest["appearance"] = [["id": "paint", "label": "Paint", "default": "plain", "options": [
+    ["id": "plain", "label": "Plain"], ["id": "teal", "label": "Teal", "recolor": [drawnHex: "#008080"]]]]]
+try JSONSerialization.data(withJSONObject: lookManifest).write(to: lookSource.appendingPathComponent("pack.json"))
+check(controller.installPacks(from: [lookSource]).isEmpty, "pack with looks installs")
+let lid = "test.looks"
+controller.activate(id: lid)
+controller.pet!.place(at: spot)
+let plainPet = controller.pet!
+check(plainPet.appearance == ["paint": "plain"] && controller.appearance(for: lid) == ["paint": "plain"], "a character starts in its default look")
+controller.setAppearance("teal", choice: "paint", for: lid)
+check(controller.pet !== plainPet && controller.pet!.appearance == ["paint": "teal"], "choosing a look recreates the character with it")
+check(abs(controller.pet!.feet.x - spot.x) < 1, "and keeps it where it stood")
+let tealPet = controller.pet!
+controller.setAppearance("teal", choice: "paint", for: lid)
+controller.setAppearance("plaid", choice: "paint", for: lid); controller.setAppearance("teal", choice: "hat", for: lid)
+check(controller.pet === tealPet && Preferences.appearance(for: lid) == ["paint": "teal"], "re-choosing the same look or an unknown one changes nothing")
+func previewColours(_ id: String) -> Set<UInt32> {
+    guard let cg = controller.previewImage(for: id)?.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return [] }
+    return opaqueColours(cg)
+}
+check(previewColours(lid) == [0x008080], "the preview shows the chosen look")
+controller.activate(id: second); controller.activate(id: lid)
+check(controller.pet!.appearance == ["paint": "teal"], "the look survives switching characters")
+let lookSettings = SettingsWindowController(app: controller)
+let lookTabs = tabView(lookSettings.window!.contentView!)!
+let lookMenu = find(lookTabs.tabViewItems[1].view!, "look.paint") as? NSPopUpButton
+let picker = find(lookTabs.tabViewItems[0].view!, "characters") as? NSPopUpButton
+check(picker?.numberOfItems == controller.packs.count && picker?.selectedItem?.representedObject as? String == lid,
+      "characters that share a display name each keep their own entry")
+check(lookMenu?.itemTitles == ["Plain", "Teal"] && lookMenu?.titleOfSelectedItem == "Teal", "settings offers the pack's looks in order with the current one selected")
+check((find(lookTabs.tabViewItems[1].view!, "resetAppearance") as? NSButton)?.isEnabled == true, "reset appearance is offered when the look is not the default")
+Preferences.setAppearance(["paint": "gone", "old": "x"], for: lid)
+check(controller.appearance(for: lid) == ["paint": "plain"], "a saved look the pack no longer offers falls back to the default")
+Preferences.setAppearance(["paint": "teal"], for: lid)
+controller.resetAppearance(id: lid)
+check(controller.pet!.appearance == ["paint": "plain"] && previewColours(lid) == [drawn], "reset appearance restores the art as drawn")
+controller.setAppearance("teal", choice: "paint", for: lid); controller.reset(id: lid)
+check(controller.pet!.appearance == ["paint": "plain"], "reset character settings also restores the look")
+
 for id in [first, second] {
     controller.activate(id: id)
     try renderTabs(SettingsWindowController(app: controller), prefix: controller.packs.first { $0.pack.identity.id == id }!.root.lastPathComponent.lowercased())

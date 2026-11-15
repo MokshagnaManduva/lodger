@@ -60,6 +60,15 @@ Add to the next desktop session:
 - Launch at login from the built app; confirm it appears in System Settings and that
   removing it there is reflected when Settings is reopened.
 
+## Appearance — 2026-11-15
+
+The Appearance tab offers each look a character declares. The app checks cover the
+default look, recreation in place with the chosen look, the recoloured preview,
+persistence across switching, fallback when a saved look no longer exists, both resets,
+and two characters sharing a display name in the picker. Add to the next desktop
+session: choose every look for both characters and watch a walk, a grab and a fall in
+each; confirm clicks still land exactly on the silhouette.
+
 ## Recorded automated evidence
 
 The September 30 run passed **30/30 app checks**, **306/306 generic engine checks**,

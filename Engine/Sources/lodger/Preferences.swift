@@ -17,6 +17,7 @@ struct Preferences {
         static let volume = "audio.volume"
         static let tuning = "tuning"
         static let flags = "flags"
+        static let appearance = "appearance"
         static let hidden = "pet.hidden"
         static let opacity = "pet.opacity"
         static let stayInPlace = "pet.stayInPlace"
@@ -109,6 +110,17 @@ struct Preferences {
         d.set(all, forKey: Key.flags)
     }
 
+    /// Per-pack look: appearance choice id -> option id.
+    static func appearance(for packID: String) -> [String: String] {
+        (d.dictionary(forKey: Key.appearance)?[packID] as? [String: String]) ?? [:]
+    }
+
+    static func setAppearance(_ values: [String: String], for packID: String) {
+        var all = d.dictionary(forKey: Key.appearance) ?? [:]
+        all[packID] = values
+        d.set(all, forKey: Key.appearance)
+    }
+
     /// Forget one control's saved value, of either kind.
     static func resetControl(_ name: String, for packID: String) {
         var sliders = tuning(for: packID), toggles = flags(for: packID)
@@ -122,7 +134,7 @@ struct Preferences {
     }
 
     static func reset(packID: String) {
-        for key in [Key.scales, Key.tuning, Key.flags] {
+        for key in [Key.scales, Key.tuning, Key.flags, Key.appearance] {
             var all = d.dictionary(forKey: key) ?? [:]
             all.removeValue(forKey: packID)
             d.set(all, forKey: key)

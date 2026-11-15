@@ -1,7 +1,7 @@
 # Character pack format v2
 
-Format 2 adds typed Settings controls (§8), `weightBy`, slider-valued event thresholds
-and the `controls.changed` event. Format 1 packs remain valid and behave as before; a
+Format 2 adds typed Settings controls (§8), `weightBy`, slider-valued event thresholds,
+the `controls.changed` event and selectable looks (`appearance`, §8b). Format 1 packs remain valid and behave as before; a
 pack that uses any of the additions must declare `"format": 2`.
 
 Normative schema: [`Schema/pack.schema.json`](../Schema/pack.schema.json)
@@ -431,6 +431,43 @@ movement and never on a timer.
 **Keep the default cheap.** A control that turns on timed behaviour should default to off
 if the character is otherwise quiescent, and route into a separate non-quiescent state
 rather than making the resting state timed. `Packs/Norn` does this for wandering.
+
+## 8b. `appearance` — looks the user can choose
+
+```json
+"appearance": [
+  { "id": "emblem", "label": "Sun emblem", "default": "gold", "options": [
+      { "id": "gold",   "label": "Gold" },
+      { "id": "silver", "label": "Silver",
+        "recolor": { "#fad367": "#d9dde2", "#dba639": "#a7adb5" } } ] }
+]
+```
+
+Each choice becomes a pop-up on the Appearance tab, in the order you list them. An
+option's `recolor` maps exact opaque `#rrggbb` colours in your atlases to replacements;
+an option without one is the art as drawn, and `default` must name such an option if
+you want the shipped art to be the default look. Choices combine, so two choices of
+three options give nine looks from one set of atlases.
+
+The engine applies the merged map **once, when an atlas is loaded**. It never changes
+alpha, so your hit masks, anchors and frame timings stay valid for every look, and it
+costs nothing per frame. Choosing a look redraws the character where it stands.
+
+What it cannot do, by design:
+
+- add, remove or reshape anything — it recolours pixels that are already there;
+- separate two parts that share a colour. If hair and coat use the same ramp, they
+  change together. Give parts you want to recolour independently their own colours
+  when you draw the art.
+
+Rules the loader and `packtool validate` enforce: choice and option ids are unique;
+`default` names an option; colours are `#rrggbb`; a source colour may be recoloured by
+only one choice (otherwise the result would depend on order); at most 8 choices, 16
+options each and 64 colours per option; format 2 only.
+
+`Tools/packtool/looks.py` has helpers for deriving maps from a ramp (`tint`, `rotate`,
+`hue_family`) and renders a contact sheet of every option:
+`python3 Tools/packtool/looks.py Packs/mycharacter build/looks.png`.
 
 ## 9. Checklist before publishing
 

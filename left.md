@@ -53,8 +53,21 @@ Results after this step: **358/358 engine checks** with both packs and **76/76 a
 checks**. Each tab is rendered offscreen to `build/settings-<character>-<tab>.png`
 during `make app-test` for inspection.
 
+**Appearance variants (same day).** Packs declare looks as colour maps applied when
+an atlas loads. Klien: colourway (classic, midnight, burgundy, forest) and emblem
+metal (gold, silver, rose gold). Norn: potion colour (violet, emerald, amber, azure).
+Settings has an Appearance tab with a live preview. Results after this step:
+**377/377 engine checks** with both packs and **89/89 app checks**; `make looks`
+writes `build/looks-klien.png` and `build/looks-norn.png`.
+
 Still open from this work:
 
+- **Owner art approval of the new looks.** Klien's colourways tint hat, hair, suit and
+  cape together because they share one dark ramp; keeping his hair black would need
+  the base art re-authored with a separate hair ramp. Norn's irises share two of the
+  potion purples and shift slightly with the potion colour.
+- "No emblem" for Klien was not built: recolouring cannot remove a prop, and the toss
+  would be empty-handed. It needs per-option texture overrides plus a mask.
 - Launch at login has only been exercised through a test double; it needs a run from
   the built app (and ideally a signed one).
 - Calmer on battery and Stay in place are verified at the Director and controller
@@ -67,7 +80,6 @@ Still open from this work:
   values. Defaults are unchanged in cost by construction, not by a new measurement.
 - With Klien's cursor watching switched off, the pointer monitor stays installed because
   clicks and grabs still need it.
-- Appearance variants (palette swaps plus prop options) are agreed but not started.
 - `site/` and `.github/workflows/site.yml` remain uncommitted local work.
 
 ### Settings/import correctness — 2026-09-30

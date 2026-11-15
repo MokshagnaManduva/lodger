@@ -9,6 +9,14 @@ Norn is a curious, slightly distracted alchemist accompanied by a floating root.
 Her movement language is careful footwork, expressive hands, and prop-driven
 mishaps. Her identity reference and all original sheets remain unchanged.
 
+## Looks (0.4.0)
+
+**Potion:** Violet (the art as drawn), Emerald, Amber, Azure. `build_norn.py` finds the
+flask's purple hue family in the compiled atlases and rotates it; `make looks` renders
+the result to `build/looks-norn.png`. Her irises share two of those purples and shift
+slightly with the potion. The other props are baked into the generated sheets and share
+colours with her clothes, so they are not offered as choices.
+
 ## Settings controls (0.4.0)
 
 | Control | Kind | Effect |

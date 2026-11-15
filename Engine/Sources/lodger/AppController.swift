@@ -107,7 +107,8 @@ final class AppController {
         let savedScale = Preferences.scale(for: chosen.pack.identity.id,
                                            defaultValue: chosen.pack.stage.defaultScale)
         let scale = allowedScales.contains(savedScale) ? savedScale : chosen.pack.stage.defaultScale
-        let p = Pet(loaded: chosen, scale: scale)
+        let p = Pet(loaded: chosen, scale: scale,
+                    appearance: Preferences.appearance(for: chosen.pack.identity.id))
         p.tuning = Preferences.resolvedTuning(for: chosen.pack)
         p.flags = Preferences.resolvedFlags(for: chosen.pack)
         p.audio.enabled = Preferences.audioEnabled && chosen.pack.requires.contains("audio")
@@ -180,6 +181,44 @@ final class AppController {
         guard activeID == id, let pack = packs.first(where: { $0.pack.identity.id == id })?.pack else { return }
         pet?.tuning = Preferences.resolvedTuning(for: pack)
         pet?.flags = Preferences.resolvedFlags(for: pack)
+    }
+
+    // MARK: appearance
+
+    /// The look in force for a character: saved choices, else the pack's defaults.
+    func appearance(for id: String) -> [String: String] {
+        guard let pack = packs.first(where: { $0.pack.identity.id == id })?.pack else { return [:] }
+        return pack.resolvedAppearance(Preferences.appearance(for: id))
+    }
+
+    /// Saves the choice and, for the running character, recreates it in place:
+    /// the look is baked into the atlases when they load.
+    func setAppearance(_ option: String, choice: String, for id: String) {
+        guard let pack = packs.first(where: { $0.pack.identity.id == id })?.pack,
+              pack.appearance.first(where: { $0.id == choice })?.options.contains(where: { $0.id == option }) == true
+        else { return }
+        var values = Preferences.appearance(for: id)
+        guard pack.resolvedAppearance(values)[choice] != option else { return }
+        values[choice] = option
+        Preferences.setAppearance(values, for: id)
+        if activeID == id, pet != nil { activate(id: id) } else { onChange?() }
+    }
+
+    func resetAppearance(id: String) {
+        guard !Preferences.appearance(for: id).isEmpty else { return }
+        Preferences.setAppearance([:], for: id)
+        if activeID == id, pet != nil { activate(id: id) } else { onChange?() }
+    }
+
+    /// The pack's preview picture in the chosen look.
+    func previewImage(for id: String) -> NSImage? {
+        guard let loaded = packs.first(where: { $0.pack.identity.id == id }),
+              let data = try? store.previewData(for: loaded),
+              let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+              let look = Recolor.apply(image, table: loaded.pack.recolorTable(selection: Preferences.appearance(for: id)))
+        else { return nil }
+        return NSImage(cgImage: look, size: NSSize(width: look.width, height: look.height))
     }
 
     /// Credits for the About panel, from whatever is installed rather than from a

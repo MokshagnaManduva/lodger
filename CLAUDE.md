@@ -23,8 +23,12 @@ pet exists), Opacity, Stay in place (`Director.allowsAutonomousWalking`), Calmer
 battery (`Director.pace`, driven by the IOKit power-source notification) and Launch at
 login (`SMAppService`, behind the `LoginItem` seam). Behaviour has per-control and
 whole-character reset. Spec: `Docs/superpowers/specs/2026-11-15-settings-redesign-app-controls-design.md`.
-Appearance variants (palette swaps plus prop options) are agreed but not started.
-Recorded November 15: 358 engine checks with both packs, 76 app checks, 92 Norn and all
+Packs can also declare `appearance` choices: colour maps applied once when an atlas
+loads (`Recolor.swift`), never per frame and never touching alpha, so masks and anchors
+stay valid. Klien offers four colourways and three emblem metals, Norn four potion
+colours (`make looks` renders them); these looks still need owner art approval. Settings
+has a fourth tab, Appearance. Spec: `Docs/superpowers/specs/2026-11-15-appearance-variants-design.md`.
+Recorded November 15: 377 engine checks with both packs, 89 app checks, 92 Norn and all
 Klien Director checks, pack/art, separation and release checks passed.
 Live desktop acceptance of the new Settings window and controls has not been done.
 
@@ -279,6 +283,9 @@ Guards: `random(p)`, `stateAge(op, sec)`, `pointerDistance(op, px)`, `pointerSid
 `onEdge(floor|wallLeft|wallRight|ceiling)`, `facing(left|right)`, `flag(name, bool)`,
 `timeOfDay(from, to)`, `lowPower(bool)`, plus `all` / `any` / `not`. In format 2 a `flag`
 must name a toggle the pack declares in `tuning`; the host supplies its value.
+
+**Looks stay inert too.** `appearance` options are colour lookup tables. The engine
+applies one when an atlas is decoded and at no other time.
 
 **Controls stay inert.** A pack declares sliders and toggles and references them by name
 (`scaleBy`, `weightBy`, `{"knob": ...}`, `flag`). The engine multiplies, divides or
