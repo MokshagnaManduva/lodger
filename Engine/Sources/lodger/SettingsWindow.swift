@@ -54,7 +54,7 @@ final class SettingsWindowController: NSWindowController {
         let title = NSTextField(labelWithString: "Characters")
         title.font = .systemFont(ofSize: 20, weight: .semibold)
         let note = NSTextField(wrappingLabelWithString:
-            "Imports are validated before replacement. Removed characters go to Trash. Reset restores this character’s size and personality defaults.")
+            "Imports are validated before replacement. Removed characters go to Trash. Reset restores this character’s size and behaviour defaults.")
         note.textColor = .secondaryLabelColor; note.font = .systemFont(ofSize: 12)
         let stack = NSStackView(views: [title, characters, info, actions,
             NSTextField(labelWithString: "Display size"), scales, tuning, reset,
@@ -124,17 +124,50 @@ final class SettingsWindowController: NSWindowController {
         let pack = loaded.pack
         details.stringValue = "\(pack.identity.name) · \(pack.identity.version)\n\(pack.identity.description ?? "")\n\(pack.identity.license)"
         if let data = try? app.store.previewData(for: loaded) { preview.image = NSImage(data: data) }
-        let resolved = Preferences.resolvedTuning(for: pack)
-        let usedKnobs = Set(pack.states.values.compactMap { $0.duration?.scaleBy })
-        for name in pack.tuning.keys.sorted() where usedKnobs.contains(name) {
-            guard let knob = pack.tuning[name] else { continue }
-            let label = NSTextField(labelWithString: knob.label)
-            let slider = NSSlider(value: resolved[name] ?? knob.defaultValue, minValue: knob.min,
-                                  maxValue: knob.max, target: self, action: #selector(tuningChanged(_:)))
-            slider.identifier = NSUserInterfaceItemIdentifier(name)
-            slider.setAccessibilityLabel(knob.label); slider.isContinuous = false
-            slider.widthAnchor.constraint(equalToConstant: 240).isActive = true
-            tuning.addArrangedSubview(NSStackView(views: [label, slider]))
+        buildControls(for: pack)
+    }
+
+    /// One generic control per entry the pack both declares and uses, under the
+    /// group headings the pack chose. Nothing here knows what any control means.
+    private func buildControls(for pack: Pack) {
+        let sliders = Preferences.resolvedTuning(for: pack), toggles = Preferences.resolvedFlags(for: pack)
+        let used = pack.referencedControls
+        let entries = pack.tuning.filter { used.contains($0.key) }
+        let groups = Dictionary(grouping: entries.keys) { entries[$0]?.group ?? "" }
+        for group in groups.keys.sorted() {
+            let heading = NSTextField(labelWithString: group.isEmpty ? "Behaviour" : group)
+            heading.font = .systemFont(ofSize: 13, weight: .semibold)
+            tuning.addArrangedSubview(heading)
+            let names = (groups[group] ?? []).sorted {
+                let a = entries[$0]!, b = entries[$1]!
+                return a.isToggle != b.isToggle ? !a.isToggle : a.label.localizedStandardCompare(b.label) == .orderedAscending
+            }
+            for name in names {
+                guard let knob = entries[name] else { continue }
+                let id = NSUserInterfaceItemIdentifier(name)
+                if knob.isToggle {
+                    let box = NSButton(checkboxWithTitle: knob.label, target: self, action: #selector(flagChanged(_:)))
+                    box.identifier = id; box.toolTip = knob.description
+                    box.state = (toggles[name] ?? false) ? .on : .off
+                    tuning.addArrangedSubview(box)
+                } else {
+                    let label = NSTextField(labelWithString: knob.label)
+                    label.widthAnchor.constraint(equalToConstant: 150).isActive = true
+                    let value = sliders[name] ?? knob.defaultValue
+                    let slider = NSSlider(value: value, minValue: knob.min, maxValue: knob.max,
+                                          target: self, action: #selector(tuningChanged(_:)))
+                    slider.identifier = id; slider.toolTip = knob.description
+                    slider.setAccessibilityLabel(knob.label)
+                    slider.widthAnchor.constraint(equalToConstant: 220).isActive = true
+                    let readout = NSTextField(labelWithString: ControlFormat.string(value, unit: knob.unit))
+                    readout.textColor = .secondaryLabelColor
+                    readout.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+                    readout.identifier = NSUserInterfaceItemIdentifier("readout." + name)
+                    let row = NSStackView(views: [label, slider, readout])
+                    row.spacing = 10; row.toolTip = knob.description
+                    tuning.addArrangedSubview(row)
+                }
+            }
         }
     }
 
@@ -151,7 +184,14 @@ final class SettingsWindowController: NSWindowController {
     }
     @objc private func volumeChanged() { Preferences.volume = volume.doubleValue; app.pet?.audio.volume = Preferences.volume }
     @objc private func tuningChanged(_ slider: NSSlider) {
-        if let id = selectedID, let name = slider.identifier?.rawValue { app.setTuning(slider.doubleValue, name: name, for: id) }
+        guard let id = selectedID, let name = slider.identifier?.rawValue else { return }
+        app.setTuning(slider.doubleValue, name: name, for: id)
+        let unit = app.packs.first { $0.pack.identity.id == id }?.pack.tuning[name]?.unit
+        let readout = slider.superview?.subviews.first { $0.identifier?.rawValue == "readout." + name } as? NSTextField
+        readout?.stringValue = ControlFormat.string(slider.doubleValue, unit: unit)
+    }
+    @objc private func flagChanged(_ box: NSButton) {
+        if let id = selectedID, let name = box.identifier?.rawValue { app.setFlag(box.state == .on, name: name, for: id) }
     }
     @objc private func resetCharacter() { if let id = selectedID { app.reset(id: id) } }
     @objc private func revealFolder() { NSWorkspace.shared.activateFileViewerSelecting([app.installationDirectory]) }
@@ -183,6 +223,24 @@ extension AppController {
     func showError(_ message: String) {
         let alert = NSAlert(); alert.messageText = "Character installation or management notice"
         alert.informativeText = message; alert.alertStyle = .warning; alert.runModal()
+    }
+}
+
+/// How a slider's value is shown. The pack supplies only a unit hint.
+enum ControlFormat {
+    static func string(_ value: Double, unit: String?) -> String {
+        switch unit {
+        case "seconds":
+            let seconds = Int(value.rounded())
+            if seconds < 60 { return "\(seconds) s" }
+            if seconds < 3600 { return seconds % 60 == 0 ? "\(seconds / 60) min" : "\(seconds / 60) min \(seconds % 60) s" }
+            let minutes = (seconds % 3600) / 60
+            return minutes == 0 ? "\(seconds / 3600) h" : "\(seconds / 3600) h \(minutes) min"
+        case "percent":
+            return "\(Int((value * 100).rounded()))%"
+        default:
+            return String(format: "%.2f", value)
+        }
     }
 }
 

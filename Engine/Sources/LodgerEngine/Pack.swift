@@ -377,6 +377,27 @@ public struct Pack: Decodable, Sendable {
         }
     }
 
+    /// Names of the controls some state actually uses: through `scaleBy`,
+    /// `weightBy`, an event threshold or a `flag` guard. A host shows only these,
+    /// so a declared-but-unused entry never appears as a control that does nothing.
+    public var referencedControls: Set<String> {
+        var out = Set<String>()
+        func visit(_ g: Guard?) {
+            switch g {
+            case .flag(let name, _)?: out.insert(name)
+            case .all(let gs)?, .any(let gs)?: gs.forEach { visit($0) }
+            case .not(let inner)?: visit(inner)
+            default: break
+            }
+        }
+        for st in states.values {
+            if let knob = st.duration?.scaleBy { out.insert(knob) }
+            for edge in st.next { visit(edge.when); if let knob = edge.weightBy { out.insert(knob) } }
+            for edge in st.interrupts { visit(edge.when); if let knob = edge.on.knob { out.insert(knob) } }
+        }
+        return out.intersection(tuning.keys)
+    }
+
     /// The pack's own slider defaults, by name.
     public var defaultTuning: [String: Double] {
         tuning.filter { !$0.value.isToggle }.mapValues(\.defaultValue)

@@ -15,6 +15,9 @@ final class AppController {
     let installationDirectory: URL
     var onChange: (() -> Void)?
     private let trash: (URL) throws -> Void
+    /// The character to show when nothing has been chosen yet. Supplied by the
+    /// bundle's Info.plist, so the build decides it and no pack ID lives in source.
+    let defaultPackID: String?
 
     /// Where a user drops a character. A real, openable directory - not a sandbox
     /// container - which is the whole reason Lodger is distributed with a Developer
@@ -33,8 +36,10 @@ final class AppController {
     }
 
     init(extraSearchPaths: [URL] = [], installationDirectory: URL = AppController.packsDirectory,
+         defaultPackID: String? = Bundle.main.object(forInfoDictionaryKey: "LodgerDefaultPack") as? String,
          trash: @escaping (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }) {
         self.trash = trash
+        self.defaultPackID = defaultPackID
         self.installationDirectory = installationDirectory
         try? FileManager.default.createDirectory(at: installationDirectory,
                                                  withIntermediateDirectories: true)
@@ -82,7 +87,9 @@ final class AppController {
         let previousFeet = pet?.feet
         pet?.stop()
         pet = nil
-        let chosen = packs.first { $0.pack.identity.id == id } ?? packs.first
+        let chosen = packs.first { $0.pack.identity.id == id }
+            ?? packs.first { $0.pack.identity.id == defaultPackID }
+            ?? packs.first
         guard let chosen else { Preferences.packID = nil; onChange?(); return }
         Preferences.packID = chosen.pack.identity.id
 
@@ -92,6 +99,7 @@ final class AppController {
         let scale = allowedScales.contains(savedScale) ? savedScale : chosen.pack.stage.defaultScale
         let p = Pet(loaded: chosen, scale: scale)
         p.tuning = Preferences.resolvedTuning(for: chosen.pack)
+        p.flags = Preferences.resolvedFlags(for: chosen.pack)
         p.audio.enabled = Preferences.audioEnabled && chosen.pack.requires.contains("audio")
         p.audio.volume = Preferences.volume
         if let previousFeet { p.place(at: previousFeet) }
@@ -126,11 +134,21 @@ final class AppController {
 
     func setTuning(_ value: Double, name: String, for id: String) {
         guard value.isFinite, let pack = packs.first(where: { $0.pack.identity.id == id }),
-              let knob = pack.pack.tuning[name] else { return }
+              let knob = pack.pack.tuning[name], !knob.isToggle else { return }
         var values = Preferences.tuning(for: id)
         values[name] = min(knob.max, max(knob.min, value))
         Preferences.setTuning(values, for: id)
         if activeID == id { pet?.tuning = Preferences.resolvedTuning(for: pack.pack) }
+    }
+
+    /// Applies to the running pet at its next event or timeout; it is not restarted.
+    func setFlag(_ value: Bool, name: String, for id: String) {
+        guard let pack = packs.first(where: { $0.pack.identity.id == id }),
+              pack.pack.tuning[name]?.isToggle == true else { return }
+        var values = Preferences.flags(for: id)
+        values[name] = value
+        Preferences.setFlags(values, for: id)
+        if activeID == id { pet?.flags = Preferences.resolvedFlags(for: pack.pack) }
     }
 
     func removablePack(for id: String) -> URL? {

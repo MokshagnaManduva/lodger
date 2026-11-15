@@ -32,7 +32,8 @@ public final class IdleWatcher {
 
     private let provider: IdleProvider
     private var timer: DispatchSourceTimer?
-    private var threshold: TimeInterval = 0
+    /// The threshold currently being counted towards. Diagnostics and tests.
+    public private(set) var threshold: TimeInterval = 0
     private var fired = false
 
     public private(set) var scheduledCount = 0

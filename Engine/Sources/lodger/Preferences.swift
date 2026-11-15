@@ -16,6 +16,7 @@ struct Preferences {
         static let audio = "audio.enabled"
         static let volume = "audio.volume"
         static let tuning = "tuning"
+        static let flags = "flags"
     }
 
     static var packID: String? {
@@ -61,21 +62,44 @@ struct Preferences {
         d.set(all, forKey: Key.tuning)
     }
 
+    /// Per-pack values for the toggles a pack declares in `tuning`. Stored apart
+    /// from the sliders, so a control that changes kind between pack versions
+    /// falls back to its new default instead of being misread.
+    static func flags(for packID: String) -> [String: Bool] {
+        (d.dictionary(forKey: Key.flags)?[packID] as? [String: Bool]) ?? [:]
+    }
+
+    static func setFlags(_ values: [String: Bool], for packID: String) {
+        var all = d.dictionary(forKey: Key.flags) ?? [:]
+        all[packID] = values
+        d.set(all, forKey: Key.flags)
+    }
+
     static func reset(packID: String) {
-        for key in [Key.scales, Key.tuning] {
+        for key in [Key.scales, Key.tuning, Key.flags] {
             var all = d.dictionary(forKey: key) ?? [:]
             all.removeValue(forKey: packID)
             d.set(all, forKey: key)
         }
     }
 
-    /// Resolve a pack's tuning knobs: stored value, else the pack's own default.
+    /// Resolve a pack's sliders: stored value, else the pack's own default.
     static func resolvedTuning(for pack: Pack) -> [String: Double] {
         let stored = tuning(for: pack.identity.id)
         var out: [String: Double] = [:]
-        for (name, knob) in pack.tuning {
+        for (name, knob) in pack.tuning where !knob.isToggle {
             let value = stored[name] ?? knob.defaultValue
             out[name] = value.isFinite ? min(knob.max, max(knob.min, value)) : knob.defaultValue
+        }
+        return out
+    }
+
+    /// Resolve a pack's toggles: stored value, else the pack's own default.
+    static func resolvedFlags(for pack: Pack) -> [String: Bool] {
+        let stored = flags(for: pack.identity.id)
+        var out: [String: Bool] = [:]
+        for (name, knob) in pack.tuning {
+            if let fallback = knob.defaultFlag { out[name] = stored[name] ?? fallback }
         }
         return out
     }

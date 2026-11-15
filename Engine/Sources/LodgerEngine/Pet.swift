@@ -44,8 +44,21 @@ public final class Pet {
     /// Values for the knobs the pack declared in `tuning`. Set by the host from its
     /// own settings store; the engine only ever divides durations by them.
     public var tuning: [String: Double] = [:] {
-        didSet { director.tuning = tuning }
+        didSet {
+            director.tuning = tuning
+            // A slider may supply an event threshold. Re-resolve what is watched
+            // here, on the user's change, rather than ever re-reading it on a tick.
+            guard started else { return }
+            wants = loaded.pack.requestedEvents(tuning: tuning)
+            rearmIdleWatchers()
+        }
     }
+    /// Values for the toggles the pack declared in `tuning`, read by its `flag`
+    /// guards. Takes effect at the next event or timeout; nothing is scheduled.
+    public var flags: [String: Bool] = [:] {
+        didSet { director.flags = flags }
+    }
+    private var started = false
     /// Measurement only: `LODGER_ABLATE=window` skips the window move,
     /// `=springs` skips float displacement, `=both` skips both. Used to attribute
     /// locomotion cost rather than guess at it.
@@ -77,6 +90,12 @@ public final class Pet {
                               scale: self.displayScale,
                               margin: Body.attachmentMargin(for: loaded.pack))
         self.director = Director(pack: loaded.pack, seed: seed)
+        // The pack's own defaults, so a host that sets nothing gets the authored
+        // behaviour. (Property observers do not run during init.)
+        self.tuning = loaded.pack.defaultTuning
+        self.flags = loaded.pack.defaultFlags
+        self.director.tuning = loaded.pack.defaultTuning
+        self.director.flags = loaded.pack.defaultFlags
         self.motion = Motion(feet: .zero)
         self.pointer = PointerMonitor(panel: panel)
         self.pointer.scale = CGFloat(self.displayScale)
@@ -164,7 +183,8 @@ public final class Pet {
 
         // Observers only for what the pack asks for.
         audio.load(pack: loaded.pack, root: loaded.root)
-        wants = loaded.pack.requestedEvents
+        wants = loaded.pack.requestedEvents(tuning: tuning)
+        started = true
         var w: SystemEvents.Wants = []
         if wants["system.wake"] != nil || wants["system.willSleep"] != nil { w.insert(.sleepWake) }
         if wants["power.lowPowerMode"] != nil || wants["power.onBattery"] != nil { w.insert(.power) }
@@ -210,6 +230,7 @@ public final class Pet {
     }
 
     public func stop() {
+        started = false
         audio.stopAll()
         scheduler.cancel()
         userIdle.cancel()

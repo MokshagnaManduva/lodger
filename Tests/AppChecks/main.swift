@@ -117,6 +117,73 @@ catch { check(true, "source removal rejected") }
 controller.activate(id: first)
 try controller.remove(id: first)
 check(controller.activeID == first && controller.removablePack(for: first) == nil, "second override removal falls back")
+// Pack-declared controls, on a synthetic pack so no character is assumed.
+let controlSource = temporary.appendingPathComponent("control-source")
+try fm.copyItem(at: root.appendingPathComponent("Tests/Fixtures/test.solidsquare"), to: controlSource)
+var controlManifest = try JSONSerialization.jsonObject(with: Data(contentsOf: controlSource.appendingPathComponent("pack.json"))) as! [String: Any]
+controlManifest["format"] = 2
+var controlIdentity = controlManifest["identity"] as! [String: Any]
+controlIdentity["id"] = "test.controls"; controlManifest["identity"] = controlIdentity
+controlManifest["tuning"] = [
+    "wait": ["label": "Wait", "min": 60, "max": 600, "default": 300, "unit": "seconds", "group": "Rest"],
+    "alert": ["type": "toggle", "label": "Alert", "default": true, "description": "Responds to clicks"],
+    "unused": ["label": "Unused", "min": 0, "max": 1, "default": 0.5]]
+controlManifest["states"] = ["resting": ["clip": "still", "quiescent": true, "interrupts": [
+    ["on": "pointer.click", "state": "resting", "when": ["flag": ["name": "alert", "value": true]]],
+    ["on": ["user.idle": ["knob": "wait"]], "state": "resting"]]]]
+try JSONSerialization.data(withJSONObject: controlManifest).write(to: controlSource.appendingPathComponent("pack.json"))
+let controlMessages = controller.installPacks(from: [controlSource])
+check(controlMessages.isEmpty, "pack with controls installs")
+let cid = "test.controls"
+controller.activate(id: cid)
+let controlled = controller.pet!
+check(controlled.flags == ["alert": true] && controlled.tuning["wait"] == 300, "pack defaults apply on first activation")
+check(controlled.userIdle.isArmed && controlled.userIdle.threshold == 300, "a tuned threshold arms its watcher at the default")
+controller.setTuning(120, name: "wait", for: cid)
+check(controller.pet === controlled && controlled.userIdle.threshold == 120, "changing a threshold slider re-arms without restarting")
+controller.setFlag(false, name: "alert", for: cid)
+check(controller.pet === controlled && controlled.flags["alert"] == false, "toggle applies live without restarting")
+check(controlled.director.flags["alert"] == false, "toggle reaches the guard evaluator")
+controller.setFlag(true, name: "wait", for: cid); controller.setTuning(1, name: "alert", for: cid)
+check(Preferences.flags(for: cid)["wait"] == nil && Preferences.tuning(for: cid)["alert"] == nil, "a control cannot be set as the wrong kind")
+let reread = AppController(extraSearchPaths: [], installationDirectory: controller.installationDirectory)
+reread.reload()
+let rereadPack = reread.packs.first { $0.pack.identity.id == cid }!.pack
+check(Preferences.resolvedFlags(for: rereadPack)["alert"] == false && Preferences.resolvedTuning(for: rereadPack)["wait"] == 120,
+      "new controller reads saved controls")
+controller.activate(id: second); controller.activate(id: cid)
+check(controller.pet!.flags["alert"] == false && controller.pet!.tuning["wait"] == 120, "controls survive switching")
+let controlSettings = SettingsWindowController(app: controller)
+func find(_ view: NSView, _ id: String) -> NSView? {
+    if view.identifier?.rawValue == id { return view }
+    for child in view.subviews { if let hit = find(child, id) { return hit } }
+    return nil
+}
+let controlRoot = controlSettings.window!.contentView!
+check((find(controlRoot, "alert") as? NSButton)?.state == .off, "settings shows a checkbox for a used toggle")
+check((find(controlRoot, "wait") as? NSSlider)?.doubleValue == 120, "settings shows a slider for a used knob")
+check((find(controlRoot, "readout.wait") as? NSTextField)?.stringValue == "2 min", "slider readout follows the unit hint")
+check(find(controlRoot, "unused") == nil, "an unused control is not shown")
+check(ControlFormat.string(45, unit: "seconds") == "45 s" && ControlFormat.string(5400, unit: "seconds") == "1 h 30 min"
+      && ControlFormat.string(1.5, unit: "percent") == "150%" && ControlFormat.string(1.5, unit: nil) == "1.50", "value formats")
+// A value saved under the other kind must not be misread.
+Preferences.setTuning(["alert": 0, "wait": 120], for: cid)
+Preferences.setFlags(["wait": true], for: cid)
+check(Preferences.resolvedFlags(for: rereadPack) == ["alert": true] && Preferences.resolvedTuning(for: rereadPack)["wait"] == 120,
+      "a value saved as the wrong kind falls back to the pack default")
+controller.reset(id: cid)
+check(controller.pet!.flags["alert"] == true && controller.pet!.tuning["wait"] == 300, "reset restores control defaults")
+Preferences.packID = nil
+let preferred = AppController(extraSearchPaths: [root.appendingPathComponent("Packs")],
+                              installationDirectory: temporary.appendingPathComponent("Preferred"), defaultPackID: second)
+preferred.reload(); preferred.activate(id: nil)
+check(preferred.activeID == second, "first run honours the configured default character")
+preferred.pet?.stop()
+let fallback = AppController(extraSearchPaths: [root.appendingPathComponent("Packs")],
+                             installationDirectory: temporary.appendingPathComponent("Fallback"), defaultPackID: "missing.pack")
+fallback.reload(); fallback.activate(id: nil)
+check(fallback.activeID == first, "a missing default falls back to the first character")
+fallback.pet?.stop()
 let empty = AppController(installationDirectory: temporary.appendingPathComponent("Empty"))
 empty.reload(); empty.activate(id: nil)
 let emptySettings = SettingsWindowController(app: empty)
