@@ -192,9 +192,13 @@ public struct Pack: Decodable, Sendable {
     public struct EventRef: Decodable, Sendable {
         public let name: String
         public let value: Double?
+        /// A slider in `tuning` supplying the threshold instead of a literal, so a
+        /// pack can expose "after how long" without the engine knowing the word.
+        public let knob: String?
+        private struct KnobRef: Decodable { let knob: String }
         public init(from d: Decoder) throws {
             if let s = try? d.singleValueContainer().decode(String.self) {
-                name = s; value = nil; return
+                name = s; value = nil; knob = nil; return
             }
             let c = try d.container(keyedBy: Key.self)
             guard let k = c.allKeys.first else {
@@ -202,9 +206,16 @@ public struct Pack: Decodable, Sendable {
                                                        debugDescription: "empty event")
             }
             name = k.stringValue
-            if let n = try? c.decode(Double.self, forKey: k) { value = n }
-            else if let b = try? c.decode(Bool.self, forKey: k) { value = b ? 1 : 0 }
-            else { value = nil }
+            if let n = try? c.decode(Double.self, forKey: k) { value = n; knob = nil }
+            else if let b = try? c.decode(Bool.self, forKey: k) { value = b ? 1 : 0; knob = nil }
+            else if let r = try? c.decode(KnobRef.self, forKey: k) { value = nil; knob = r.knob }
+            else { value = nil; knob = nil }
+        }
+        /// The threshold in force. A knob with no value resolves to nil, and a
+        /// parameterised interrupt with no threshold never fires.
+        public func threshold(_ tuning: [String: Double]) -> Double? {
+            if let knob { return tuning[knob] }
+            return value
         }
         struct Key: CodingKey {
             let stringValue: String; let intValue: Int? = nil
@@ -216,6 +227,9 @@ public struct Pack: Decodable, Sendable {
     public struct Transition: Decodable, Sendable {
         public let state: String
         public let weight: Double
+        /// Name of a slider in `tuning` to multiply this weight by. Zero removes
+        /// the option; the engine never learns what the slider means.
+        public let weightBy: String?
         public let when: Guard?
     }
     public struct Interrupt: Decodable, Sendable {
@@ -312,40 +326,85 @@ public struct Pack: Decodable, Sendable {
         }
     }
 
-    /// A scalar knob the pack wants surfaced in Settings. The engine renders a
-    /// generic control for each, so it needs no idea what any of them mean.
+    /// A control the pack wants surfaced in Settings: a numeric slider or an
+    /// on/off toggle. The host renders a generic control for each, so neither it
+    /// nor the engine needs any idea what one means.
     public struct Knob: Decodable, Sendable {
+        public enum Kind: Sendable, Equatable {
+            case slider(min: Double, max: Double, defaultValue: Double)
+            case toggle(defaultValue: Bool)
+        }
         public let label: String
-        public let min: Double
-        public let max: Double
-        public let defaultValue: Double
-        enum CodingKeys: String, CodingKey { case label, min, max, `default` }
+        public let kind: Kind
+        /// Display only. Never interpreted by the engine.
+        public let group: String?
+        public let description: String?
+        public let unit: String?
+
+        public var isToggle: Bool { if case .toggle = kind { return true } else { return false } }
+        public var min: Double { if case .slider(let v, _, _) = kind { return v } else { return 0 } }
+        public var max: Double { if case .slider(_, let v, _) = kind { return v } else { return 1 } }
+        public var defaultValue: Double {
+            switch kind {
+            case .slider(_, _, let v): return v
+            case .toggle(let on): return on ? 1 : 0
+            }
+        }
+        public var defaultFlag: Bool? { if case .toggle(let on) = kind { return on } else { return nil } }
+
+        enum CodingKeys: String, CodingKey { case type, label, min, max, `default`, group, description, unit }
         public init(from d: Decoder) throws {
             let c = try d.container(keyedBy: CodingKeys.self)
             label = try c.decode(String.self, forKey: .label)
-            min = try c.decode(Double.self, forKey: .min)
-            max = try c.decode(Double.self, forKey: .max)
-            defaultValue = try c.decode(Double.self, forKey: .default)
+            group = try c.decodeIfPresent(String.self, forKey: .group)
+            description = try c.decodeIfPresent(String.self, forKey: .description)
+            unit = try c.decodeIfPresent(String.self, forKey: .unit)
+            switch try c.decodeIfPresent(String.self, forKey: .type) ?? "slider" {
+            case "slider":
+                kind = .slider(min: try c.decode(Double.self, forKey: .min),
+                               max: try c.decode(Double.self, forKey: .max),
+                               defaultValue: try c.decode(Double.self, forKey: .default))
+            case "toggle":
+                guard !c.contains(.min), !c.contains(.max), !c.contains(.unit) else {
+                    throw DecodingError.dataCorruptedError(forKey: .type, in: c,
+                        debugDescription: "a toggle has no min, max or unit")
+                }
+                kind = .toggle(defaultValue: try c.decode(Bool.self, forKey: .default))
+            case let other:
+                throw DecodingError.dataCorruptedError(forKey: .type, in: c,
+                    debugDescription: "unknown control type '\(other)'")
+            }
         }
     }
 
-    /// Every event name any reachable state listens for, with the largest threshold
-    /// per name. The engine installs observers only for what is actually wanted, so
-    /// a pack that ignores the battery costs nothing to watch it.
-    public var requestedEvents: [String: Double?] {
+    /// The pack's own slider defaults, by name.
+    public var defaultTuning: [String: Double] {
+        tuning.filter { !$0.value.isToggle }.mapValues(\.defaultValue)
+    }
+    /// The pack's own toggle defaults, by name.
+    public var defaultFlags: [String: Bool] {
+        tuning.compactMapValues(\.defaultFlag)
+    }
+
+    /// Every event name any state listens for, with the largest threshold per
+    /// name under the given slider values. The engine installs observers only for
+    /// what is actually wanted, so a pack that ignores the battery costs nothing
+    /// to watch it.
+    public func requestedEvents(tuning: [String: Double]) -> [String: Double?] {
         var out: [String: Double?] = [:]
         for st in states.values {
             for it in st.interrupts {
-                let name = it.on.name
-                if let existing = out[name] ?? nil, let v = it.on.value {
+                let name = it.on.name, v = it.on.threshold(tuning)
+                if let existing = out[name] ?? nil, let v {
                     out[name] = Swift.max(existing, v)
                 } else if out[name] == nil {
-                    out[name] = it.on.value
+                    out[name] = v
                 }
             }
         }
         return out
     }
+    public var requestedEvents: [String: Double?] { requestedEvents(tuning: defaultTuning) }
 
     enum CodingKeys: String, CodingKey {
         case format, engineMin, requires, identity, stage, textures, clips

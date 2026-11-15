@@ -39,6 +39,10 @@ public final class Director {
     /// of them mean, which is what keeps Rule 1 intact while still letting a pack
     /// ship a "liveliness" slider.
     public var tuning: [String: Double] = [:]
+    /// Values for the toggles the pack declared in `tuning`, read by the `flag`
+    /// guard. Like the sliders, they are only ever consulted when a timeout or an
+    /// event is already being evaluated, so changing one costs nothing until then.
+    public var flags: [String: Bool] = [:]
     private var rng: SplitMix64
 
     public init(pack: Pack, seed: UInt64 = 0x9E3779B97F4A7C15) {
@@ -101,11 +105,16 @@ public final class Director {
     /// guard passes. Returns nil if there is nowhere to go.
     public func timeout(_ ctx: Guard.Context) -> Plan? {
         guard let st = pack.states[current] else { return nil }
-        var context = ctx; context.stateAge = stateAge
+        let context = evaluationContext(ctx)
         let eligible = st.next.filter { t in
             t.weight > 0 && (t.when?.evaluate(context, random: { self.rng.nextUnit() }) ?? true)
         }
-        guard let pick = weighted(eligible) else { return nil }
+        // Sliders scale weights. If the user has scaled every option to nothing,
+        // fall back to the authored weights: settings must not be able to strand
+        // the pet in a state with nowhere to go.
+        let scaled = eligible.map { ($0, $0.weight * max(0, $0.weightBy.flatMap { tuning[$0] } ?? 1)) }
+        let options = scaled.contains { $0.1 > 0 } ? scaled : eligible.map { ($0, $0.weight) }
+        guard let pick = weighted(options) else { return nil }
         return enter(pick.state, reason: "timeout")
     }
 
@@ -115,9 +124,10 @@ public final class Director {
     public func deliver(event name: String, value: Double? = nil,
                         _ ctx: Guard.Context) -> Plan? {
         guard let st = pack.states[current] else { return nil }
-        var context = ctx; context.stateAge = stateAge
+        let context = evaluationContext(ctx)
         for it in st.interrupts where it.on.name == name {
-            if let threshold = it.on.value, let v = value {
+            if it.on.knob != nil, it.on.threshold(tuning) == nil { continue }
+            if let threshold = it.on.threshold(tuning), let v = value {
                 // Parameterised events are thresholds: near(60) fires at <= 60,
                 // idle(300) and fast(1400) fire at >=.
                 let satisfied = name.hasSuffix(".near") ? v <= threshold : v >= threshold
@@ -129,15 +139,22 @@ public final class Director {
         return nil
     }
 
-    private func weighted(_ options: [Pack.Transition]) -> Pack.Transition? {
-        let total = options.reduce(0) { $0 + $1.weight }
+    private func evaluationContext(_ ctx: Guard.Context) -> Guard.Context {
+        var context = ctx
+        context.stateAge = stateAge
+        if !flags.isEmpty { context.flags.merge(flags) { _, new in new } }
+        return context
+    }
+
+    private func weighted(_ options: [(Pack.Transition, Double)]) -> Pack.Transition? {
+        let total = options.reduce(0) { $0 + $1.1 }
         guard total > 0 else { return nil }
         var r = rng.nextUnit() * total
-        for o in options {
-            r -= o.weight
+        for (o, w) in options where w > 0 {
+            r -= w
             if r <= 0 { return o }
         }
-        return options.last
+        return options.last { $0.1 > 0 }?.0
     }
 }
 
